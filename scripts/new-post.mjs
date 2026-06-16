@@ -5,6 +5,9 @@
 //   npm run new -- "My Post Title"
 //   npm run new -- "Episode 2: The Topic" --audio episode-2.mp3 --duration 24:10
 //
+// URL slugs are one meaningful, unique word chosen from the title. For example,
+// "Vibe Coding Hardware" becomes /posts/hardware/ when that word is available.
+//
 // Options:
 //   --subtitle "..."   one-line description under the title
 //   --audio <file>     turns the post into a podcast episode (file lives in
@@ -13,12 +16,39 @@
 //   --top              feature it under "Top Posts" in the archive
 //   --draft            create it as a draft (kept out of the build)
 // ─────────────────────────────────────────────────────────────────────────────
-import { writeFile, mkdir, access } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
+import { writeFile, mkdir, access, readdir } from 'node:fs/promises';
+import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const POSTS_DIR = join(ROOT, 'src', 'content', 'posts');
+const STOP_WORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'are',
+  'as',
+  'at',
+  'be',
+  'by',
+  'for',
+  'from',
+  'how',
+  'in',
+  'into',
+  'is',
+  'it',
+  'its',
+  'new',
+  'of',
+  'on',
+  'or',
+  'part',
+  'the',
+  'to',
+  'with',
+  'your',
+]);
 
 // ── Parse args: first non-flag is the title; --flags may take a value. ──────
 const argv = process.argv.slice(2);
@@ -41,12 +71,43 @@ if (!title) {
   process.exit(1);
 }
 
-const slug = title
+const toWord = (word) => word
   .toLowerCase()
-  .replace(/['"]/g, '')           // drop quotes
-  .replace(/[^a-z0-9]+/g, '-')    // non-alphanumerics → hyphen
-  .replace(/^-+|-+$/g, '')        // trim leading/trailing hyphens
-  .slice(0, 80) || 'untitled';
+  .replace(/['’]/g, '')
+  .replace(/[^a-z0-9]+/g, '')
+  .trim();
+
+const titleWords = title
+  .split(/\s+/)
+  .map(toWord)
+  .filter(Boolean);
+
+const uniqueWords = [...new Set(titleWords)];
+const candidates = uniqueWords
+  .filter((word) => word.length > 2 && !STOP_WORDS.has(word))
+  // Prefer the last distinctive word: titles usually end on the concrete noun
+  // readers remember, e.g. "Vibe Coding Hardware" → "hardware".
+  .sort((a, b) => titleWords.lastIndexOf(b) - titleWords.lastIndexOf(a));
+
+if (candidates.length === 0) {
+  console.error('✗ Could not find a meaningful one-word slug in the title. Add one distinctive word to the title.');
+  process.exit(1);
+}
+
+await mkdir(POSTS_DIR, { recursive: true });
+
+const existingSlugs = new Set(
+  (await readdir(POSTS_DIR, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
+    .map((entry) => basename(entry.name, '.md'))
+);
+const slug = candidates.find((word) => !existingSlugs.has(word));
+
+if (!slug) {
+  console.error(`✗ No unique one-word slug is available from this title. Tried: ${candidates.join(', ')}`);
+  console.error('  Change the title by adding a distinctive word that has not been used as a post URL.');
+  process.exit(1);
+}
 
 const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
@@ -75,12 +136,10 @@ const fm = [
 
 const file = join(POSTS_DIR, `${slug}.md`);
 
-await mkdir(POSTS_DIR, { recursive: true });
-
-// Don't clobber an existing post.
+// Don't clobber an existing post, even if the directory listing changed.
 try {
   await access(file);
-  console.error(`✗ A post already exists at src/content/posts/${slug}.md — pick a different title or edit that file.`);
+  console.error(`✗ A post already exists at src/content/posts/${slug}.md — add another distinctive word to the title.`);
   process.exit(1);
 } catch { /* file doesn't exist — good */ }
 

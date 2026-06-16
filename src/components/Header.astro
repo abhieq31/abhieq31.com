@@ -4,7 +4,7 @@ const path = Astro.url.pathname;
 const isActive = (href: string) => href !== '/' && path.startsWith(href);
 const action = site.newsletter?.action || '/subscribe';
 ---
-<header class="site-header">
+<header class="site-header" id="site-header">
   <a class="brand" href="/">{site.name}</a>
 
   <!-- Default nav — hidden while subscribe form is open -->
@@ -23,17 +23,41 @@ const action = site.newsletter?.action || '/subscribe';
     method="post"
     target="_blank"
   >
-    <input
-      type="email"
-      name="email"
-      placeholder="Email"
-      required
-      aria-label="Email address"
-      autocomplete="email"
-    />
-    <button type="submit">Subscribe</button>
-    <button type="button" id="subscribe-cancel" class="cancel">Cancel</button>
-  </form>
+    <span></span>
+    <span></span>
+  </button>
+
+  <div class="header-actions" id="header-actions">
+    <nav class="nav" id="nav-default" aria-label="Primary navigation">
+      <a href="/archive" class={isActive('/archive') ? 'active' : ''}>Archive</a>
+      <a href={site.socials.x} target="_blank" rel="me noopener"><span class="desktop-label">X</span><span class="mobile-label">Twitter</span></a>
+      <a href={site.socials.instagram} target="_blank" rel="me noopener">Instagram</a>
+      <button class="nav-subscribe-btn" id="subscribe-open" type="button" aria-label="Open subscribe form">
+        Subscribe
+      </button>
+    </nav>
+
+    <form
+      class="nav-subscribe-form"
+      id="nav-subscribe-form"
+      action={action}
+      method="post"
+      target="_blank"
+      aria-hidden="true"
+    >
+      <input
+        type="email"
+        name="email"
+        placeholder="Email"
+        required
+        aria-label="Email address"
+        autocomplete="email"
+        tabindex="-1"
+      />
+      <button type="submit" tabindex="-1">Subscribe</button>
+      <button type="button" id="subscribe-cancel" class="cancel" tabindex="-1">Cancel</button>
+    </form>
+  </div>
 </header>
 
 <script>

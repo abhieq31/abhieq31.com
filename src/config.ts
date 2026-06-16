@@ -31,9 +31,9 @@ export const site = {
   // Paste your provider's form endpoint here to make the subscribe form live.
   //   Buttondown:  https://buttondown.com/api/emails/embed-subscribe/abhieq31
   //   ConvertKit:  https://app.convertkit.com/forms/<FORM_ID>/subscriptions
-  //   Substack:    https://<you>.substack.com/api/v1/free  (or embed)
+  //   Substack:    https://<you>.substack.com/api/v1/free
   //   Formspree:   https://formspree.io/f/<FORM_ID>
-  // Leave '' to show a "not connected yet" notice instead.
+  // Leave '' while styling/testing; replace before collecting real emails.
   newsletter: {
     action: 'https://abhieq.substack.com/api/v1/free',
   },
