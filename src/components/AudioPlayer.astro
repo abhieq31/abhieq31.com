@@ -10,7 +10,10 @@ const { audio, duration, date } = Astro.props;
 const id = 'audio-' + Math.random().toString(36).slice(2, 9);
 ---
 <div class="meta">
-  <button class="play-btn" data-audio={id} aria-label="Play episode">▶</button>
+  <button class="play-btn" data-audio={id} aria-label="Play episode">
+    <span class="play"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M8 5v14l11-7z" /></svg></span>
+    <span class="pause"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg></span>
+  </button>
   <audio id={id} src={audio} preload="none"></audio>
   {duration && <span class="duration">{duration}</span>}
   <details class="dropdown">
@@ -23,7 +26,8 @@ const id = 'audio-' + Math.random().toString(36).slice(2, 9);
 </div>
 
 <script>
-  // Bind every play button once. Pauses other audio when one starts.
+  // Bind every play button once. Pauses other audio when one starts; the
+  // play/pause icon stays in sync via the audio element's own events.
   document.querySelectorAll<HTMLButtonElement>('.play-btn').forEach((btn) => {
     if (btn.dataset.bound) return;
     btn.dataset.bound = '1';
@@ -33,13 +37,12 @@ const id = 'audio-' + Math.random().toString(36).slice(2, 9);
       if (audio.paused) {
         document.querySelectorAll('audio').forEach((a) => { if (a !== audio) a.pause(); });
         audio.play();
-        btn.textContent = '❚❚';
       } else {
         audio.pause();
-        btn.textContent = '▶';
       }
     });
-    audio.addEventListener('pause', () => { btn.textContent = '▶'; });
-    audio.addEventListener('ended', () => { btn.textContent = '▶'; });
+    audio.addEventListener('play', () => btn.classList.add('playing'));
+    audio.addEventListener('pause', () => btn.classList.remove('playing'));
+    audio.addEventListener('ended', () => btn.classList.remove('playing'));
   });
 </script>

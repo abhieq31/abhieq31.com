@@ -11,9 +11,9 @@
   --accent: #a6b832;        /* olive green */
   --accent-hover: #c6d84e;  /* brighter olive on hover */
   --border: #25261b;
-  --maxw: 760px;
+  --maxw: 780px;
   --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
     'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
 }
 
@@ -63,17 +63,16 @@ main { flex: 1 0 auto; padding-bottom: 5rem; }
 
 /* ── Podcast row (homepage) ─────────────────────────────────────────────── */
 .podcast-row {
-  text-align: center;
-  margin: 1.5rem 0 3.5rem;
+  margin: 3rem 0 4rem;
   color: var(--muted);
   font-size: 1.05rem;
 }
-.podcast-row .label { color: var(--muted); margin-right: 0.4rem; }
-.podcast-row a { color: var(--accent); margin: 0 0.35rem; font-weight: 600; }
+.podcast-row .label { color: var(--muted); margin-right: 0.55rem; }
+.podcast-row a { color: var(--accent); margin-right: 0.7rem; font-weight: 600; }
 .podcast-row a:hover { color: var(--accent-hover); }
 
 /* ── Feed ───────────────────────────────────────────────────────────────── */
-.post { margin: 0 0 4rem; }
+.post { margin: 0 0 4.5rem; }
 .post-title {
   font-size: 1.9rem;
   line-height: 1.2;
@@ -98,22 +97,25 @@ main { flex: 1 0 auto; padding-bottom: 5rem; }
   flex-wrap: wrap;
 }
 .play-btn {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
-  color: var(--fg);
+  border: 1px solid #383930;
+  background: transparent;
+  color: var(--muted);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex: none;
-  font-size: 0.7rem;
-  line-height: 1;
   padding: 0;
 }
 .play-btn:hover { border-color: var(--accent); color: var(--accent); }
+.play-btn svg { display: block; }
+.play-btn .play { display: inline-flex; padding-left: 1px; }
+.play-btn .pause { display: none; }
+.play-btn.playing .play { display: none; }
+.play-btn.playing .pause { display: inline-flex; }
 .duration { font-variant-numeric: tabular-nums; }
 .dropdown { position: relative; display: inline-block; }
 .dropdown summary { cursor: pointer; color: var(--muted); list-style: none; }
