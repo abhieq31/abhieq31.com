@@ -7,21 +7,14 @@ const action = site.newsletter?.action || '/subscribe';
 <header class="site-header" id="site-header">
   <a class="brand" href="/">{site.name}</a>
 
-  <!-- Default nav — hidden while subscribe form is open -->
-  <nav class="nav" id="nav-default">
-    <a href="/archive" class={isActive('/archive') ? 'active' : ''}>Archive</a>
-    <a href={site.socials.x} target="_blank" rel="me noopener">X</a>
-    <a href={site.socials.instagram} target="_blank" rel="me noopener">Instagram</a>
-    <button class="nav-subscribe-btn" id="subscribe-open" aria-label="Subscribe">Subscribe</button>
-  </nav>
-
-  <!-- Inline subscribe form — shown when Subscribe is clicked (uses .open class, not hidden attr) -->
-  <form
-    class="nav-subscribe-form"
-    id="nav-subscribe-form"
-    action={action}
-    method="post"
-    target="_blank"
+  <!-- Mobile hamburger — hidden on desktop via CSS -->
+  <button
+    class="menu-toggle"
+    id="menu-toggle"
+    type="button"
+    aria-label="Menu"
+    aria-expanded="false"
+    aria-controls="header-actions"
   >
     <span></span>
     <span></span>
@@ -30,20 +23,20 @@ const action = site.newsletter?.action || '/subscribe';
   <div class="header-actions" id="header-actions">
     <nav class="nav" id="nav-default" aria-label="Primary navigation">
       <a href="/archive" class={isActive('/archive') ? 'active' : ''}>Archive</a>
-      <a href={site.socials.x} target="_blank" rel="me noopener"><span class="desktop-label">X</span><span class="mobile-label">Twitter</span></a>
+      <a href={site.socials.x} target="_blank" rel="me noopener">
+        <span class="desktop-label">X</span><span class="mobile-label">Twitter</span>
+      </a>
       <a href={site.socials.instagram} target="_blank" rel="me noopener">Instagram</a>
-      <button class="nav-subscribe-btn" id="subscribe-open" type="button" aria-label="Open subscribe form">
-        Subscribe
-      </button>
+      <button class="nav-subscribe-btn" id="subscribe-open" type="button" aria-label="Open subscribe form">Subscribe</button>
     </nav>
 
+    <!-- Inline subscribe form — shown via .open on desktop, always shown inside the mobile menu -->
     <form
       class="nav-subscribe-form"
       id="nav-subscribe-form"
       action={action}
       method="post"
       target="_blank"
-      aria-hidden="true"
     >
       <input
         type="email"
@@ -52,20 +45,29 @@ const action = site.newsletter?.action || '/subscribe';
         required
         aria-label="Email address"
         autocomplete="email"
-        tabindex="-1"
       />
-      <button type="submit" tabindex="-1">Subscribe</button>
-      <button type="button" id="subscribe-cancel" class="cancel" tabindex="-1">Cancel</button>
+      <button type="submit">Subscribe</button>
+      <button type="button" id="subscribe-cancel" class="cancel">Cancel</button>
     </form>
   </div>
 </header>
 
 <script>
-  const openBtn    = document.getElementById('subscribe-open')   as HTMLButtonElement | null;
-  const cancelBtn  = document.getElementById('subscribe-cancel') as HTMLButtonElement | null;
-  const navDefault = document.getElementById('nav-default')      as HTMLElement | null;
+  const header     = document.getElementById('site-header');
+  const menuToggle = document.getElementById('menu-toggle');
+  const openBtn    = document.getElementById('subscribe-open')    as HTMLButtonElement | null;
+  const cancelBtn  = document.getElementById('subscribe-cancel')  as HTMLButtonElement | null;
+  const navDefault = document.getElementById('nav-default')       as HTMLElement | null;
   const subForm    = document.getElementById('nav-subscribe-form') as HTMLFormElement | null;
 
+  // Mobile hamburger menu: toggle the full-screen overlay + scroll lock
+  menuToggle?.addEventListener('click', () => {
+    const open = header?.classList.toggle('is-menu-open') ?? false;
+    menuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.documentElement.classList.toggle('menu-lock', open);
+  });
+
+  // Desktop inline subscribe: swap the nav for the email form
   function openSubscribe() {
     navDefault?.classList.add('nav-hidden');
     subForm?.classList.add('open');
@@ -75,7 +77,6 @@ const action = site.newsletter?.action || '/subscribe';
     subForm?.classList.remove('open');
     navDefault?.classList.remove('nav-hidden');
   }
-
   openBtn?.addEventListener('click', openSubscribe);
   cancelBtn?.addEventListener('click', closeSubscribe);
   document.addEventListener('keydown', (e) => {
