@@ -1,0 +1,30 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../config';
+const action = site.newsletter?.action || '';
+---
+<Base title="Subscribe" description={`Subscribe to ${site.name} — new posts in your inbox.`}>
+  <div class="container">
+    <h1 class="page-title">Subscribe</h1>
+    <p class="lead">Get new posts in your inbox. No spam — unsubscribe anytime.</p>
+
+    {action ? (
+      <form class="subscribe-form" action={action} method="post" target="_blank">
+        <input type="email" name="email" placeholder="you@email.com" required aria-label="Email address" />
+        <button class="btn" type="submit">Subscribe</button>
+      </form>
+    ) : (
+      <p class="notice">
+        Email sign-up isn’t connected yet. Add your newsletter endpoint to
+        <code>newsletter.action</code> in <code>src/config.ts</code> (Buttondown, Substack,
+        ConvertKit, Formspree…). Until then, follow along below.
+      </p>
+    )}
+
+    <div class="follow">
+      <a href={site.socials.x} target="_blank" rel="me noopener">Follow on X</a>
+      <a href={site.socials.instagram} target="_blank" rel="me noopener">Instagram</a>
+      <a href="/rss.xml">RSS</a>
+    </div>
+  </div>
+</Base>

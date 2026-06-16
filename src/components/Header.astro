@@ -1,0 +1,14 @@
+---
+import { site } from '../config';
+const path = Astro.url.pathname;
+const isActive = (href: string) => href !== '/' && path.startsWith(href);
+---
+<header class="site-header">
+  <a class="brand" href="/">{site.name}</a>
+  <nav class="nav">
+    <a href="/archive" class={isActive('/archive') ? 'active' : ''}>Archive</a>
+    <a href={site.socials.x} target="_blank" rel="me noopener">X</a>
+    <a href={site.socials.instagram} target="_blank" rel="me noopener">Instagram</a>
+    <a href="/subscribe" class={isActive('/subscribe') ? 'active' : ''}>Subscribe</a>
+  </nav>
+</header>

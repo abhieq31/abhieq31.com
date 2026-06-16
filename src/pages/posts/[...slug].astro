@@ -1,0 +1,32 @@
+---
+import Base from '../../layouts/Base.astro';
+import AudioPlayer from '../../components/AudioPlayer.astro';
+import { getCollection, render } from 'astro:content';
+import { formatDate } from '../../utils';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts', ({ data }) => !data.draft);
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+<Base title={post.data.title} description={post.data.subtitle}>
+  <article class="container">
+    <h1 class="article-title">{post.data.title}</h1>
+    {post.data.subtitle && <p class="article-subtitle">{post.data.subtitle}</p>}
+
+    {post.data.audio ? (
+      <AudioPlayer audio={post.data.audio} duration={post.data.duration} date={formatDate(post.data.date)} />
+    ) : (
+      <div class="meta"><span>{formatDate(post.data.date)}</span></div>
+    )}
+
+    <div class="article-body">
+      <Content />
+    </div>
+
+    <a class="back-link" href="/archive">← Archive</a>
+  </article>
+</Base>

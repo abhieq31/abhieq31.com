@@ -1,0 +1,45 @@
+---
+import { site } from '../config';
+interface Props {
+  audio: string;
+  duration?: string;
+  date?: string;
+}
+const { audio, duration, date } = Astro.props;
+// Unique id so each player controls only its own <audio> element.
+const id = 'audio-' + Math.random().toString(36).slice(2, 9);
+---
+<div class="meta">
+  <button class="play-btn" data-audio={id} aria-label="Play episode">▶</button>
+  <audio id={id} src={audio} preload="none"></audio>
+  {duration && <span class="duration">{duration}</span>}
+  <details class="dropdown">
+    <summary>Get podcast ⌄</summary>
+    <div class="menu">
+      {site.podcastLinks.map((l) => <a href={l.href}>{l.label}</a>)}
+    </div>
+  </details>
+  {date && <span>{date}</span>}
+</div>
+
+<script>
+  // Bind every play button once. Pauses other audio when one starts.
+  document.querySelectorAll<HTMLButtonElement>('.play-btn').forEach((btn) => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    const audio = document.getElementById(btn.dataset.audio || '') as HTMLAudioElement | null;
+    if (!audio) return;
+    btn.addEventListener('click', () => {
+      if (audio.paused) {
+        document.querySelectorAll('audio').forEach((a) => { if (a !== audio) a.pause(); });
+        audio.play();
+        btn.textContent = '❚❚';
+      } else {
+        audio.pause();
+        btn.textContent = '▶';
+      }
+    });
+    audio.addEventListener('pause', () => { btn.textContent = '▶'; });
+    audio.addEventListener('ended', () => { btn.textContent = '▶'; });
+  });
+</script>

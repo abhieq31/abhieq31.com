@@ -1,0 +1,24 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatDate, excerpt } from '../utils';
+import AudioPlayer from './AudioPlayer.astro';
+
+interface Props {
+  post: CollectionEntry<'posts'>;
+}
+const { post } = Astro.props;
+const url = `/posts/${post.id}/`;
+const ex = excerpt(post.body ?? '');
+---
+<article class="post">
+  <h2 class="post-title"><a href={url}>{post.data.title}</a></h2>
+  {post.data.subtitle && <p class="post-subtitle">{post.data.subtitle}</p>}
+  {ex && (
+    <p class="post-excerpt">{ex} <a class="more" href={url}>More ›</a></p>
+  )}
+  {post.data.audio ? (
+    <AudioPlayer audio={post.data.audio} duration={post.data.duration} date={formatDate(post.data.date)} />
+  ) : (
+    <div class="meta"><span>{formatDate(post.data.date)}</span></div>
+  )}
+</article>

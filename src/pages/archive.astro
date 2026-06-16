@@ -1,0 +1,72 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const all = (await getCollection('posts', ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+const top = all.filter((p) => p.data.topPost);
+
+const byYear = new Map<number, typeof all>();
+for (const p of all) {
+  const y = p.data.date.getFullYear();
+  if (!byYear.has(y)) byYear.set(y, []);
+  byYear.get(y)!.push(p);
+}
+const years = [...byYear.keys()].sort((a, b) => b - a);
+---
+<Base title="Archive" description="Everything published, searchable.">
+  <div class="container">
+    <h1 class="page-title">Archive</h1>
+    <input id="search" class="search" type="search" placeholder="Search…" autocomplete="off" aria-label="Search posts" />
+
+    {top.length > 0 && (
+      <section class="archive-section" data-section>
+        <h2>Top Posts</h2>
+        <ul class="archive-list">
+          {top.map((p) => (
+            <li data-item><a href={`/posts/${p.id}/`}>{p.data.title}</a></li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {years.map((y) => (
+      <section class="archive-section" data-section>
+        <h2>{y}</h2>
+        <ul class="archive-list">
+          {byYear.get(y)!.map((p) => (
+            <li data-item><a href={`/posts/${p.id}/`}>{p.data.title}</a></li>
+          ))}
+        </ul>
+      </section>
+    ))}
+
+    <p class="empty" id="no-results" hidden>No posts match your search.</p>
+  </div>
+
+  <script>
+    const input = document.getElementById('search') as HTMLInputElement | null;
+    const items = Array.from(document.querySelectorAll<HTMLElement>('[data-item]'));
+    const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-section]'));
+    const noResults = document.getElementById('no-results');
+
+    input?.addEventListener('input', () => {
+      const q = input.value.trim().toLowerCase();
+      let anyMatch = false;
+      items.forEach((li) => {
+        const match = (li.textContent || '').toLowerCase().includes(q);
+        li.style.display = match ? '' : 'none';
+        if (match) anyMatch = true;
+      });
+      sections.forEach((sec) => {
+        const visible = Array.from(sec.querySelectorAll<HTMLElement>('[data-item]')).some(
+          (li) => li.style.display !== 'none'
+        );
+        sec.style.display = visible ? '' : 'none';
+      });
+      if (noResults) noResults.hidden = anyMatch;
+    });
+  </script>
+</Base>
