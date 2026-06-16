@@ -8,6 +8,8 @@ const posts = defineCollection({
   schema: z.object({
     title: z.string(),
     subtitle: z.string().optional(),
+    // One-word URL slug used by Decap CMS when creating filenames.
+    slug: z.string().optional(),
     date: z.coerce.date(),
     // Show this post under "Top Posts" on the archive page.
     topPost: z.boolean().default(false),
