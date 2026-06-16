@@ -14,10 +14,10 @@ No algorithms. No feed. Just ideas, posted when they're worth sharing.
 ## This repo — abhieq31.com
 
 My personal site — essays, notes, and a podcast. A minimal, content-first site
-built with [Astro](https://astro.build). Dark, editorial theme — a single red
-accent on charcoal, inspired by [nav.al](https://nav.al).
+built with [Astro](https://astro.build). Dark, editorial theme — a single olive
+accent on a deep olive background, inspired by [nav.al](https://nav.al).
 
-Each post is a Markdown file. Write one, `git push`, and the site rebuilds and
+Each post is a Markdown file with a one-word URL slug. Write one, `git push`, and the site rebuilds and
 deploys itself.
 
 ## Quick start
@@ -39,11 +39,10 @@ npm run new -- "My Post Title"
 npm run new -- "Episode 2: The Topic" --audio episode-2.mp3 --duration "24:10"
 ```
 
-Then write, `git push`, and it's live. Full options and templates are in
+Then write, `git push`, and it's live. The scaffold picks one meaningful, unused word from the title for the URL (`Vibe Coding Hardware` → `/posts/hardware/`). Full options and templates are in
 [`POSTING.md`](./POSTING.md).
 
-Or do it by hand — add a Markdown file in `src/content/posts/`. The filename
-becomes the URL (`my-post.md` → `/posts/my-post/`).
+Or do it by hand — add a Markdown file in `src/content/posts/`. Use one unique word from the title as the filename (`hardware.md` → `/posts/hardware/`).
 
 ```markdown
 ---
@@ -56,6 +55,13 @@ draft: false     # set true to keep it out of the build
 
 Write the post body in Markdown here.
 ```
+
+
+### Mobile CMS / Decap on Netlify
+
+This repo includes Decap CMS at `/admin/` for writing from desktop or mobile after
+you enable Netlify Identity + Git Gateway. The CMS writes Markdown files into
+`src/content/posts/`, so content stays in Git and Netlify rebuilds after publish.
 
 ### Podcast / audio episodes
 

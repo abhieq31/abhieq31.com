@@ -12,7 +12,7 @@ Let the scaffold write the file and frontmatter for you:
 npm run new -- "My New Post"
 ```
 
-That creates `src/content/posts/my-new-post.md` (dated today, ready to write).
+That creates a one-word URL file chosen from the title, such as `src/content/posts/post.md` for "My New Post" or `src/content/posts/hardware.md` for "Vibe Coding Hardware" (dated today, ready to write).
 Options:
 
 ```bash
@@ -22,6 +22,8 @@ npm run new -- "Half-finished idea" --draft     # keep it out of the build
 npm run new -- "My best essay" --top            # feature under Top Posts
 ```
 
+The scaffold chooses the last distinctive unused title word because that is usually the concrete word readers remember. For example, "Vibe Coding Hardware" becomes `/posts/hardware/`. If the chosen word is already used by another post, the script tries another meaningful word from the title; if none are unique, add a more specific word to the title.
+
 Then write, and publish:
 
 ```bash
@@ -30,14 +32,40 @@ git commit -m "Post: My New Post"
 git push          # Vercel/Netlify redeploys in ~30 seconds
 ```
 
+
+## From your phone — no terminal
+
+Use the GitHub mobile app or github.com in your mobile browser:
+
+1. Open `src/content/posts/` in the repo.
+2. Tap **Add file** → **Create new file**.
+3. Name it with one unique word from the title, e.g. `hardware.md` for
+   "Vibe Coding Hardware".
+4. Paste the template below, write the post, then commit directly to the branch.
+
+```markdown
+---
+title: Vibe Coding Hardware
+subtitle: The new vertical integration
+date: 2026-06-16
+topPost: false
+draft: false
+---
+
+Write from your phone here.
+```
+
+That is the mobile equivalent of `npm run new`: one Markdown file, one-word
+filename, commit, and the deploy rebuilds automatically.
+
 ## The manual way — 3 steps
 
-1. **Create a file:** `src/content/posts/my-new-post.md`
-   (the filename becomes the URL → `/posts/my-new-post/`)
+1. **Create a file:** `src/content/posts/keyword.md`
+   (use one meaningful word from the title; the filename becomes the URL → `/posts/keyword/`)
 2. **Paste a template** from below and write.
 3. **Publish:**
    ```bash
-   git add src/content/posts/my-new-post.md
+   git add src/content/posts/keyword.md
    git commit -m "Post: My New Post"
    git push
    ```
@@ -114,5 +142,20 @@ in the homepage feed and on its own page.
 - **Drafts:** set `draft: true` to keep something unpublished; remove it to go live.
 - **Feature your best:** set `topPost: true` to pin a post to the top of the archive.
 - **Images:** put them in `public/` and reference them as `![alt text](/my-image.jpg)`.
+- **URLs:** keep each post filename to one unique word from the title, e.g. `hardware.md` → `/posts/hardware/`.
 - **Everything else** (name, socials, podcast links, newsletter) lives in
   `src/config.ts`; the theme color is `--accent` in `src/styles/global.css`.
+
+## Decap CMS on Netlify — easiest mobile editor
+
+This repo now includes a Decap CMS admin at `/admin/`. After deploying on Netlify:
+
+1. In Netlify, enable **Identity** for the site.
+2. Set registration to **Invite only**.
+3. Enable **Git Gateway** under Identity services.
+4. Invite yourself as a user.
+5. Open `/admin/` on desktop or mobile, sign in, and create posts from the form.
+
+For the URL field, enter one lowercase word from the title, e.g. `hardware` for
+"Vibe Coding Hardware". Decap saves posts into `src/content/posts/`, commits to
+Git, and Netlify rebuilds the site.

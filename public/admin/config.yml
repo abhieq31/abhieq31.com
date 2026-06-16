@@ -1,0 +1,83 @@
+backend:
+  name: git-gateway
+  branch: main
+  commit_messages:
+    create: 'Post: {{slug}}'
+    update: 'Update post: {{slug}}'
+    delete: 'Delete post: {{slug}}'
+    uploadMedia: 'Upload media: {{path}}'
+    deleteMedia: 'Delete media: {{path}}'
+
+publish_mode: editorial_workflow
+media_folder: public/media
+public_folder: /media
+site_url: https://abhieq31.com
+display_url: https://abhieq31.com
+logo_url: /favicon.svg
+
+collections:
+  - name: posts
+    label: Posts
+    label_singular: Post
+    folder: src/content/posts
+    create: true
+    delete: true
+    extension: md
+    format: frontmatter
+    slug: '{{fields.slug}}'
+    preview_path: posts/{{fields.slug}}
+    summary: '{{title}} — {{date}}'
+    sortable_fields: [date, title, topPost, draft]
+    view_filters:
+      - label: Drafts
+        field: draft
+        pattern: true
+      - label: Published
+        field: draft
+        pattern: false
+      - label: Top Posts
+        field: topPost
+        pattern: true
+    fields:
+      - label: Title
+        name: title
+        widget: string
+        hint: Full post title shown on the site.
+      - label: One-word URL
+        name: slug
+        widget: string
+        pattern: ['^[a-z0-9]+$', 'Use one lowercase word with letters/numbers only, e.g. hardware']
+        hint: One unique word from the title. Example: Vibe Coding Hardware → hardware → /posts/hardware/.
+      - label: Subtitle
+        name: subtitle
+        widget: string
+        required: false
+        hint: Short line under the title.
+      - label: Publish date
+        name: date
+        widget: datetime
+        date_format: YYYY-MM-DD
+        time_format: false
+        format: YYYY-MM-DD
+      - label: Feature in Top Posts
+        name: topPost
+        widget: boolean
+        default: false
+      - label: Draft
+        name: draft
+        widget: boolean
+        default: true
+        hint: Keep enabled until you are ready to publish.
+      - label: Podcast audio
+        name: audio
+        widget: file
+        required: false
+        hint: Optional MP3/audio file for podcast episodes.
+      - label: Duration
+        name: duration
+        widget: string
+        required: false
+        hint: Optional display length, e.g. 13:57.
+      - label: Body
+        name: body
+        widget: markdown

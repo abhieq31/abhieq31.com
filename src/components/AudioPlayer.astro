@@ -20,6 +20,7 @@ const id = 'audio-' + Math.random().toString(36).slice(2, 9);
     <summary>Get podcast ⌄</summary>
     <div class="menu">
       {site.podcastLinks.map((l) => <a href={l.href}>{l.label}</a>)}
+      <a class="download" href={audio} download>Download</a>
     </div>
   </details>
   {date && <span>{date}</span>}
