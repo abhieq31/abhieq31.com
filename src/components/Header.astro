@@ -7,13 +7,21 @@ const action = site.newsletter?.action || '/subscribe';
 <header class="site-header" id="site-header">
   <a class="brand" href="/">{site.name}</a>
 
-  <button
-    class="menu-toggle"
-    id="menu-toggle"
-    type="button"
-    aria-label="Open menu"
-    aria-controls="header-actions"
-    aria-expanded="false"
+  <!-- Default nav — hidden while subscribe form is open -->
+  <nav class="nav" id="nav-default">
+    <a href="/archive" class={isActive('/archive') ? 'active' : ''}>Archive</a>
+    <a href={site.socials.x} target="_blank" rel="me noopener">X</a>
+    <a href={site.socials.instagram} target="_blank" rel="me noopener">Instagram</a>
+    <button class="nav-subscribe-btn" id="subscribe-open" aria-label="Subscribe">Subscribe</button>
+  </nav>
+
+  <!-- Inline subscribe form — shown when Subscribe is clicked (uses .open class, not hidden attr) -->
+  <form
+    class="nav-subscribe-form"
+    id="nav-subscribe-form"
+    action={action}
+    method="post"
+    target="_blank"
   >
     <span></span>
     <span></span>
@@ -53,88 +61,24 @@ const action = site.newsletter?.action || '/subscribe';
 </header>
 
 <script>
-  const siteHeader = document.getElementById('site-header') as HTMLElement | null;
-  const menuBtn = document.getElementById('menu-toggle') as HTMLButtonElement | null;
-  const openBtn = document.getElementById('subscribe-open') as HTMLButtonElement | null;
-  const cancelBtn = document.getElementById('subscribe-cancel') as HTMLButtonElement | null;
-  const headerActions = document.getElementById('header-actions') as HTMLElement | null;
-  const navDefault = document.getElementById('nav-default') as HTMLElement | null;
-  const subForm = document.getElementById('nav-subscribe-form') as HTMLFormElement | null;
-  const formControls = subForm?.querySelectorAll<HTMLInputElement | HTMLButtonElement>('input, button');
-  const desktopMedia = window.matchMedia('(min-width: 721px)');
-
-  function setFormTabIndex(value: 0 | -1) {
-    formControls?.forEach((control) => {
-      control.tabIndex = value;
-    });
-  }
-
-  function isMobileMenu() {
-    return !desktopMedia.matches;
-  }
-
-  function syncMobileForm() {
-    if (isMobileMenu() && siteHeader?.classList.contains('is-menu-open')) {
-      subForm?.setAttribute('aria-hidden', 'false');
-      setFormTabIndex(0);
-      return;
-    }
-
-    if (!headerActions?.classList.contains('is-subscribing')) {
-      subForm?.setAttribute('aria-hidden', 'true');
-      setFormTabIndex(-1);
-    }
-  }
+  const openBtn    = document.getElementById('subscribe-open')   as HTMLButtonElement | null;
+  const cancelBtn  = document.getElementById('subscribe-cancel') as HTMLButtonElement | null;
+  const navDefault = document.getElementById('nav-default')      as HTMLElement | null;
+  const subForm    = document.getElementById('nav-subscribe-form') as HTMLFormElement | null;
 
   function openSubscribe() {
-    headerActions?.classList.add('is-subscribing');
-    navDefault?.setAttribute('aria-hidden', 'true');
-    subForm?.setAttribute('aria-hidden', 'false');
-    setFormTabIndex(0);
-    window.setTimeout(() => {
-      subForm?.querySelector<HTMLInputElement>('input[type=email]')?.focus();
-    }, 220);
+    navDefault?.classList.add('nav-hidden');
+    subForm?.classList.add('open');
+    subForm?.querySelector<HTMLInputElement>('input[type=email]')?.focus();
   }
-
-  function closeSubscribe({ restoreFocus = true } = {}) {
-    headerActions?.classList.remove('is-subscribing');
-    navDefault?.setAttribute('aria-hidden', 'false');
-    syncMobileForm();
-    if (restoreFocus) openBtn?.focus();
-  }
-
-  function openMenu() {
-    siteHeader?.classList.add('is-menu-open');
-    document.documentElement.classList.add('menu-lock');
-    menuBtn?.setAttribute('aria-expanded', 'true');
-    menuBtn?.setAttribute('aria-label', 'Close menu');
-    navDefault?.setAttribute('aria-hidden', 'false');
-    syncMobileForm();
-  }
-
-  function closeMenu() {
-    siteHeader?.classList.remove('is-menu-open');
-    document.documentElement.classList.remove('menu-lock');
-    menuBtn?.setAttribute('aria-expanded', 'false');
-    menuBtn?.setAttribute('aria-label', 'Open menu');
-    syncMobileForm();
+  function closeSubscribe() {
+    subForm?.classList.remove('open');
+    navDefault?.classList.remove('nav-hidden');
   }
 
   openBtn?.addEventListener('click', openSubscribe);
-  cancelBtn?.addEventListener('click', () => closeSubscribe());
-  menuBtn?.addEventListener('click', () => {
-    if (siteHeader?.classList.contains('is-menu-open')) closeMenu();
-    else openMenu();
-  });
-
-  desktopMedia.addEventListener('change', () => {
-    closeMenu();
-    closeSubscribe({ restoreFocus: false });
-  });
-
+  cancelBtn?.addEventListener('click', closeSubscribe);
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (siteHeader?.classList.contains('is-menu-open')) closeMenu();
-    else if (headerActions?.classList.contains('is-subscribing')) closeSubscribe();
+    if (e.key === 'Escape' && subForm?.classList.contains('open')) closeSubscribe();
   });
 </script>
