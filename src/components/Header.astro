@@ -2,13 +2,62 @@
 import { site } from '../config';
 const path = Astro.url.pathname;
 const isActive = (href: string) => href !== '/' && path.startsWith(href);
+const action = site.newsletter?.action || '/subscribe';
 ---
 <header class="site-header">
   <a class="brand" href="/">{site.name}</a>
-  <nav class="nav">
+
+  <!-- Default nav — hidden while subscribe form is open -->
+  <nav class="nav" id="nav-default">
     <a href="/archive" class={isActive('/archive') ? 'active' : ''}>Archive</a>
     <a href={site.socials.x} target="_blank" rel="me noopener">X</a>
     <a href={site.socials.instagram} target="_blank" rel="me noopener">Instagram</a>
-    <a href="/subscribe" class={isActive('/subscribe') ? 'active' : ''}>Subscribe</a>
+    <button class="nav-subscribe-btn" id="subscribe-open" aria-label="Subscribe">Subscribe</button>
   </nav>
+
+  <!-- Inline subscribe form — shown when Subscribe is clicked -->
+  <form
+    class="nav-subscribe-form"
+    id="nav-subscribe-form"
+    action={action}
+    method="post"
+    target="_blank"
+    hidden
+  >
+    <input
+      type="email"
+      name="email"
+      placeholder="Email"
+      required
+      aria-label="Email address"
+      autocomplete="email"
+    />
+    <button type="submit">Subscribe</button>
+    <button type="button" id="subscribe-cancel" class="cancel">Cancel</button>
+  </form>
 </header>
+
+<script>
+  const openBtn  = document.getElementById('subscribe-open')  as HTMLButtonElement | null;
+  const cancelBtn= document.getElementById('subscribe-cancel') as HTMLButtonElement | null;
+  const navDefault = document.getElementById('nav-default')      as HTMLElement | null;
+  const subForm  = document.getElementById('nav-subscribe-form') as HTMLFormElement | null;
+
+  function open() {
+    navDefault?.setAttribute('hidden', '');
+    subForm?.removeAttribute('hidden');
+    subForm?.querySelector<HTMLInputElement>('input[type=email]')?.focus();
+  }
+  function close() {
+    subForm?.setAttribute('hidden', '');
+    navDefault?.removeAttribute('hidden');
+  }
+
+  openBtn?.addEventListener('click', open);
+  cancelBtn?.addEventListener('click', close);
+
+  // ESC closes too
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !subForm?.hidden) close();
+  });
+</script>
