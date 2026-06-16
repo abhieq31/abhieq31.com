@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "if [ -n \"$TINA_CLIENT_ID\" ]; then npm run build; else astro build; fi"
   publish = "dist"
 
 [build.environment]

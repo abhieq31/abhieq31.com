@@ -9,5 +9,7 @@ node_modules/
 .env.*
 !.env.example
 .DS_Store
+# tina generated files
+.tina/__generated__
 # logs
 npm-debug.log*

@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro build",
+    "dev": "tinacms dev -c \"astro dev\"",
+    "start": "tinacms dev -c \"astro dev\"",
+    "build": "tinacms build && astro build",
     "preview": "astro preview",
     "new": "node scripts/new-post.mjs",
     "astro": "astro"
@@ -14,7 +14,9 @@
   "dependencies": {
     "@astrojs/rss": "^4.0.11",
     "@astrojs/sitemap": "^3.2.1",
+    "@tinacms/cli": "^2.5.1",
     "@vercel/speed-insights": "^2.0.0",
-    "astro": "^5.5.0"
+    "astro": "^5.5.0",
+    "tinacms": "^3.9.3"
   }
 }
