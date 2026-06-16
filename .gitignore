@@ -11,5 +11,7 @@ node_modules/
 .DS_Store
 # tina generated files
 .tina/__generated__
+public/admin/
 # logs
 npm-debug.log*
+.vercel
