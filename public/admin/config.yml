@@ -1,0 +1,31 @@
+backend:
+  name: git-gateway
+  branch: main
+
+# Where uploaded audio/images go
+media_folder: public/media
+public_folder: /media
+
+collections:
+  - name: posts
+    label: Posts
+    folder: src/content/posts
+    create: true
+    slug: "{{slug}}"
+    editor:
+      preview: false
+    fields:
+      - { label: Title,    name: title,    widget: string }
+      - { label: Subtitle, name: subtitle, widget: string,   required: false, hint: "One line shown under the title" }
+      - label: Date
+        name: date
+        widget: datetime
+        format: "YYYY-MM-DD"
+        date_format: "YYYY-MM-DD"
+        time_format: false
+        default: ""
+      - { label: Top Post, name: topPost,  widget: boolean,  default: false,  required: false, hint: "Feature under Top Posts in the archive" }
+      - { label: Draft,    name: draft,    widget: boolean,  default: false,  required: false, hint: "Keep out of the build until ready" }
+      - { label: Audio,    name: audio,    widget: string,   required: false, hint: "e.g. /media/episode-2.mp3 — upload the file below first" }
+      - { label: Duration, name: duration, widget: string,   required: false, hint: "e.g. 24:10" }
+      - { label: Body,     name: body,     widget: markdown }
