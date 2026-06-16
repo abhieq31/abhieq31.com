@@ -4,10 +4,10 @@
 
 export const site = {
   // The name shown in the top-left logo and used across the site.
-  name: 'abhieq31',
-  title: 'abhieq31',
-  description: 'Personal site of abhieq31 — essays, notes, and a podcast.',
-  author: 'abhieq31',
+  name: 'Abhi',
+  title: 'Abhi',
+  description: 'Personal site of Abhi — essays, notes, and a podcast.',
+  author: 'Abhi',
 
   // Your social profiles (username: abhieq31).
   socials: {

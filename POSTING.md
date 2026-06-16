@@ -4,7 +4,33 @@ Your publishing cheatsheet. Every post is **one Markdown file** in
 `src/content/posts/`. Add a file, push to git, and the site rebuilds and goes
 live on its own — the same write-a-file-and-publish flow nav.al uses.
 
-## The 3-step workflow
+## The fastest way — one command
+
+Let the scaffold write the file and frontmatter for you:
+
+```bash
+npm run new -- "My New Post"
+```
+
+That creates `src/content/posts/my-new-post.md` (dated today, ready to write).
+Options:
+
+```bash
+npm run new -- "My New Post" --subtitle "One line that hooks the reader"
+npm run new -- "Episode 2: The Topic" --audio episode-2.mp3 --duration "24:10"
+npm run new -- "Half-finished idea" --draft     # keep it out of the build
+npm run new -- "My best essay" --top            # feature under Top Posts
+```
+
+Then write, and publish:
+
+```bash
+git add -A
+git commit -m "Post: My New Post"
+git push          # Vercel/Netlify redeploys in ~30 seconds
+```
+
+## The manual way — 3 steps
 
 1. **Create a file:** `src/content/posts/my-new-post.md`
    (the filename becomes the URL → `/posts/my-new-post/`)
@@ -50,7 +76,7 @@ Write in Markdown — **bold**, *italic*, [links](https://example.com), and:
 - bullet points
 - like this
 
-> Pull-quotes look great in the olive theme.
+> Pull-quotes look great in the dark theme.
 
 ## A section heading
 

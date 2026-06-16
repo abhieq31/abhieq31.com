@@ -1,8 +1,8 @@
 ---
 import '../styles/global.css';
 import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
 import { site } from '../config';
+import SpeedInsights from '@vercel/speed-insights/astro';
 
 interface Props {
   title?: string;
@@ -26,9 +26,10 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
+    <meta name="theme-color" content="#1a1a1a" />
     <meta property="og:site_name" content={site.name} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={desc} />
@@ -42,6 +43,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
   <body>
     <Header />
     <main><slot /></main>
-    <Footer />
+    <SpeedInsights />
   </body>
 </html>
