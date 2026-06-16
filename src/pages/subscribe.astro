@@ -7,55 +7,34 @@ import { site } from '../config';
     <h1 class="page-title">Subscribe</h1>
     <p class="lead">Get the podcast in your inbox.</p>
 
-    <form class="subscribe-form-compact" id="subscribe-form" novalidate>
+    <!-- Hidden iframe absorbs Substack's redirect so the page stays put -->
+    <iframe name="sub-sink" style="display:none" aria-hidden="true"></iframe>
+
+    <form
+      class="subscribe-form-compact"
+      id="subscribe-form"
+      action="https://abhieq31.substack.com/api/v1/free"
+      method="post"
+      target="sub-sink"
+    >
       <input type="email" name="email" placeholder="Email" required aria-label="Email address" autocomplete="email" />
       <button class="btn" type="submit">Subscribe</button>
     </form>
     <p class="subscribe-success" id="subscribe-success" hidden>You're in — check your inbox to confirm.</p>
-    <p class="subscribe-error" id="subscribe-error" hidden>Something went wrong. Try again.</p>
-
-    <div class="follow">
-      <a href={site.socials.apple} target="_blank" rel="noopener">Apple Podcasts</a>
-      <a href={site.socials.spotify} target="_blank" rel="noopener">Spotify</a>
-      <a href={site.socials.x} target="_blank" rel="me noopener">X</a>
-      <a href={site.socials.instagram} target="_blank" rel="me noopener">Instagram</a>
-      <a href={site.socials.substack} target="_blank" rel="me noopener">Substack</a>
-      <a href={site.socials.youtube} target="_blank" rel="me noopener">YouTube</a>
-    </div>
   </div>
 </Base>
 
 <script>
-  const form    = document.getElementById('subscribe-form')   as HTMLFormElement | null;
+  const form    = document.getElementById('subscribe-form')    as HTMLFormElement | null;
   const success = document.getElementById('subscribe-success') as HTMLElement | null;
-  const errorEl = document.getElementById('subscribe-error')  as HTMLElement | null;
 
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  form?.addEventListener('submit', (e) => {
     const email = (form!.querySelector('input[type=email]') as HTMLInputElement).value.trim();
-    if (!email) return;
-
-    const btn = form!.querySelector('button') as HTMLButtonElement;
-    btn.disabled = true;
-    btn.textContent = '…';
-    if (errorEl) errorEl.hidden = true;
-
-    try {
-      const res = await fetch('https://abhieq31.substack.com/api/v1/free', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      if (res.ok || res.status === 200) {
-        form!.hidden = true;
-        if (success) success.hidden = false;
-      } else {
-        throw new Error(String(res.status));
-      }
-    } catch {
-      btn.disabled = false;
-      btn.textContent = 'Subscribe';
-      if (errorEl) errorEl.hidden = false;
-    }
+    if (!email) { e.preventDefault(); return; }
+    // Let the form submit into the hidden iframe, then swap UI
+    setTimeout(() => {
+      form!.hidden = true;
+      if (success) success.hidden = false;
+    }, 400);
   });
 </script>
