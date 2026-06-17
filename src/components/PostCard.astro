@@ -1,24 +1,23 @@
 ---
-import type { CollectionEntry } from 'astro:content';
-import { formatDate, excerpt } from '../utils';
+import type { SubstackPost } from '../lib/posts';
+import { formatDate } from '../utils';
 import AudioPlayer from './AudioPlayer.astro';
 
 interface Props {
-  post: CollectionEntry<'posts'>;
+  post: SubstackPost;
 }
 const { post } = Astro.props;
 const url = `/posts/${post.id}/`;
-const ex = excerpt(post.body ?? '');
 ---
 <article class="post">
-  <h2 class="post-title"><a href={url}>{post.data.title}</a></h2>
-  {post.data.subtitle && <p class="post-subtitle">{post.data.subtitle}</p>}
-  {ex && (
-    <p class="post-excerpt">{ex} <a class="more" href={url}>More ›</a></p>
+  <h2 class="post-title"><a href={url}>{post.title}</a></h2>
+  {post.subtitle && <p class="post-subtitle">{post.subtitle}</p>}
+  {post.excerpt && (
+    <p class="post-excerpt">{post.excerpt} <a class="more" href={url}>More ›</a></p>
   )}
-  {post.data.audio ? (
-    <AudioPlayer audio={post.data.audio} duration={post.data.duration} date={formatDate(post.data.date)} />
+  {post.audio ? (
+    <AudioPlayer audio={post.audio} duration={post.duration} date={formatDate(post.date)} />
   ) : (
-    <div class="meta"><span>{formatDate(post.data.date)}</span></div>
+    <div class="meta"><span>{formatDate(post.date)}</span></div>
   )}
 </article>

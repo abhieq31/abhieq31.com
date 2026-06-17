@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tinacms dev -c \"astro dev\"",
     "start": "tinacms dev -c \"astro dev\"",
-    "build": "tinacms build && astro build",
+    "build": "astro build",
     "preview": "astro preview",
     "new": "node scripts/new-post.mjs",
     "astro": "astro"
@@ -17,6 +17,7 @@
     "@tinacms/cli": "^2.5.1",
     "@vercel/speed-insights": "^2.0.0",
     "astro": "^5.5.0",
+    "rss-parser": "^3.13.0",
     "tinacms": "^3.9.3"
   }
 }

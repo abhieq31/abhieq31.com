@@ -1,7 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
 import AudioPlayer from '../../components/AudioPlayer.astro';
-import { render } from 'astro:content';
 import { getPublishedPosts, sortPostsNewestFirst } from '../../lib/posts';
 import { formatDate } from '../../utils';
 
@@ -11,29 +10,26 @@ export async function getStaticPaths() {
     params: { slug: post.id },
     props: {
       post,
-      related: posts.filter((candidate) => candidate.id !== post.id).slice(0, 3),
+      related: posts.filter((c) => c.id !== post.id).slice(0, 3),
     },
   }));
 }
 
 const { post, related = [] } = Astro.props;
-const { Content } = await render(post);
 ---
-<Base title={post.data.title} description={post.data.subtitle}>
+<Base title={post.title} description={post.subtitle}>
   <article class="container article-container">
-    <p class="article-date">{formatDate(post.data.date)}</p>
-    <h1 class="article-title">{post.data.title}</h1>
-    {post.data.subtitle && <p class="article-subtitle">{post.data.subtitle}</p>}
+    <p class="article-date">{formatDate(post.date)}</p>
+    <h1 class="article-title">{post.title}</h1>
+    {post.subtitle && <p class="article-subtitle">{post.subtitle}</p>}
 
-    {post.data.audio && (
+    {post.audio && (
       <div class="article-audio">
-        <AudioPlayer audio={post.data.audio} duration={post.data.duration} />
+        <AudioPlayer audio={post.audio} duration={post.duration} />
       </div>
     )}
 
-    <div class="article-body">
-      <Content />
-    </div>
+    <div class="article-body" set:html={post.content} />
 
     {related.length > 0 && (
       <aside class="related-posts" aria-labelledby="related-title">
@@ -41,8 +37,8 @@ const { Content } = await render(post);
         <div class="related-grid">
           {related.map((item) => (
             <a href={`/posts/${item.id}/`}>
-              <span>{item.data.title}</span>
-              <time>{formatDate(item.data.date)}</time>
+              <span>{item.title}</span>
+              <time>{formatDate(item.date)}</time>
             </a>
           ))}
         </div>
