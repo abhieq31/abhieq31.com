@@ -8,17 +8,50 @@ const posts = sortPostsNewestFirst(await getPublishedPosts());
 ---
 <Base>
   <div class="container">
+
+    <div class="site-intro">
+      <p class="intro-line">Technology, business, science, and philosophy.</p>
+      <p class="intro-sub">Essays and conversations — thinking out loud.</p>
+    </div>
+
     {site.podcastLinks?.length > 0 && (
       <p class="podcast-row">
         <span class="label">Podcast</span>
-        {site.podcastLinks.map((l) => <a href={l.href}>{l.label}</a>)}
+        {site.podcastLinks.map((l) => <a href={l.href} target={l.href.startsWith('http') ? '_blank' : undefined} rel={l.href.startsWith('http') ? 'noopener' : undefined}>{l.label}</a>)}
       </p>
     )}
 
     {posts.length === 0 ? (
-      <p class="empty">No posts yet. Add a Markdown file in <code>src/content/posts/</code>.</p>
+      <p class="empty-state">First essay coming soon — <a href="/subscribe">subscribe</a> to get it in your inbox.</p>
     ) : (
       posts.map((post) => <PostCard post={post} />)
     )}
+
   </div>
 </Base>
+
+<style>
+  .site-intro {
+    padding: clamp(2.5rem, 8vh, 5rem) 0 2.5rem;
+  }
+  .intro-line {
+    font-size: clamp(1.35rem, 3.5vw, 1.75rem);
+    font-weight: 700;
+    color: var(--fg);
+    margin: 0 0 0.4rem;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  .intro-sub {
+    font-size: 1.05rem;
+    color: var(--muted-strong);
+    margin: 0;
+  }
+  .empty-state {
+    color: var(--muted);
+    margin-top: 3rem;
+  }
+  .empty-state a {
+    color: var(--accent);
+  }
+</style>

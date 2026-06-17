@@ -5,8 +5,8 @@
 export const site = {
   // The name shown in the top-left logo and used across the site.
   name: 'Abhi',
-  title: 'Abhi',
-  description: 'Personal site of Abhi — essays, notes, and a podcast.',
+  title: 'Abhi — Thinking out loud',
+  description: 'Technology, business, science, and philosophy — thinking out loud.',
   author: 'Abhi',
 
   // Your social profiles (username: abhieq31).
