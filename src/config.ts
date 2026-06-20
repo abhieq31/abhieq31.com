@@ -33,15 +33,15 @@ export const site = {
     { label: 'Email', href: '/subscribe' },
   ],
 
-  // Newsletter / subscribe form.
-  // Paste your provider's form endpoint here to make the subscribe form live.
+  // Newsletter / subscribe form. Single source of truth for the subscribe
+  // endpoint — both the header's inline form and /subscribe read this.
   //   Buttondown:  https://buttondown.com/api/emails/embed-subscribe/abhieq31
   //   ConvertKit:  https://app.convertkit.com/forms/<FORM_ID>/subscriptions
   //   Substack:    https://<you>.substack.com/api/v1/free
   //   Formspree:   https://formspree.io/f/<FORM_ID>
   // Leave '' while styling/testing; replace before collecting real emails.
   newsletter: {
-    action: 'https://abhieq.substack.com/api/v1/free',
+    action: 'https://abhieq31.substack.com/api/v1/free',
   },
 } as const;
 

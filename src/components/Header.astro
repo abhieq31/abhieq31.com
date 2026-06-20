@@ -2,7 +2,6 @@
 import { site } from '../config';
 const path = Astro.url.pathname;
 const isActive = (href: string) => href !== '/' && path.startsWith(href);
-const action = site.newsletter?.action || '/subscribe';
 ---
 <header class="site-header" id="site-header">
   <a class="brand" href="/">{site.name}</a>
@@ -34,6 +33,7 @@ const action = site.newsletter?.action || '/subscribe';
     <form
       class="nav-subscribe-form"
       id="nav-subscribe-form"
+      data-action={site.newsletter.action}
       novalidate
     >
       <input
@@ -97,7 +97,7 @@ const action = site.newsletter?.action || '/subscribe';
     submitBtn.textContent = '…';
 
     try {
-      const res = await fetch('https://abhieq31.substack.com/api/v1/free', {
+      const res = await fetch(subForm.dataset.action || '', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

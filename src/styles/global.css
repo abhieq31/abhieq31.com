@@ -1,7 +1,7 @@
 /* ───────────────────────────────────────────────────────────────────────────
-   Theme — minimal, content-first, editorial. Olive-green & black:
-   a near-black, olive-tinted page; warm-white headings; olive accent that
-   warms to light-green on hover. Change --accent / --accent-hover to re-skin.
+   Theme — minimal, content-first, editorial. Near-black & crimson:
+   a near-black, neutral page; warm-white headings; crimson accent that
+   brightens to rose on hover. Change --accent / --accent-hover to re-skin.
    ─────────────────────────────────────────────────────────────────────────── */
 :root {
   --bg: #0d0d10;            /* near-black, neutral */
@@ -26,7 +26,10 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+html { -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
 body {
   margin: 0;
   min-height: 100vh;
@@ -49,8 +52,23 @@ a:hover { color: var(--accent-hover); }
 img { max-width: 100%; height: auto; }
 main { flex: 1 0 auto; padding-bottom: 6rem; }
 
+/* Skip link — invisible until a keyboard user tabs to it */
+.skip-link {
+  position: absolute;
+  top: -3rem;
+  left: 1rem;
+  z-index: 50;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  padding: 0.6rem 1rem;
+  border-radius: 0 0 6px 6px;
+  transition: top 160ms var(--ease);
+}
+.skip-link:focus { top: 0; color: #fff; }
+
 /* Selection + focus + scrollbar — small touches that make it feel finished */
-::selection { background: rgba(166, 190, 94, 0.28); color: var(--fg); }
+::selection { background: rgba(225, 29, 72, 0.28); color: var(--fg); }
 :focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
@@ -441,7 +459,7 @@ main { flex: 1 0 auto; padding-bottom: 6rem; }
   cursor: pointer;
   transition: background 160ms var(--ease), transform 160ms var(--ease), box-shadow 160ms var(--ease);
 }
-.btn:hover { background: var(--accent-hover); box-shadow: 0 6px 22px rgba(166, 190, 94, 0.22); transform: translateY(-1px); }
+.btn:hover { background: var(--accent-hover); box-shadow: 0 6px 22px rgba(225, 29, 72, 0.22); transform: translateY(-1px); }
 .btn:active { transform: translateY(0); }
 .subscribe-form-compact {
   display: grid;
