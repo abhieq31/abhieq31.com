@@ -71,7 +71,7 @@ const websiteJsonLd = {
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={desc} />
     <meta name="twitter:image" content={ogImage} />
-    <script type="application/ld+json" set:html={JSON.stringify(websiteJsonLd)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(websiteJsonLd)} />
     <slot name="head" />
   </head>
   <body>

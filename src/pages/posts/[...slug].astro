@@ -33,7 +33,7 @@ const articleJsonLd = {
 };
 ---
 <Base title={post.title} description={post.subtitle} type="article" publishedTime={post.date.toISOString()}>
-  <script slot="head" type="application/ld+json" set:html={JSON.stringify(articleJsonLd)} />
+  <script is:inline slot="head" type="application/ld+json" set:html={JSON.stringify(articleJsonLd)} />
   <article class="container article-container">
     <p class="article-date">
       {formatDate(post.date)}{!post.audio && ` · ${post.readingMinutes} min read`}
