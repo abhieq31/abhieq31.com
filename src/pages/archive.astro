@@ -15,31 +15,38 @@ const years = [...byYear.keys()].sort((a, b) => b - a);
 <Base title="Archive" description="Everything published, searchable.">
   <div class="container">
     <h1 class="page-title">Archive</h1>
-    <input id="search" class="search" type="search" placeholder="Search…" autocomplete="off" aria-label="Search posts" />
 
-    {topPosts.length > 0 && (
-      <section class="archive-section" data-section>
-        <h2>Top Posts</h2>
-        <ul class="archive-list">
-          {topPosts.map((p) => (
-            <li data-item><a href={`/posts/${p.id}/`}>{p.title}</a></li>
-          ))}
-        </ul>
-      </section>
+    {all.length === 0 ? (
+      <p class="empty-state">Nothing published yet &mdash; <a href="/subscribe">subscribe</a> to get the first one.</p>
+    ) : (
+      <>
+        <input id="search" class="search" type="search" placeholder="Search…" autocomplete="off" aria-label="Search posts" />
+
+        {topPosts.length > 0 && (
+          <section class="archive-section" data-section>
+            <h2>Top Posts</h2>
+            <ul class="archive-list">
+              {topPosts.map((p) => (
+                <li data-item><a href={`/posts/${p.id}/`}>{p.title}</a></li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {years.map((y) => (
+          <section class="archive-section" data-section>
+            <h2>{y}</h2>
+            <ul class="archive-list">
+              {byYear.get(y)!.map((p) => (
+                <li data-item><a href={`/posts/${p.id}/`}>{p.title}</a></li>
+              ))}
+            </ul>
+          </section>
+        ))}
+
+        <p class="empty" id="no-results" role="status" aria-live="polite" hidden>No posts match your search.</p>
+      </>
     )}
-
-    {years.map((y) => (
-      <section class="archive-section" data-section>
-        <h2>{y}</h2>
-        <ul class="archive-list">
-          {byYear.get(y)!.map((p) => (
-            <li data-item><a href={`/posts/${p.id}/`}>{p.title}</a></li>
-          ))}
-        </ul>
-      </section>
-    ))}
-
-    <p class="empty" id="no-results" role="status" aria-live="polite" hidden>No posts match your search.</p>
   </div>
 
   <script>
