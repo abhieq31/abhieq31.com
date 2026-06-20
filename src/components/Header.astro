@@ -64,6 +64,11 @@ const isActive = (href: string) => href !== '/' && path.startsWith(href);
   window.addEventListener('scroll', onScroll, { passive: true });
 
   // Mobile hamburger menu: toggle the full-screen overlay + scroll lock
+  function closeMobileMenu() {
+    header?.classList.remove('is-menu-open');
+    menuToggle?.setAttribute('aria-expanded', 'false');
+    document.documentElement.classList.remove('menu-lock');
+  }
   menuToggle?.addEventListener('click', () => {
     const open = header?.classList.toggle('is-menu-open') ?? false;
     menuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -83,7 +88,12 @@ const isActive = (href: string) => href !== '/' && path.startsWith(href);
   openBtn?.addEventListener('click', openSubscribe);
   cancelBtn?.addEventListener('click', closeSubscribe);
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && subForm?.classList.contains('open')) closeSubscribe();
+    if (e.key !== 'Escape') return;
+    if (subForm?.classList.contains('open')) closeSubscribe();
+    if (header?.classList.contains('is-menu-open')) {
+      closeMobileMenu();
+      menuToggle?.focus();
+    }
   });
 
   subForm?.addEventListener('submit', async (e) => {
