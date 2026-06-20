@@ -9,8 +9,6 @@ const posts = sortPostsNewestFirst(await getPublishedPosts());
 <Base>
   <div class="container">
 
-    <div class="hero"></div>
-
     {site.podcastLinks?.length > 0 && (
       <p class="podcast-row">
         <span class="label">Podcast</span>
@@ -19,14 +17,10 @@ const posts = sortPostsNewestFirst(await getPublishedPosts());
     )}
 
     {posts.length === 0 ? (
-      <p class="empty-state">First essay coming soon — <a href="/subscribe">subscribe</a> to get it in your inbox.</p>
+      <p class="empty-state">First essay coming soon &mdash; <a href="/subscribe">subscribe</a> to get it in your inbox.</p>
     ) : (
       posts.map((post) => <PostCard post={post} />)
     )}
 
   </div>
 </Base>
-
-<style>
-  .hero { padding: clamp(1.5rem, 5vh, 3rem) 0 0; }
-</style>

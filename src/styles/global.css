@@ -4,20 +4,20 @@
    warms to light-green on hover. Change --accent / --accent-hover to re-skin.
    ─────────────────────────────────────────────────────────────────────────── */
 :root {
-  --bg: #0b0d08;            /* near-black, olive-tinted page */
-  --bg-soft: #14180f;       /* dropdowns, code blocks, panels */
-  --bg-elev: #181d11;       /* cards / hover surfaces */
-  --fg: #f3f5ec;            /* headings + primary text */
-  --nav: #cdd2c0;           /* header / footer nav links */
-  --muted: #868f78;         /* meta, labels, captions */
-  --muted-strong: #aab39a;  /* body copy, subtitles */
-  --accent: #a6be5e;        /* olive green accent */
-  --accent-hover: #cbe382;  /* brighter light-green on hover */
-  --accent-soft: rgba(166, 190, 94, 0.13);
-  --accent-line: rgba(166, 190, 94, 0.42);
-  --border: #2a3220;
-  --border-soft: #1c2215;
-  --ring: rgba(166, 190, 94, 0.5);
+  --bg: #0d0d10;            /* near-black, neutral */
+  --bg-soft: #16161a;       /* dropdowns, code blocks, panels */
+  --bg-elev: #1a1a20;       /* cards / hover surfaces */
+  --fg: #f5f5f5;            /* headings + primary text */
+  --nav: #d4d4d8;           /* header / footer nav links */
+  --muted: #71717a;         /* meta, labels, captions */
+  --muted-strong: #a1a1aa;  /* body copy, subtitles */
+  --accent: #e11d48;        /* crimson */
+  --accent-hover: #f43f5e;  /* brighter rose on hover */
+  --accent-soft: rgba(225, 29, 72, 0.13);
+  --accent-line: rgba(225, 29, 72, 0.42);
+  --border: #27272a;
+  --border-soft: #1c1c20;
+  --ring: rgba(225, 29, 72, 0.5);
   --maxw: 790px;
   --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
@@ -33,10 +33,6 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  /* soft olive glow rising from the top, fading into black */
-  background-image:
-    radial-gradient(120% 70% at 50% -10%, rgba(166, 190, 94, 0.09), transparent 60%);
-  background-attachment: fixed;
   color: var(--fg);
   font-family: var(--sans);
   font-size: 18px;
@@ -67,7 +63,7 @@ main { flex: 1 0 auto; padding-bottom: 6rem; }
   border-radius: 999px;
   border: 2px solid var(--bg);
 }
-*::-webkit-scrollbar-thumb:hover { background: #3a442c; }
+*::-webkit-scrollbar-thumb:hover { background: #3a3a40; }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 .site-header {
@@ -99,17 +95,7 @@ main { flex: 1 0 auto; padding-bottom: 6rem; }
   letter-spacing: 0.02em;
   transition: color 160ms var(--ease);
 }
-.brand::before {
-  content: '';
-  width: 0.46em;
-  height: 0.46em;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent-line);
-  transition: background 160ms var(--ease), box-shadow 160ms var(--ease);
-}
 .brand:hover { color: var(--accent-hover); }
-.brand:hover::before { background: var(--accent-hover); box-shadow: 0 0 14px var(--accent-hover); }
 .menu-toggle { display: none; }
 .mobile-label { display: none; }
 .header-actions {
@@ -178,7 +164,7 @@ main { flex: 1 0 auto; padding-bottom: 6rem; }
 .nav-subscribe-form input[type='email']::placeholder { color: var(--fg); }
 .nav-subscribe-form button[type='submit'] {
   background: var(--accent);
-  color: #10140a;
+  color: #ffffff;
   border: 1px solid var(--accent);
   border-radius: 0 3px 3px 0;
   padding: 0 1.2rem;
@@ -209,38 +195,24 @@ main { flex: 1 0 auto; padding-bottom: 6rem; }
 /* ── Podcast row (homepage) ─────────────────────────────────────────────── */
 .podcast-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   flex-wrap: wrap;
-  gap: 0.55rem;
-  margin: 1.4rem 0 3.5rem;
+  gap: 1.1rem;
+  margin: clamp(2rem, 6vh, 3.5rem) 0 4rem;
   color: var(--muted);
-  font-size: 1rem;
+  font-size: 1.05rem;
 }
 .podcast-row .label {
   color: var(--muted);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  margin-right: 0.35rem;
+  font-weight: 700;
+  margin-right: 0.15rem;
 }
 .podcast-row a {
-  color: var(--nav);
-  font-size: 0.92rem;
-  font-weight: 500;
-  padding: 0.34rem 0.85rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--bg-soft);
-  transition: color 160ms var(--ease), border-color 160ms var(--ease),
-    background 160ms var(--ease), transform 160ms var(--ease);
+  color: var(--accent);
+  font-weight: 700;
+  transition: color 160ms var(--ease);
 }
-.podcast-row a:hover {
-  color: var(--accent-hover);
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
-  transform: translateY(-1px);
-}
+.podcast-row a:hover { color: var(--accent-hover); }
 
 /* ── Feed ───────────────────────────────────────────────────────────────── */
 .post { margin: 0 0 5rem; padding-top: 4.5rem; border-top: 1px solid var(--border); }
@@ -261,10 +233,10 @@ main { flex: 1 0 auto; padding-bottom: 6rem; }
   transition: color 160ms var(--ease), background-size 280ms var(--ease);
 }
 .post-title a:hover { color: var(--accent); background-size: 100% 2px; }
-.post-subtitle { font-size: 1.1rem; color: var(--nav); margin: 0 0 0.9rem; font-weight: 400; }
+.post-subtitle { font-size: 1.25rem; color: var(--fg); margin: 0 0 0.9rem; font-weight: 700; letter-spacing: -0.005em; }
 .post-excerpt { color: var(--muted-strong); margin: 0 0 0.9rem; line-height: 1.65; }
-.more { color: var(--accent); font-size: 0.95rem; white-space: nowrap; font-weight: 500; }
-.more:hover { color: var(--accent-hover); }
+.more { color: var(--muted); font-size: 0.95rem; white-space: nowrap; font-weight: 500; }
+.more:hover { color: var(--accent); }
 
 /* ── Meta + audio player ────────────────────────────────────────────────── */
 .meta {
@@ -460,7 +432,7 @@ main { flex: 1 0 auto; padding-bottom: 6rem; }
 .subscribe-form input[type='email']:focus { border-color: var(--accent); }
 .btn {
   background: var(--accent);
-  color: #10140a;
+  color: #ffffff;
   border: none;
   border-radius: 8px;
   padding: 0.7rem 1.3rem;

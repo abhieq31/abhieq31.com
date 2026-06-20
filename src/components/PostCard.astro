@@ -13,7 +13,7 @@ const url = `/posts/${post.id}/`;
   <h2 class="post-title"><a href={url}>{post.title}</a></h2>
   {post.subtitle && <p class="post-subtitle">{post.subtitle}</p>}
   {post.excerpt && (
-    <p class="post-excerpt">{post.excerpt} <a class="more" href={url}>More ›</a></p>
+    <p class="post-excerpt">{post.excerpt} <a class="more" href={url}>More &rsaquo;</a></p>
   )}
   {post.audio ? (
     <AudioPlayer audio={post.audio} duration={post.duration} date={formatDate(post.date)} />
