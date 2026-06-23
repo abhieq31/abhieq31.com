@@ -4,7 +4,6 @@ import IconArrowRight from "@/assets/icons/IconArrowRight.svg";
 import Card from "@/components/Card.astro";
 import Footer from "@/components/Footer.astro";
 import Header from "@/components/Header.astro";
-import Hr from "@/components/Hr.astro";
 import LinkButton from "@/components/LinkButton.astro";
 import StructuredData from "@/components/StructuredData.astro";
 import { SITE } from "@/config";
@@ -15,15 +14,6 @@ const posts = await getCollection("blog");
 const sortedPosts = getSortedPosts(posts);
 const featuredPosts = sortedPosts.filter(({ data }) => data.featured);
 const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
-
-const PODCAST_LINKS = [
-  { label: "X", href: "https://x.com/abhieq31" },
-  { label: "Apple", href: "https://podcasts.apple.com/us/podcast/abhi/id1896933970" },
-  { label: "Spotify", href: "https://open.spotify.com/show/033ztaq1OfKJkcveYsMWIQ" },
-  { label: "YouTube", href: "https://youtube.com/@abhieq31" },
-  { label: "Substack", href: "https://abhieq31.substack.com" },
-  { label: "Email", href: "mailto:abhi@abhieq31.com" },
-];
 ---
 
 <Layout description="Technology, software, and business — thinking out loud.">
@@ -31,26 +21,6 @@ const PODCAST_LINKS = [
   <StructuredData type="Person" data={{}} />
   <Header />
   <main id="main-content" data-layout="index">
-    <section id="podcast" class="pt-8 pb-4">
-      <p class="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-lg">
-        <span class="font-bold text-foreground/50">Podcast</span>
-        {
-          PODCAST_LINKS.map(l => (
-            <a
-              href={l.href}
-              target={l.href.startsWith("http") ? "_blank" : undefined}
-              rel="noopener"
-              class="font-semibold text-accent hover:underline"
-            >
-              {l.label}
-            </a>
-          ))
-        }
-      </p>
-    </section>
-
-    <Hr />
-
     {
       featuredPosts.length > 0 && (
         <section id="featured" class="pt-8 pb-2">
