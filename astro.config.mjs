@@ -102,6 +102,9 @@ export default defineConfig({
     }),
     react(),
     AstroPWA({
+      // Ships a service worker that unregisters itself and clears all caches,
+      // healing browsers stuck on a stale SW from earlier deploys.
+      selfDestroying: true,
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "peter-avatar.jpg"],
       manifest: {
