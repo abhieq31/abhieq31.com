@@ -8,8 +8,19 @@
   "redirects": [
     {
       "source": "/:path*.md",
-      "has": [{ "type": "host", "value": "abhieq31.com" }],
-      "missing": [{ "type": "header", "key": "accept", "value": "(?i).*text/markdown.*" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "abhieq31.com"
+        }
+      ],
+      "missing": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": "(?i).*text/markdown.*"
+        }
+      ],
       "destination": "https://abhieq31.com/:path*",
       "permanent": false
     },
@@ -33,7 +44,11 @@
       "destination": "/tags/:category",
       "permanent": true
     },
-    { "source": "/tag/:tag", "destination": "/tags/:tag", "permanent": true },
+    {
+      "source": "/tag/:tag",
+      "destination": "/tags/:tag",
+      "permanent": true
+    },
     {
       "source": "/20:year/:month/:day/:slug(.*)",
       "destination": "/posts/:slug",
@@ -52,17 +67,6 @@
     {
       "source": "/posts/understanding-codebases-with-ai-gemini-workflow",
       "destination": "/posts/2025/understanding-codebases-with-ai-gemini-workflow",
-      "permanent": true
-    },
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "^(?!(abhieq31\\.me|www\\.abhieq31\\.me|abhieq31\\.md|www\\.abhieq31\\.md|.*\\.vercel\\.app|.*\\.friendship\\.dev|.*\\.amantus\\.dev|.*\\.sweetistics\\.com)).*$"
-        }
-      ],
-      "destination": "https://abhieq31.com/:path*",
       "permanent": true
     }
   ],
