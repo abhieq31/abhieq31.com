@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
-  <rect width="1200" height="1200" fill="#0d0d10"/>
-  <circle cx="160" cy="445" r="34" fill="#e11d48"/>
-  <text x="120" y="615" font-family="'IBM Plex Mono', 'SFMono-Regular', Menlo, Consolas, monospace" font-weight="700" font-size="96" fill="#f5f5f5" letter-spacing="-1">Abhi</text>
-  <text x="124" y="685" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="500" font-size="34" fill="#a1a1aa">Thinking out loud</text>
-  <rect x="120" y="725" width="120" height="4" rx="2" fill="#e11d48"/>
-  <text x="120" y="845" font-family="'IBM Plex Mono', monospace" font-weight="500" font-size="24" fill="#71717a" letter-spacing="2">ABHIEQ31.COM</text>
-</svg>

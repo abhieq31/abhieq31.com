@@ -1,22 +1,31 @@
-import { defineCollection, z } from 'astro:content';
-import { glob } from 'astro/loaders';
+import { defineCollection, z } from "astro:content";
+import { glob } from "astro/loaders";
+import { SITE } from "@/config";
 
-// Each post is a Markdown file in src/content/posts/.
-// To publish: add a .md file with the frontmatter below and push to git.
-const posts = defineCollection({
-  loader: glob({ pattern: '**/*.md', base: './src/content/posts' }),
-  schema: z.object({
-    title: z.string(),
-    subtitle: z.string().optional(),
-    date: z.coerce.date(),
-    // Show this post under "Top Posts" on the archive page.
-    topPost: z.boolean().default(false),
-    // Audio post (podcast episode): URL to the audio file + a display duration.
-    audio: z.string().optional(),
-    duration: z.string().optional(),
-    // Set true to keep a draft out of the build.
-    draft: z.boolean().default(false),
-  }),
+export const BLOG_PATH = "src/content/blog";
+
+const blog = defineCollection({
+  loader: glob({ pattern: "**/[^_]*.{md,mdx}", base: `./${BLOG_PATH}` }),
+  schema: ({ image }) =>
+    z.object({
+      author: z.string().default(SITE.author),
+      pubDatetime: z.coerce.date(),
+      modDatetime: z.date().optional().nullable(),
+      title: z.string(),
+      featured: z.boolean().optional(),
+      draft: z.boolean().optional(),
+      unlisted: z.boolean().optional(),
+      tags: z.array(z.string()).default(["others"]),
+      ogImage: image().or(z.string()).optional(),
+      heroImage: z.string().optional(),
+      description: z.string(),
+      canonicalURL: z.string().optional(),
+      hideEditPost: z.boolean().optional(),
+      timezone: z.string().optional(),
+      // Additional fields from existing posts
+      source: z.string().optional(),
+      AIDescription: z.boolean().optional(),
+    }),
 });
 
-export const collections = { posts };
+export const collections = { blog };

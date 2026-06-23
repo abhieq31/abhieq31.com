@@ -1,134 +1,169 @@
 ---
-import { site } from '../config';
-const path = Astro.url.pathname;
-const isActive = (href: string) => href !== '/' && path.startsWith(href);
+import IconArchive from "@/assets/icons/IconArchive.svg";
+import IconMenuDeep from "@/assets/icons/IconMenuDeep.svg";
+import IconMoon from "@/assets/icons/IconMoon.svg";
+import IconSearch from "@/assets/icons/IconSearch.svg";
+import IconSunHigh from "@/assets/icons/IconSunHigh.svg";
+import IconX from "@/assets/icons/IconX.svg";
+import { SITE } from "@/config";
+import Hr from "./Hr.astro";
+import LinkButton from "./LinkButton.astro";
+
+const { pathname } = Astro.url;
+
+// Remove trailing slash from current pathname if exists
+const currentPath = pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
+
+const isActive = (path: string) => {
+  const currentPathArray = currentPath.split("/").filter((p) => p.trim());
+  const pathArray = path.split("/").filter((p) => p.trim());
+
+  return currentPath === path || currentPathArray[0] === pathArray[0];
+};
 ---
 
-<header class="site-header" id="site-header">
-  <a class="brand" href="/">{site.name}</a>
-
-  <!-- Mobile hamburger — hidden on desktop via CSS -->
-  <button
-    class="menu-toggle"
-    id="menu-toggle"
-    type="button"
-    aria-label="Menu"
-    aria-expanded="false"
-    aria-controls="header-actions"
+<header>
+  <a
+    id="skip-to-content"
+    href="#main-content"
+    class="absolute -top-full left-16 z-50 bg-background px-3 py-2 text-accent backdrop-blur-lg transition-all focus:top-4"
   >
-    <span></span>
-    <span></span>
-  </button>
-
-  <div class="header-actions" id="header-actions">
-    <nav class="nav" id="nav-default" aria-label="Primary navigation">
-      <a href="/archive" class={isActive('/archive') ? 'active' : ''}>Archive</a>
-      <a href={site.socials.x} target="_blank" rel="me noopener">
-        <span class="desktop-label">X</span><span class="mobile-label">Twitter</span>
-      </a>
-      <a href={site.socials.instagram} target="_blank" rel="me noopener">Instagram</a>
-      <button
-        class="nav-subscribe-btn"
-        id="subscribe-open"
-        type="button"
-        aria-label="Open subscribe form">Subscribe</button
-      >
-    </nav>
-
-    <!-- Inline subscribe form — shown via .open on desktop, always shown inside the mobile menu -->
-    <form
-      class="nav-subscribe-form"
-      id="nav-subscribe-form"
-      data-action={site.newsletter.action}
-      novalidate
+    Skip to content
+  </a>
+  <div
+    id="nav-container"
+    class="mx-auto flex max-w-3xl flex-col items-center justify-between sm:flex-row"
+  >
+    <div
+      id="top-nav-wrap"
+      class="relative flex w-full items-baseline justify-between bg-background p-4 sm:items-center sm:py-6"
     >
-      <input
-        type="email"
-        name="email"
-        placeholder="Email"
-        required
-        aria-label="Email address"
-        autocomplete="email"
-      />
-      <button type="submit">Subscribe</button>
-      <button type="button" id="subscribe-cancel" class="cancel">Cancel</button>
-    </form>
+      <a
+        href="/"
+        class="absolute py-1 text-2xl leading-7 font-semibold whitespace-nowrap sm:static"
+      >
+        {SITE.title}
+      </a>
+      <nav
+        id="nav-menu"
+        class="flex w-full flex-col items-center sm:ml-2 sm:flex-row sm:justify-end sm:space-x-4 sm:py-0"
+      >
+        <button
+          id="menu-btn"
+          class="focus-outline self-end p-2 sm:hidden"
+          aria-label="Open Menu"
+          aria-expanded="false"
+          aria-controls="menu-items"
+        >
+          <IconX id="close-icon" class="hidden" />
+          <IconMenuDeep id="menu-icon" />
+        </button>
+        <ul
+          id="menu-items"
+          class:list={[
+            "mt-4 grid w-44 grid-cols-2 place-content-center gap-2",
+            "[&>li>a]:block [&>li>a]:px-4 [&>li>a]:py-3 [&>li>a]:text-center [&>li>a]:font-medium [&>li>a]:hover:text-accent sm:[&>li>a]:px-2 sm:[&>li>a]:py-1",
+            "hidden",
+            "sm:mt-0 sm:ml-0 sm:flex sm:w-auto sm:gap-x-5 sm:gap-y-0",
+          ]}
+        >
+          <li class="col-span-2">
+            <a href="/posts" class:list={{ "active-nav": isActive("/posts") }}>
+              Posts
+            </a>
+          </li>
+          <!-- <li class="col-span-2">
+            <a href="/tags" class:list={{ "active-nav": isActive("/tags") }}>
+              Tags
+            </a>
+          </li> -->
+          <li class="col-span-2">
+            <a href="/about" class:list={{ "active-nav": isActive("/about") }}>
+              About
+            </a>
+          </li>
+          {
+            SITE.showArchives && (
+              <li class="col-span-2">
+                <LinkButton
+                  href="/archives"
+                  class:list={[
+                    "focus-outline flex justify-center p-3 sm:p-1",
+                    {
+                      "active-nav [&>svg]:stroke-accent": isActive("/archives"),
+                    },
+                  ]}
+                  ariaLabel="archives"
+                  title="Archives"
+                >
+                  <IconArchive class="hidden sm:inline-block" />
+                  <span class="sm:sr-only">Archives</span>
+                </LinkButton>
+              </li>
+            )
+          }
+          <li class="col-span-1 flex items-center justify-center">
+            <LinkButton
+              href="/search"
+              class:list={[
+                "focus-outline flex p-3 sm:p-1",
+                { "[&>svg]:stroke-accent": isActive("/search") },
+              ]}
+              ariaLabel="search"
+              title="Search"
+            >
+              <IconSearch />
+              <span class="sr-only">Search</span>
+            </LinkButton>
+          </li>
+          {
+            SITE.lightAndDarkMode && (
+              <li class="col-span-1 flex items-center justify-center">
+                <button
+                  id="theme-btn"
+                  class="focus-outline relative size-12 p-4 sm:size-8 hover:[&>svg]:stroke-accent"
+                  title="Toggles light & dark"
+                  aria-label="auto"
+                  aria-live="polite"
+                >
+                  <IconMoon class="absolute top-[50%] left-[50%] -translate-[50%] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+                  <IconSunHigh class="absolute top-[50%] left-[50%] -translate-[50%] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+                </button>
+              </li>
+            )
+          }
+        </ul>
+      </nav>
+    </div>
   </div>
+  <Hr />
 </header>
 
 <script>
-  const header = document.getElementById('site-header');
-  const menuToggle = document.getElementById('menu-toggle');
-  const openBtn = document.getElementById('subscribe-open') as HTMLButtonElement | null;
-  const cancelBtn = document.getElementById('subscribe-cancel') as HTMLButtonElement | null;
-  const navDefault = document.getElementById('nav-default') as HTMLElement | null;
-  const subForm = document.getElementById('nav-subscribe-form') as HTMLFormElement | null;
+  function toggleNav() {
+    const menuBtn = document.querySelector("#menu-btn");
+    const menuItems = document.querySelector("#menu-items");
+    const menuIcon = document.querySelector("#menu-icon");
+    const closeIcon = document.querySelector("#close-icon");
 
-  // Add a hairline under the header once the page scrolls past the top
-  const onScroll = () => header?.classList.toggle('is-stuck', window.scrollY > 8);
-  onScroll();
-  window.addEventListener('scroll', onScroll, { passive: true });
+    if (!menuBtn || !menuItems || !menuIcon || !closeIcon) return;
 
-  // Mobile hamburger menu: toggle the full-screen overlay + scroll lock
-  function closeMobileMenu() {
-    header?.classList.remove('is-menu-open');
-    menuToggle?.setAttribute('aria-expanded', 'false');
-    document.documentElement.classList.remove('menu-lock');
+    menuBtn.addEventListener("click", () => {
+      const openMenu = menuBtn.getAttribute("aria-expanded") === "true";
+
+      menuBtn.setAttribute("aria-expanded", openMenu ? "false" : "true");
+      menuBtn.setAttribute("aria-label", openMenu ? "Open Menu" : "Close Menu");
+
+      menuItems.classList.toggle("hidden");
+      menuIcon.classList.toggle("hidden");
+      closeIcon.classList.toggle("hidden");
+    });
   }
-  menuToggle?.addEventListener('click', () => {
-    const open = header?.classList.toggle('is-menu-open') ?? false;
-    menuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    document.documentElement.classList.toggle('menu-lock', open);
-  });
 
-  // Desktop inline subscribe: swap the nav for the email form
-  function openSubscribe() {
-    navDefault?.classList.add('nav-hidden');
-    subForm?.classList.add('open');
-    subForm?.querySelector<HTMLInputElement>('input[type=email]')?.focus();
-  }
-  function closeSubscribe() {
-    subForm?.classList.remove('open');
-    navDefault?.classList.remove('nav-hidden');
-  }
-  openBtn?.addEventListener('click', openSubscribe);
-  cancelBtn?.addEventListener('click', closeSubscribe);
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (subForm?.classList.contains('open')) closeSubscribe();
-    if (header?.classList.contains('is-menu-open')) {
-      closeMobileMenu();
-      menuToggle?.focus();
-    }
-  });
+  toggleNav();
 
-  subForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const emailInput = subForm.querySelector<HTMLInputElement>('input[type=email]');
-    const submitBtn = subForm.querySelector<HTMLButtonElement>('button[type=submit]');
-    const email = emailInput?.value.trim();
-    if (!email || !submitBtn) return;
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = '…';
-
-    try {
-      const res = await fetch(subForm.dataset.action || '', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      if (res.ok || res.status === 200) {
-        submitBtn.textContent = 'Done ✓';
-        if (emailInput) emailInput.value = '';
-        setTimeout(closeSubscribe, 1800);
-      } else {
-        throw new Error();
-      }
-    } catch {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Subscribe';
-      if (emailInput) emailInput.placeholder = 'Try again';
-    }
+  // Runs on view transitions navigation
+  document.addEventListener("astro:after-swap", () => {
+    toggleNav();
   });
 </script>

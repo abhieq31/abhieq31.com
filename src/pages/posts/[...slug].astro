@@ -1,83 +1,64 @@
 ---
-import Base from '../../layouts/Base.astro';
-import AudioPlayer from '../../components/AudioPlayer.astro';
-import { getPublishedPosts, sortPostsNewestFirst } from '../../lib/posts';
-import { formatDate } from '../../utils';
-import { site } from '../../config';
-import { getEntry, render } from 'astro:content';
+import { type CollectionEntry, getCollection, render } from "astro:content";
+import BlogPostLayout from "../../layouts/BlogPostLayout.astro";
+import { calculateReadingTime } from "../../utils/readingTime";
 
 export async function getStaticPaths() {
-  const posts = sortPostsNewestFirst(await getPublishedPosts());
-  return posts.map((post) => ({
-    params: { slug: post.id },
-    props: {
-      post,
-      related: posts.filter((c) => c.id !== post.id).slice(0, 3),
-    },
-  }));
+  const posts = await getCollection("blog");
+
+  return posts
+    .map((post) => {
+      // Use post.id as the slug (e.g., "2012/dont-call-willchangevalueforkey")
+      const postSlug = post.id;
+
+      // Skip posts without id
+      if (!postSlug) {
+        console.warn("Post without id found:", post);
+        return null;
+      }
+
+      // Check if post is already in a year directory (e.g., 2020/apple-silicon-m1...)
+      const yearDirMatch = postSlug.match(/^(\d{4})\/(.*)/);
+      if (yearDirMatch) {
+        return {
+          params: { slug: postSlug },
+          props: { post, yearSlug: postSlug },
+        };
+      }
+
+      // For posts not in year directories, extract year from metadata or slug
+      const pubDate = post.data.pubDatetime;
+      const year = pubDate
+        ? pubDate.getFullYear().toString()
+        : // Fallback: Try to extract year from slug if it starts with a date pattern
+          postSlug.match(/^(\d{4})-\d{2}-\d{2}/)
+          ? postSlug.substring(0, 4)
+          : // If no year can be found, use the current year as fallback
+            new Date()
+              .getFullYear()
+              .toString();
+
+      // Create a slug with the year prefix
+      const yearSlug = `${year}/${postSlug.replace(/^\d{4}-\d{2}-\d{2}-/, "")}`;
+
+      return {
+        params: { slug: yearSlug },
+        props: { post, yearSlug },
+      };
+    })
+    .filter(Boolean); // Filter out null values
 }
 
-const { post, related = [] } = Astro.props;
-const entry = await getEntry('posts', post.id);
-const { Content } = await render(entry!);
-
-const articleJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Article',
-  headline: post.title,
-  description: post.subtitle || site.description,
-  datePublished: post.date.toISOString(),
-  author: { '@type': 'Person', name: site.author },
-  url: new URL(`/posts/${post.id}/`, Astro.site).href,
-  mainEntityOfPage: new URL(`/posts/${post.id}/`, Astro.site).href,
+type Props = {
+  post: CollectionEntry<"blog">;
+  yearSlug: string;
 };
+
+const { post, yearSlug } = Astro.props;
+const { Content } = await render(post);
+const readingTime = calculateReadingTime(post.body ?? "");
 ---
 
-<Base
-  title={post.title}
-  description={post.subtitle}
-  type="article"
-  publishedTime={post.date.toISOString()}
->
-  <script
-    is:inline
-    slot="head"
-    type="application/ld+json"
-    set:html={JSON.stringify(articleJsonLd)}
-  />
-  <article class="container article-container">
-    <p class="article-date">
-      {formatDate(post.date)}{!post.audio && ` · ${post.readingMinutes} min read`}
-    </p>
-    <h1 class="article-title">{post.title}</h1>
-    {post.subtitle && <p class="article-subtitle">{post.subtitle}</p>}
-
-    {
-      post.audio && (
-        <div class="article-audio">
-          <AudioPlayer audio={post.audio} duration={post.duration} />
-        </div>
-      )
-    }
-
-    <div class="article-body"><Content /></div>
-
-    {
-      related.length > 0 && (
-        <aside class="related-posts" aria-labelledby="related-title">
-          <h2 id="related-title">Related</h2>
-          <div class="related-grid">
-            {related.map((item) => (
-              <a href={`/posts/${item.id}/`}>
-                <span>{item.title}</span>
-                <time>{formatDate(item.date)}</time>
-              </a>
-            ))}
-          </div>
-        </aside>
-      )
-    }
-
-    <a class="back-link" href="/archive">← Archive</a>
-  </article>
-</Base>
+<BlogPostLayout {...post.data} slug={yearSlug} readingTime={readingTime}>
+  <Content />
+</BlogPostLayout>
