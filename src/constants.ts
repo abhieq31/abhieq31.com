@@ -4,7 +4,7 @@ export const SOCIALS = [
   {
     name: "Github",
     href: "https://github.com/abhieq31",
-    linkTitle: `${SITE.title} on GitHub`,
+    linkTitle: ` ${SITE.title} on Github`,
     icon: "github",
     active: true,
   },
@@ -16,24 +16,17 @@ export const SOCIALS = [
     active: true,
   },
   {
+    name: "BlueSky",
+    href: "https://bsky.app/profile/abhieq31.com",
+    linkTitle: `${SITE.title} on BlueSky`,
+    icon: "bluesky",
+    active: true,
+  },
+  {
     name: "LinkedIn",
     href: "https://www.linkedin.com/in/abhieq31/",
     linkTitle: `${SITE.title} on LinkedIn`,
     icon: "linkedin",
-    active: true,
-  },
-  {
-    name: "YouTube",
-    href: "https://youtube.com/@abhieq31",
-    linkTitle: `${SITE.title} on YouTube`,
-    icon: "youtube",
-    active: true,
-  },
-  {
-    name: "Substack",
-    href: "https://abhieq31.substack.com",
-    linkTitle: `${SITE.title} on Substack`,
-    icon: "substack",
     active: true,
   },
   {

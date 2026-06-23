@@ -34,19 +34,19 @@ export const SITE: Site = {
   website: "https://abhieq31.com/",
   author: "Abhi",
   profile: "https://abhieq31.com/about",
-  desc: "Technology, software, and business — thinking out loud.",
+  desc: "AI-powered tools from Swift roots to web frontiers. Every commit lands on GitHub for you to fork & remix.",
   title: "Abhi",
-  ogImage: "avatar.jpg",
+  ogImage: "peter-avatar.jpg",
   lightAndDarkMode: true,
   postPerIndex: 10,
   postPerPage: 10,
   scheduledPostMargin: 15 * 60 * 1000,
-  showArchives: true,
-  showBackButton: true,
+  showArchives: false,
+  showBackButton: false,
   editPost: {
     enabled: true,
     text: "Edit on GitHub",
-    url: "https://github.com/abhieq31/abhieq31/edit/main/",
+    url: "https://github.com/abhieq31/abhieq31.com/edit/main/",
   },
   dynamicOgImage: true,
   lang: "en",
@@ -75,20 +75,12 @@ export const SOCIAL_LINKS: SocialLink[] = [
     label: "GitHub",
   },
   {
-    href: "https://x.com/abhieq31",
-    label: "X",
+    href: "https://twitter.com/abhieq31",
+    label: "Twitter",
   },
   {
-    href: "https://youtube.com/@abhieq31",
-    label: "YouTube",
-  },
-  {
-    href: "https://abhieq31.substack.com",
-    label: "Substack",
-  },
-  {
-    href: "https://www.linkedin.com/in/abhieq31/",
-    label: "LinkedIn",
+    href: "https://bsky.app/profile/abhieq31.com",
+    label: "BlueSky",
   },
   {
     href: "/rss.xml",
@@ -99,10 +91,8 @@ export const SOCIAL_LINKS: SocialLink[] = [
 // Icon map for social media
 export const ICON_MAP: Record<string, string> = {
   GitHub: "github",
-  X: "twitter",
-  YouTube: "youtube",
-  Substack: "substack",
-  LinkedIn: "linkedin",
+  Twitter: "twitter",
+  BlueSky: "bsky",
   RSS: "rss",
   Email: "mail",
 };

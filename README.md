@@ -4,7 +4,7 @@ This is the source code for my personal website, built with [Astro](https://astr
 
 ## About
 
-I'm Abhi. I write about technology, software, and business — thinking out loud. This site hosts my blog.
+I'm Abhi, an iOS developer, entrepreneur, and open source contributor. This website hosts my personal blog and information about my work.
 
 ## Project Structure
 

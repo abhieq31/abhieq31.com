@@ -103,7 +103,7 @@ export default defineConfig({
     react(),
     AstroPWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "avatar.jpg"],
+      includeAssets: ["favicon.ico", "peter-avatar.jpg"],
       manifest: {
         name: "Abhi",
         short_name: "abhieq31",
@@ -122,13 +122,13 @@ export default defineConfig({
             type: "image/x-icon",
           },
           {
-            src: "avatar.jpg",
+            src: "peter-avatar.jpg",
             sizes: "192x192",
             type: "image/jpeg",
             purpose: "any",
           },
           {
-            src: "avatar.jpg",
+            src: "peter-avatar.jpg",
             sizes: "512x512",
             type: "image/jpeg",
             purpose: "any maskable",

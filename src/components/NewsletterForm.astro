@@ -14,11 +14,18 @@ const { variant = "default" } = Astro.props;
   )}
   
   <form
-    action="https://abhieq31.substack.com/api/v1/free"
+    action="https://buttondown.com/api/emails/embed-subscribe/abhieq31"
     method="post"
     target="_blank"
     class="flex flex-col sm:flex-row gap-3"
   >
+    <input type="hidden" name="tag" value="abhieq31" />
+    <input
+      type="text"
+      name="name"
+      placeholder="Your Name"
+      class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+    />
     <input
       type="email"
       name="email"
