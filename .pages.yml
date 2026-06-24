@@ -31,9 +31,8 @@ content:
         options:
           time: true
       - name: description
-        label: Short description (shown in lists & previews)
+        label: Short description (optional — shown in lists & previews)
         type: text
-        required: true
       - name: tags
         label: Tags
         type: string

@@ -47,18 +47,6 @@ const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
     }
 
     {
-      sortedPosts.length === 0 && (
-        <p class="py-12 text-lg text-foreground/60">
-          First essay coming soon —{" "}
-          <a href="https://abhieq31.substack.com" class="text-accent hover:underline">
-            subscribe
-          </a>{" "}
-          to get it in your inbox.
-        </p>
-      )
-    }
-
-    {
       sortedPosts.length > SITE.postPerIndex && (
         <div class="my-8 text-center">
           <LinkButton href="/posts/" class="text-accent hover:underline">

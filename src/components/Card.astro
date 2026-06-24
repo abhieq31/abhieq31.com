@@ -32,10 +32,16 @@ const titleStyle = { viewTransitionName: slugifyStr(title) };
       )
     }
   </a>
-  <p class="mt-2 leading-relaxed text-foreground/70">
-    {description}{" "}
-    <a href={path} class="whitespace-nowrap text-accent hover:underline">More ›</a>
-  </p>
+  {
+    description && (
+      <p class="mt-2 leading-relaxed text-foreground/70">
+        {description}{" "}
+        <a href={path} class="whitespace-nowrap text-accent hover:underline">
+          More ›
+        </a>
+      </p>
+    )
+  }
   <div class="mt-2 text-sm text-foreground/45">
     <Datetime {pubDatetime} {modDatetime} {timezone} />
   </div>
