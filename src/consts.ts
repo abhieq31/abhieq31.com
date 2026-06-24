@@ -71,16 +71,16 @@ export const NAV_LINKS: SocialLink[] = [
 // Social media links
 export const SOCIAL_LINKS: SocialLink[] = [
   {
+    href: "https://x.com/abhieq31",
+    label: "X",
+  },
+  {
+    href: "https://instagram.com/abhieq31",
+    label: "Instagram",
+  },
+  {
     href: "https://github.com/abhieq31",
     label: "GitHub",
-  },
-  {
-    href: "https://twitter.com/abhieq31",
-    label: "Twitter",
-  },
-  {
-    href: "https://bsky.app/profile/abhieq31.com",
-    label: "BlueSky",
   },
   {
     href: "/rss.xml",
@@ -90,9 +90,9 @@ export const SOCIAL_LINKS: SocialLink[] = [
 
 // Icon map for social media
 export const ICON_MAP: Record<string, string> = {
+  X: "twitter",
+  Instagram: "instagram",
   GitHub: "github",
-  Twitter: "twitter",
-  BlueSky: "bsky",
   RSS: "rss",
   Email: "mail",
 };

@@ -47,6 +47,20 @@ const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
     }
 
     {
+      sortedPosts.length === 0 && (
+        <section class="py-16 text-center">
+          <p class="text-lg leading-relaxed text-foreground/70">
+            No posts yet — check back soon, or{" "}
+            <a href="/about" class="text-accent hover:underline">
+              learn more about me
+            </a>
+            .
+          </p>
+        </section>
+      )
+    }
+
+    {
       sortedPosts.length > SITE.postPerIndex && (
         <div class="my-8 text-center">
           <LinkButton href="/posts/" class="text-accent hover:underline">

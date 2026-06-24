@@ -92,4 +92,4 @@ leading slash: `![alt text](/img/photo.jpg)`.
 - Delete the seed posts in `src/content/blog/` (`welcome`-style / the sample ones) when
   you publish your own.
 - Site name, description, and social links live in `src/consts.ts` and `src/constants.ts`.
-- Your avatar is `public/peter-avatar.jpg` — replace that file (keep the name) with your photo.
+- Site logo/avatar is `public/icon-512.png` and `public/favicon.svg`.
