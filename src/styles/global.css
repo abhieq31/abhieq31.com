@@ -26,7 +26,7 @@ html[data-theme="light"],
 html[data-theme="dark"] {
   --background: #0d0d10;
   --foreground: #e6e6e6;
-  --accent: #ff3b3b;
+  --accent: #9caa46;
   --muted: #6b6b6b;
   --border: #222227;
 }
@@ -83,7 +83,8 @@ html[data-theme="dark"] {
   }
   
   html {
-    @apply overflow-y-scroll scroll-smooth;
+    @apply scroll-smooth;
+    scrollbar-gutter: stable both-edges;
   }
   body {
     @apply flex min-h-svh flex-col bg-background font-mono text-foreground selection:bg-accent/75 selection:text-background;

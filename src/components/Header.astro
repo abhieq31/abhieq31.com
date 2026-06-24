@@ -1,4 +1,5 @@
 ---
+import IconLogo from "@/assets/icons/IconLogo.svg";
 import IconMenuDeep from "@/assets/icons/IconMenuDeep.svg";
 import IconX from "@/assets/icons/IconX.svg";
 import { SITE } from "@/config";
@@ -28,8 +29,9 @@ const isActive = (path: string) =>
     >
       <a
         href="/"
-        class="absolute py-1 text-2xl leading-7 font-bold whitespace-nowrap text-accent sm:static"
+        class="absolute flex items-center gap-2 py-1 text-2xl leading-7 font-bold whitespace-nowrap text-accent sm:static"
       >
+        <IconLogo class="size-7" />
         {SITE.title}
       </a>
       <nav
