@@ -3,7 +3,6 @@ import IconLogo from "@/assets/icons/IconLogo.svg";
 import IconMenuDeep from "@/assets/icons/IconMenuDeep.svg";
 import IconX from "@/assets/icons/IconX.svg";
 import { SITE } from "@/config";
-import Hr from "./Hr.astro";
 
 const { pathname } = Astro.url;
 const currentPath = pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
@@ -11,7 +10,7 @@ const isActive = (path: string) =>
   currentPath === path || currentPath.split("/")[1] === path.split("/")[1];
 ---
 
-<header>
+<header class="mb-20 sm:mb-28">
   <a
     id="skip-to-content"
     href="#main-content"
@@ -85,7 +84,6 @@ const isActive = (path: string) =>
       </nav>
     </div>
   </div>
-  <Hr />
 </header>
 
 <script>
