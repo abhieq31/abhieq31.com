@@ -17,40 +17,33 @@ const date = pubDatetime.toLocaleDateString("en-US", {
   year: "numeric",
 });
 const titleStyle = { viewTransitionName: slugifyStr(title) };
+const headingClass =
+  "text-2xl font-bold leading-tight tracking-tight text-foreground transition-colors group-hover:text-accent sm:text-3xl";
 ---
 
-<li class="border-b border-border">
-  <a href={path} class="flex gap-3 px-2 py-4 transition-colors hover:bg-foreground/[0.03]">
-    <img
-      src="/favicon.svg"
-      alt="Abhi"
-      width="44"
-      height="44"
-      class="size-11 shrink-0 rounded-full border border-border bg-foreground/5 p-2.5"
-    />
-    <div class="min-w-0 flex-1">
-      <div class="flex flex-wrap items-center gap-x-1 text-[15px] leading-5">
-        <span class="font-bold text-foreground">Abhi</span>
-        <span class="text-muted">@abhieq31</span>
-        <span class="text-muted">·</span>
-        <span class="text-muted">{date}</span>
-      </div>
-      {
-        variant === "h2" ? (
-          <h2 class="mt-1 text-lg font-bold leading-snug text-foreground" style={titleStyle}>
-            {title}
-          </h2>
-        ) : (
-          <h3 class="mt-1 text-lg font-bold leading-snug text-foreground" style={titleStyle}>
-            {title}
-          </h3>
-        )
-      }
-      {
-        description && (
-          <p class="mt-1 text-[15px] leading-normal text-foreground/75">{description}</p>
-        )
-      }
-    </div>
+<li class="mb-12">
+  <a href={path} class="group block">
+    {
+      variant === "h2" ? (
+        <h2 class={headingClass} style={titleStyle}>
+          {title}
+        </h2>
+      ) : (
+        <h3 class={headingClass} style={titleStyle}>
+          {title}
+        </h3>
+      )
+    }
   </a>
+  {
+    description && (
+      <p class="mt-2 text-[1.05rem] leading-relaxed text-foreground/65">
+        {description}{" "}
+        <a href={path} class="font-medium whitespace-nowrap text-accent hover:underline">
+          More ›
+        </a>
+      </p>
+    )
+  }
+  <div class="mt-3 text-sm text-muted">{date}</div>
 </li>
