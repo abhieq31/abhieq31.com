@@ -114,27 +114,23 @@ const wordCount = (post.body ?? "").split(/\s+/).length;
     ]}
     data-pagefind-body
   >
+    <div class="flex items-center justify-between gap-4">
+      <Datetime {pubDatetime} {modDatetime} {timezone} size="lg" />
+      <EditPost class="max-sm:hidden" {hideEditPost} {post} />
+    </div>
     <h1
       transition:name={slugifyStr(title)}
-      class="inline-block text-2xl font-bold text-accent sm:text-3xl"
+      class="mt-3 text-4xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl"
     >
       {title}
     </h1>
-    <div class="flex items-center justify-between gap-4 mt-2 mb-6">
-      <div class="flex items-center gap-3">
-        <Datetime {pubDatetime} {modDatetime} {timezone} size="lg" />
-        {
-          readingTime && (
-            <>
-              <span class="text-foreground/30">•</span>
-              <span class="text-sm text-foreground/60">{readingTime}</span>
-            </>
-          )
-        }
-      </div>
-      <EditPost class="max-sm:hidden" {hideEditPost} {post} />
-    </div>
-    <article id="article" class="mx-auto prose mt-6 max-w-5xl">
+    {
+      description && (
+        <p class="mt-4 text-xl leading-relaxed text-foreground/70">{description}</p>
+      )
+    }
+    <hr class="mt-6 mb-8 border-border" />
+    <article id="article" class="prose max-w-none">
       {
         heroImage && (
           <img

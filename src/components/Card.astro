@@ -8,7 +8,7 @@ export interface Props extends CollectionEntry<"blog"> {
   showImage?: boolean;
 }
 
-const { variant = "h2", data, id, filePath } = Astro.props;
+const { variant = "h2", data, id, filePath, body } = Astro.props;
 const { title, description, pubDatetime } = data;
 const path = getPath(id, filePath);
 const date = pubDatetime.toLocaleDateString("en-US", {
@@ -17,6 +17,16 @@ const date = pubDatetime.toLocaleDateString("en-US", {
   year: "numeric",
 });
 const titleStyle = { viewTransitionName: slugifyStr(title) };
+
+// Excerpt like nav.al: use the description, else auto-derive from the post body.
+const raw = (description?.trim() || body || "")
+  .replace(/!\[[^\]]*\]\([^)]*\)/g, "") // images
+  .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // links → text
+  .replace(/[#>*_`~]/g, "") // markdown syntax
+  .replace(/\s+/g, " ")
+  .trim();
+const excerpt = raw.length > 200 ? `${raw.slice(0, 200).replace(/\s+\S*$/, "")}…` : raw;
+
 const headingClass =
   "text-2xl font-bold leading-tight tracking-tight text-foreground transition-colors group-hover:text-accent sm:text-3xl";
 ---
@@ -36,9 +46,9 @@ const headingClass =
     }
   </a>
   {
-    description && (
+    excerpt && (
       <p class="mt-2 text-[1.05rem] leading-relaxed text-foreground/65">
-        {description}{" "}
+        {excerpt}{" "}
         <a href={path} class="font-medium whitespace-nowrap text-accent hover:underline">
           More ›
         </a>
