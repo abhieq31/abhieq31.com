@@ -22,6 +22,7 @@ const { post, posts } = Astro.props;
 
 const {
   title,
+  subtitle,
   author,
   description,
   ogImage: initOgImage,
@@ -124,8 +125,8 @@ const wordCount = (post.body ?? "").split(/\s+/).length;
       {title}
     </h1>
     {
-      description && (
-        <p class="mt-4 text-xl leading-relaxed text-foreground/70">{description}</p>
+      subtitle && (
+        <p class="mt-4 text-xl leading-relaxed text-foreground/70">{subtitle}</p>
       )
     }
     <hr class="mt-8 mb-10 border-border" />

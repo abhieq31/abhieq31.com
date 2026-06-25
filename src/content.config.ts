@@ -38,6 +38,7 @@ const blog = defineCollection({
       pubDatetime: z.coerce.date().catch(() => new Date()),
       modDatetime: z.date().optional().nullable(),
       title: z.string(),
+      subtitle: z.string().optional(),
       featured: z.boolean().optional(),
       draft: z.boolean().optional(),
       unlisted: z.boolean().optional(),

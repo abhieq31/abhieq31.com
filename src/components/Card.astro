@@ -9,7 +9,7 @@ export interface Props extends CollectionEntry<"blog"> {
 }
 
 const { variant = "h2", data, id, filePath, body } = Astro.props;
-const { title, description, pubDatetime } = data;
+const { title, subtitle, description, pubDatetime } = data;
 const path = getPath(id, filePath);
 const date = pubDatetime.toLocaleDateString("en-US", {
   month: "short",
@@ -45,6 +45,7 @@ const headingClass =
       )
     }
   </a>
+  {subtitle && <p class="mt-1 text-lg text-foreground/85">{subtitle}</p>}
   {
     excerpt && (
       <p class="mt-2 text-[1.05rem] leading-relaxed text-foreground/65">
