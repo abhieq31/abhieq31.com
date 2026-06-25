@@ -5,7 +5,6 @@ import IconChevronRight from "@/assets/icons/IconChevronRight.svg";
 import BackButton from "@/components/BackButton.astro";
 import Datetime from "@/components/Datetime.astro";
 import EditPost from "@/components/EditPost.astro";
-import Footer from "@/components/Footer.astro";
 import Header from "@/components/Header.astro";
 import StructuredData from "@/components/StructuredData.astro";
 import Tag from "@/components/Tag.astro";
@@ -110,7 +109,7 @@ const wordCount = (post.body ?? "").split(/\s+/).length;
   <main
     id="main-content"
     class:list={[
-      "mx-auto w-full max-w-3xl px-4 pb-12",
+      "mx-auto w-full max-w-5xl px-4 pb-12",
       { "mt-8": !SITE.showBackButton },
     ]}
     data-pagefind-body
@@ -135,7 +134,7 @@ const wordCount = (post.body ?? "").split(/\s+/).length;
       </div>
       <EditPost class="max-sm:hidden" {hideEditPost} {post} />
     </div>
-    <article id="article" class="mx-auto prose mt-6 max-w-3xl">
+    <article id="article" class="mx-auto prose mt-6 max-w-5xl">
       {
         heroImage && (
           <img
@@ -210,7 +209,6 @@ const wordCount = (post.body ?? "").split(/\s+/).length;
       }
     </div>
   </main>
-  <Footer />
 </Layout>
 
 <script is:inline data-astro-rerun>

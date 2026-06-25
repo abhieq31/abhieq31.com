@@ -21,7 +21,7 @@ const isActive = (path: string) =>
   </a>
   <div
     id="nav-container"
-    class="mx-auto flex max-w-3xl flex-col items-center justify-between sm:flex-row"
+    class="mx-auto flex max-w-5xl flex-col items-center justify-between sm:flex-row"
   >
     <div
       id="top-nav-wrap"
@@ -64,6 +64,23 @@ const isActive = (path: string) =>
             <a href="/about" class:list={{ "active-nav": isActive("/about") }}>About</a>
           </li>
           <li><a href="https://x.com/abhieq31" target="_blank" rel="me noopener">X</a></li>
+          <li class="relative">
+            <a id="gh-nav" href="https://github.com/abhieq31" target="_blank" rel="me noopener">GitHub</a>
+            <div
+              id="gh-graph"
+              class="invisible absolute top-full right-0 z-30 mt-2 w-[330px] max-w-[80vw] rounded-lg border border-border bg-background p-3 text-left opacity-0 shadow-xl transition-opacity duration-150"
+            >
+              <a href="https://github.com/abhieq31" target="_blank" rel="me noopener" class="block">
+                <img
+                  src="https://ghchart.rshah.org/abhieq31"
+                  alt="Abhi's GitHub contribution graph"
+                  class="w-full"
+                  loading="lazy"
+                />
+                <p class="mt-2 text-center text-xs text-muted">Open GitHub profile →</p>
+              </a>
+            </div>
+          </li>
         </ul>
       </nav>
     </div>
@@ -92,10 +109,33 @@ const isActive = (path: string) =>
     });
   }
 
+  // GitHub nav link: hover (or focus) reveals the contribution graph; click opens the profile.
+  function setupGithubGraph() {
+    const link = document.getElementById("gh-nav");
+    const graph = document.getElementById("gh-graph");
+    if (!link || !graph) return;
+    let hideTimer: ReturnType<typeof setTimeout> | undefined;
+    const show = () => {
+      clearTimeout(hideTimer);
+      graph.classList.remove("invisible", "opacity-0");
+    };
+    const hide = () => {
+      hideTimer = setTimeout(() => graph.classList.add("invisible", "opacity-0"), 150);
+    };
+    link.addEventListener("mouseenter", show);
+    link.addEventListener("focus", show);
+    link.addEventListener("mouseleave", hide);
+    link.addEventListener("blur", hide);
+    graph.addEventListener("mouseenter", show);
+    graph.addEventListener("mouseleave", hide);
+  }
+
   toggleNav();
+  setupGithubGraph();
 
   // Runs on view transitions navigation
   document.addEventListener("astro:after-swap", () => {
     toggleNav();
+    setupGithubGraph();
   });
 </script>

@@ -1,6 +1,5 @@
 ---
 import "@pagefind/default-ui/css/ui.css";
-import Footer from "@/components/Footer.astro";
 import Header from "@/components/Header.astro";
 import { SITE } from "@/config";
 import Layout from "@/layouts/Layout.astro";
@@ -14,7 +13,6 @@ const backUrl = SITE.showBackButton ? `${Astro.url.pathname}` : "/";
   <Main pageTitle="Search" pageDesc="Search any article ...">
     <div id="pagefind-search" transition:persist data-backurl={backUrl}></div>
   </Main>
-  <Footer />
 </Layout>
 
 <script>

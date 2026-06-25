@@ -100,7 +100,7 @@ export const criticalCSS = `
     margin-right: auto;
   }
   
-  .max-w-3xl {
+  .max-w-5xl {
     max-width: 48rem;
   }
   
