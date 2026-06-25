@@ -2,7 +2,6 @@
 import type { CollectionEntry } from "astro:content";
 import { getPath } from "@/utils/getPath";
 import { slugifyStr } from "@/utils/slugify";
-import Datetime from "./Datetime.astro";
 
 export interface Props extends CollectionEntry<"blog"> {
   variant?: "h2" | "h3";
@@ -10,39 +9,48 @@ export interface Props extends CollectionEntry<"blog"> {
 }
 
 const { variant = "h2", data, id, filePath } = Astro.props;
-const { title, description, pubDatetime, modDatetime, timezone } = data;
+const { title, description, pubDatetime } = data;
 const path = getPath(id, filePath);
-
-const headingClass =
-  "text-2xl font-bold leading-snug text-foreground transition-colors group-hover:text-accent";
+const date = pubDatetime.toLocaleDateString("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
 const titleStyle = { viewTransitionName: slugifyStr(title) };
 ---
 
-<li class="my-10">
-  <a href={path} class="group block">
-    {
-      variant === "h2" ? (
-        <h2 class={headingClass} style={titleStyle}>
-          {title}
-        </h2>
-      ) : (
-        <h3 class={headingClass} style={titleStyle}>
-          {title}
-        </h3>
-      )
-    }
+<li class="border-b border-border">
+  <a href={path} class="flex gap-3 px-2 py-4 transition-colors hover:bg-foreground/[0.03]">
+    <img
+      src="/favicon.svg"
+      alt="Abhi"
+      width="44"
+      height="44"
+      class="size-11 shrink-0 rounded-full border border-border bg-foreground/5 p-2.5"
+    />
+    <div class="min-w-0 flex-1">
+      <div class="flex flex-wrap items-center gap-x-1 text-[15px] leading-5">
+        <span class="font-bold text-foreground">Abhi</span>
+        <span class="text-muted">@abhieq31</span>
+        <span class="text-muted">·</span>
+        <span class="text-muted">{date}</span>
+      </div>
+      {
+        variant === "h2" ? (
+          <h2 class="mt-1 text-lg font-bold leading-snug text-foreground" style={titleStyle}>
+            {title}
+          </h2>
+        ) : (
+          <h3 class="mt-1 text-lg font-bold leading-snug text-foreground" style={titleStyle}>
+            {title}
+          </h3>
+        )
+      }
+      {
+        description && (
+          <p class="mt-1 text-[15px] leading-normal text-foreground/75">{description}</p>
+        )
+      }
+    </div>
   </a>
-  {
-    description && (
-      <p class="mt-2 leading-relaxed text-foreground/70">
-        {description}{" "}
-        <a href={path} class="whitespace-nowrap text-accent hover:underline">
-          More ›
-        </a>
-      </p>
-    )
-  }
-  <div class="mt-2 text-sm text-foreground/45">
-    <Datetime {pubDatetime} {modDatetime} {timezone} />
-  </div>
 </li>

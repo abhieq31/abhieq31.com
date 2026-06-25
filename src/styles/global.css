@@ -20,13 +20,13 @@
   font-display: swap;
 }
 
-/* nav.al-style palette: near-black background, red accent, light text (forced dark) */
+/* X-style palette: black background, X-blue accent, off-white text, X gray (forced dark) */
 :root,
 html[data-theme="light"],
 html[data-theme="dark"] {
   --background: #000000;
   --foreground: #e7e9ea;
-  --accent: #ffffff;
+  --accent: #1d9bf0;
   --muted: #71767b;
   --border: #2f3336;
 }
