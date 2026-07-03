@@ -20,6 +20,13 @@ const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
   <StructuredData type="Person" data={{}} />
   <Header />
   <main id="main-content" data-layout="index">
+    <section id="intro" class="pt-8 pb-2">
+      <p class="text-lg leading-relaxed text-foreground/70">
+        I build software and write down what survives. The five things most on
+        my mind are on <a href="/now" class="text-accent hover:underline">Now</a>.
+      </p>
+    </section>
+
     {
       featuredPosts.length > 0 && (
         <section id="featured" class="pt-8 pb-2">
