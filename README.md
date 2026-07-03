@@ -1,56 +1,58 @@
-# Abhi's Personal Website
+# abhieq31.com
 
-This is the source code for my personal website, built with [Astro](https://astro.build) and deployed on [Vercel](https://vercel.com).
+**Writing it down is part of the work.**
 
-## About
+The source for [abhieq31.com](https://abhieq31.com) — my personal site and
+blog. If you can't say it in one line, you don't understand it yet; the posts
+here are where I find out which of my ideas survive being written down.
 
-I'm Abhi, an iOS developer, entrepreneur, and open source contributor. This website hosts my personal blog and information about my work.
+Built with [Astro](https://astro.build), deployed on [Vercel](https://vercel.com).
+Static-first, so the fastest possible page — no server between a reader and a
+post — is also the cheapest one to run.
 
-## Project Structure
+## First principles
+
+- **Content is Markdown, everything else is machinery.** Posts live in
+  `src/content/blog/`, organized by year. The rest of the repo exists to render
+  them fast and stay out of the way.
+- **The reader's device does the least work possible.** Astro ships zero JS by
+  default; islands only where interaction earns them.
+- **Own the pipes.** Search is local ([Pagefind](https://pagefind.app)), fonts
+  are self-hosted, analytics stay minimal. Fewer third parties, fewer failure
+  modes, fewer people between the writing and the reading.
+
+## Structure
 
 ```text
 ├── public/               # Static assets (images, fonts, favicon)
-│   ├── assets/          # Images for blog posts
-│   └── fonts/           # Web fonts
 ├── src/
-│   ├── assets/          # Icons and images used in components
-│   ├── components/      # Reusable UI components
-│   │   └── ui/          # React components
-│   ├── content/         # Content collections
-│   │   └── blog/        # Blog posts in Markdown format (organized by year)
-│   ├── layouts/         # Page layouts and templates
-│   ├── pages/           # Routes and pages
-│   ├── styles/          # Global styles and CSS
-│   └── utils/           # Utility functions
-├── astro.config.mjs     # Astro configuration
-├── vercel.json          # Vercel deployment and CSP configuration
-├── package.json         # Project dependencies and scripts
-├── tailwind.config.mjs  # Tailwind CSS configuration
-└── LICENSE              # Dual license (CC BY 4.0 + MIT)
+│   ├── components/       # Reusable UI (React islands under ui/)
+│   ├── content/blog/     # The actual writing — Markdown, by year
+│   ├── layouts/          # Page templates
+│   ├── pages/            # Routes
+│   ├── styles/           # Global CSS (Tailwind)
+│   └── utils/            # Helpers
+├── astro.config.mjs      # Astro configuration
+├── vercel.json           # Redirects, headers, CSP
+└── LICENSE               # Dual license (CC BY 4.0 + MIT)
 ```
 
-## Commands
+## Run it
 
-| Command                | Action                                      |
-| :--------------------- | :------------------------------------------ |
-| `pnpm install`         | Installs dependencies                       |
-| `pnpm run dev`         | Starts local dev server at `localhost:4321` |
-| `pnpm run build`       | Build the production site to `./dist/`      |
-| `pnpm run preview`     | Preview the build locally, before deploying |
-
-## Deployment
-
-This site is set up for easy deployment on Vercel. Just connect your GitHub repository to Vercel, and it will automatically build and deploy the site when changes are pushed.
+| Command | Action |
+| :--- | :--- |
+| `pnpm install` | Install dependencies |
+| `pnpm run dev` | Dev server at `localhost:4321` |
+| `pnpm run build` | Production build to `./dist/` (includes Pagefind index) |
+| `pnpm run preview` | Preview the build locally |
 
 ## License
 
-This repository uses dual licensing:
+Dual-licensed: **writing** under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/),
+**code** under [MIT](LICENSE). See [LICENSE](LICENSE) for details.
 
-- **Documentation & Blog Posts**: Licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/)
-- **Code & Code Snippets**: Licensed under the [MIT License](LICENSE)
+## Credit where it's owed
 
-See the [LICENSE](LICENSE) file for full details.
-
-## Special Thanks
-
-Special thanks to [Sat Naing](https://github.com/satnaing) for creating the excellent [AstroPaper theme](https://astro-paper.pages.dev/) that served as the foundation for this website. Their thoughtful design and clean architecture made it a joy to build upon.
+Built on [Sat Naing](https://github.com/satnaing)'s excellent
+[AstroPaper](https://astro-paper.pages.dev/) theme — clean architecture is a
+gift to everyone who builds on it. Thank you.
