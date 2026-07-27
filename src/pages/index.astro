@@ -51,32 +51,7 @@ const hasMore = sortedPosts.length > SITE.postPerIndex;
   </main>
 </Layout>
 
-<style>
-  .main-home {
-    padding-top: 48px;
-    padding-bottom: 80px;
-  }
-
-  .post-list-ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .read-more-wrap {
-    margin: 8px 0 0;
-  }
-
-  .read-more {
-    color: var(--accent);
-    font-size: 17px;
-    font-weight: 600;
-  }
-
-  .read-more:hover {
-    color: var(--accent-hover);
-  }
-
+<style is:global>
   .empty-state {
     padding: 48px 0;
     color: var(--muted);
@@ -84,14 +59,3 @@ const hasMore = sortedPosts.length > SITE.postPerIndex;
     line-height: 1.6;
   }
 </style>
-
-<script>
-  document.addEventListener("astro:page-load", () => {
-    const indexLayout = (
-      document.querySelector("#main-content") as HTMLElement
-    )?.dataset?.layout;
-    if (indexLayout) {
-      sessionStorage.setItem("backUrl", "/");
-    }
-  });
-</script>

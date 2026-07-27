@@ -1,45 +1,44 @@
 @plugin '@tailwindcss/typography';
 
 /*
-  Post body — match nav.al single-post readability.
-  Force high-contrast colors so Tailwind prose gray never wins.
+  Post body — moss olive accents, off-white body on matte black.
+  Hard overrides so Tailwind prose defaults never win.
 */
 .prose {
-  --tw-prose-body: #eeeeee !important;
-  --tw-prose-headings: #f00048 !important;
-  --tw-prose-links: #eeeeee !important;
-  --tw-prose-bold: #ffffff !important;
-  --tw-prose-counters: #b2b2b2 !important;
-  --tw-prose-bullets: #f0f0f0 !important;
-  --tw-prose-hr: #2d3139 !important;
-  --tw-prose-quotes: #b2b2b2 !important;
-  --tw-prose-quote-borders: #f00048 !important;
-  --tw-prose-captions: #b2b2b2 !important;
-  --tw-prose-code: #ffffff !important;
+  --tw-prose-body: #f5f5f0 !important;
+  --tw-prose-headings: #6f8a3a !important;
+  --tw-prose-links: #f5f5f0 !important;
+  --tw-prose-bold: #f5f5f0 !important;
+  --tw-prose-counters: #a4a4a4 !important;
+  --tw-prose-bullets: #a4a4a4 !important;
+  --tw-prose-hr: #2a2a2a !important;
+  --tw-prose-quotes: #a4a4a4 !important;
+  --tw-prose-quote-borders: #6f8a3a !important;
+  --tw-prose-captions: #a4a4a4 !important;
+  --tw-prose-code: #f5f5f0 !important;
   --tw-prose-pre-code: #e1e4e8 !important;
-  --tw-prose-pre-bg: #151617 !important;
-  --tw-prose-th-borders: #2d3139 !important;
-  --tw-prose-td-borders: #2d3139 !important;
-  --tw-prose-invert-body: #eeeeee !important;
-  --tw-prose-invert-headings: #f00048 !important;
-  --tw-prose-invert-links: #eeeeee !important;
-  --tw-prose-invert-bold: #ffffff !important;
+  --tw-prose-pre-bg: #1a1a1a !important;
+  --tw-prose-th-borders: #2a2a2a !important;
+  --tw-prose-td-borders: #2a2a2a !important;
+  --tw-prose-invert-body: #f5f5f0 !important;
+  --tw-prose-invert-headings: #6f8a3a !important;
+  --tw-prose-invert-links: #f5f5f0 !important;
+  --tw-prose-invert-bold: #f5f5f0 !important;
 
-  color: #eeeeee !important;
+  color: #f5f5f0 !important;
   font-size: 18px !important;
   line-height: 28px !important;
   max-width: none !important;
   font-weight: 400;
 }
 
-/* Body copy — bright enough to read (nav.al uses #eee on #1e1f21) */
 .prose p,
 .prose li,
 .prose td,
 .prose th,
 .prose dd,
 .prose figcaption {
-  color: #eeeeee !important;
+  color: #f5f5f0 !important;
 }
 
 .prose p {
@@ -48,7 +47,7 @@
 }
 
 .prose a {
-  color: #eeeeee !important;
+  color: #f5f5f0 !important;
   text-decoration: underline !important;
   text-underline-offset: 3px;
   word-break: break-word;
@@ -58,33 +57,30 @@
   color: #ffffff !important;
 }
 
-/*
-  Section headings — nav.al pattern:
-  red title + thin rule underneath
-  Use ## in Markdown → this style
-*/
+/* ## Section headings — accent + rule (nav.al structure, new palette) */
 .prose h2 {
-  color: #f00048 !important;
+  color: #6f8a3a !important;
   font-size: 22px !important;
   line-height: 31px !important;
   font-weight: 700 !important;
   margin: 43px 0 27px !important;
   padding-bottom: 25px !important;
-  border-bottom: 1.5px solid rgba(229, 229, 229, 0.35) !important;
+  border-bottom: 1.5px solid rgba(245, 245, 240, 0.18) !important;
 }
 
 .prose h2 * {
-  color: #f00048 !important;
+  color: #6f8a3a !important;
 }
 
 .prose h2 a.heading-link {
-  color: #f00048 !important;
+  color: #6f8a3a !important;
   text-decoration: none !important;
-  opacity: 0.5;
+  opacity: 0.45;
+  font-size: 0.85em;
 }
 
 .prose h3 {
-  color: #ffffff !important;
+  color: #f5f5f0 !important;
   font-size: 20px !important;
   line-height: 28px !important;
   font-weight: 700 !important;
@@ -92,56 +88,55 @@
 }
 
 .prose h4 {
-  color: #ffffff !important;
+  color: #f5f5f0 !important;
   font-size: 18px !important;
   line-height: 28px !important;
   font-weight: 700 !important;
   margin: 0 0 23px !important;
 }
 
-/* Bold names / emphasis like "Naval:" / "Guillermo Rauch:" on nav.al */
 .prose strong,
 .prose b {
-  color: #ffffff !important;
+  color: #f5f5f0 !important;
   font-weight: 600 !important;
 }
 
 .prose em,
 .prose i {
-  color: #eeeeee !important;
+  color: #f5f5f0 !important;
 }
 
 .prose ul,
 .prose ol {
   margin: 0 0 30px !important;
   padding-left: 1.35em !important;
-  color: #eeeeee !important;
+  color: #f5f5f0 !important;
 }
 
 .prose li {
   margin-bottom: 18px !important;
-  color: #eeeeee !important;
+  color: #f5f5f0 !important;
 }
 
 .prose li::marker {
-  color: #b2b2b2 !important;
+  color: #a4a4a4 !important;
 }
 
 .prose blockquote {
-  border-left: 3px solid rgba(240, 0, 72, 0.5) !important;
-  color: #b2b2b2 !important;
+  border-left: 3px solid rgba(111, 138, 58, 0.55) !important;
+  color: #a4a4a4 !important;
   padding-left: 1em !important;
   font-style: normal !important;
   margin: 1.5em 0 !important;
 }
 
 .prose blockquote p {
-  color: #b2b2b2 !important;
+  color: #a4a4a4 !important;
 }
 
 .prose code {
-  color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.08) !important;
+  color: #f5f5f0 !important;
+  background: rgba(245, 245, 240, 0.08) !important;
   border-radius: 4px;
   padding: 0.15em 0.4em;
   font-size: 0.9em;
@@ -153,9 +148,9 @@
 }
 
 .prose pre {
-  border: 1px solid #2d3139 !important;
+  border: 1px solid #2a2a2a !important;
   border-radius: 6px;
-  background: #151617 !important;
+  background: #1a1a1a !important;
   color: #e1e4e8 !important;
 }
 
@@ -173,7 +168,7 @@
 
 .prose hr {
   border: 0 !important;
-  border-top: 1px solid rgba(229, 229, 229, 0.2) !important;
+  border-top: 1px solid #2a2a2a !important;
   margin: 2em 0 !important;
 }
 
@@ -187,11 +182,10 @@
 
 .prose details {
   cursor: pointer;
-  color: #eeeeee;
+  color: #f5f5f0;
   user-select: none;
 }
 
-/* Dark Shiki */
 html pre:has(code),
 html pre:has(code) span,
 html[data-theme="dark"] pre:has(code),
@@ -199,7 +193,7 @@ html[data-theme="dark"] pre:has(code) span,
 html[data-theme="light"] pre:has(code),
 html[data-theme="light"] pre:has(code) span {
   color: var(--shiki-dark) !important;
-  background-color: var(--shiki-dark-bg, #151617) !important;
+  background-color: var(--shiki-dark-bg, #1a1a1a) !important;
   font-style: var(--shiki-dark-font-style) !important;
   font-weight: var(--shiki-dark-font-weight) !important;
   text-decoration: var(--shiki-dark-text-decoration) !important;

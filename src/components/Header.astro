@@ -5,6 +5,10 @@ const { pathname } = Astro.url;
 const currentPath =
   pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
 const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
+
+// Optional: set PUBLIC_NEWSLETTER_ACTION in Vercel env to a Formspree/Buttondown URL.
+// Example Formspree: https://formspree.io/f/xxxxxxxx
+const newsletterAction = import.meta.env.PUBLIC_NEWSLETTER_ACTION || "";
 ---
 
 <header class="site-header">
@@ -16,7 +20,6 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
     Skip to content
   </a>
 
-  <!-- Full viewport width — logo far left, nav far right (nav.al) -->
   <div class="page-gutter header-inner">
     <a href="/" class="site-logo" aria-label={`${SITE.title} home`}>
       {SITE.title}
@@ -26,6 +29,11 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
       <div id="nav-links" class="nav-links">
         <a href="/posts" class:list={[{ "is-active": isArchive }]}>Archive</a>
         <a href="https://x.com/abhieq31" target="_blank" rel="me noopener">X</a>
+        <a
+          href="https://www.instagram.com/abhoeq31/"
+          target="_blank"
+          rel="me noopener">Instagram</a
+        >
         <a href="https://github.com/abhieq31" target="_blank" rel="me noopener"
           >GitHub</a
         >
@@ -35,7 +43,13 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
       </div>
 
       <div id="subscribe-box" class="subscribe-box" hidden>
-        <form class="subscribe-form" id="subscribe-form">
+        <form
+          class="subscribe-form"
+          id="subscribe-form"
+          method="POST"
+          data-has-backend={newsletterAction ? "true" : "false"}
+          action={newsletterAction || undefined}
+        >
           <input
             type="email"
             name="email"
@@ -45,6 +59,11 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
             autocomplete="email"
             aria-label="Email address"
           />
+          {
+            newsletterAction && (
+              <input type="hidden" name="_subject" value="abhieq31.com subscribe" />
+            )
+          }
           <button type="submit">Subscribe</button>
         </form>
         <button type="button" id="subscribe-cancel" class="subscribe-cancel">
@@ -55,94 +74,7 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
   </div>
 </header>
 
-<style>
-  .site-header {
-    padding: 43px 0 35px;
-    width: 100%;
-  }
-
-  .header-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    max-width: none; /* full width, not the content column */
-  }
-
-  .site-logo {
-    font-size: 22px;
-    line-height: 1.2;
-    font-weight: 700;
-    color: var(--accent);
-    letter-spacing: -0.01em;
-    flex-shrink: 0;
-  }
-
-  .site-logo:hover {
-    color: var(--accent-hover);
-  }
-
-  .site-nav {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    min-height: 39px;
-  }
-
-  .nav-links {
-    display: flex;
-    align-items: center;
-    gap: 22px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .nav-links a,
-  .nav-btn {
-    color: var(--muted-nav);
-    font-size: 17px;
-    line-height: 22px;
-    font-weight: 500;
-    background: none;
-    border: 0;
-    padding: 0;
-    font-family: inherit;
-  }
-
-  .nav-links a:hover,
-  .nav-btn:hover,
-  .nav-links a.is-active {
-    color: #fff;
-  }
-
-  .subscribe-box {
-    display: flex;
-    align-items: center;
-  }
-
-  .subscribe-box[hidden] {
-    display: none;
-  }
-
-  @media (max-width: 520px) {
-    .site-header {
-      padding: 28px 0 20px;
-    }
-
-    .nav-links {
-      gap: 12px;
-    }
-
-    .nav-links a,
-    .nav-btn {
-      font-size: 14px;
-    }
-
-    .site-logo {
-      font-size: 20px;
-    }
-  }
-</style>
+<div id="subscribe-note" class="subscribe-note" hidden role="status"></div>
 
 <script>
   function setupSubscribe() {
@@ -156,8 +88,13 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
     const email = document.getElementById(
       "subscribe-email",
     ) as HTMLInputElement | null;
+    const note = document.getElementById("subscribe-note");
 
-    if (!openBtn || !cancelBtn || !box || !links) return;
+    if (!openBtn || !cancelBtn || !box || !links || !form) return;
+
+    // Avoid double-binding after re-runs
+    if (form.dataset.bound === "1") return;
+    form.dataset.bound = "1";
 
     const show = () => {
       links.setAttribute("hidden", "");
@@ -170,23 +107,68 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
       links.removeAttribute("hidden");
     };
 
+    const showNote = (html: string) => {
+      if (!note) return;
+      note.innerHTML = html;
+      note.removeAttribute("hidden");
+      window.setTimeout(() => {
+        note.setAttribute("hidden", "");
+      }, 6000);
+    };
+
     openBtn.addEventListener("click", show);
     cancelBtn.addEventListener("click", hide);
 
-    form?.addEventListener("submit", e => {
-      e.preventDefault();
+    form.addEventListener("submit", async e => {
+      const hasBackend = form.dataset.hasBackend === "true";
       const value = email?.value?.trim();
-      if (!value) return;
-      const submitBtn = form.querySelector('button[type="submit"]');
-      if (submitBtn) submitBtn.textContent = "Subscribed";
-      setTimeout(() => {
-        if (submitBtn) submitBtn.textContent = "Subscribe";
-        form.reset();
+      if (!value) {
+        e.preventDefault();
+        return;
+      }
+
+      // No newsletter provider configured yet — don't pretend it worked.
+      if (!hasBackend) {
+        e.preventDefault();
         hide();
-      }, 1200);
+        form.reset();
+        showNote(
+          "Thanks — email list isn’t connected yet. For now, use the <a href=\"/rss.xml\">RSS feed</a> or follow on <a href=\"https://x.com/abhieq31\" target=\"_blank\" rel=\"noopener\">X</a> / <a href=\"https://www.instagram.com/abhoeq31/\" target=\"_blank\" rel=\"noopener\">Instagram</a>.",
+        );
+        return;
+      }
+
+      // With Formspree/Buttondown action: allow normal POST, or fetch for SPA feel
+      e.preventDefault();
+      const submitBtn = form.querySelector(
+        'button[type="submit"]',
+      ) as HTMLButtonElement | null;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "…";
+      }
+      try {
+        const res = await fetch(form.action, {
+          method: "POST",
+          body: new FormData(form),
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) throw new Error("subscribe failed");
+        hide();
+        form.reset();
+        showNote("You’re on the list. New posts will land in your inbox.");
+      } catch {
+        showNote(
+          "Couldn’t subscribe right now. Try again, or use the <a href=\"/rss.xml\">RSS feed</a>.",
+        );
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Subscribe";
+        }
+      }
     });
   }
 
   setupSubscribe();
-  document.addEventListener("astro:after-swap", setupSubscribe);
 </script>

@@ -67,6 +67,10 @@ export const NAV_LINKS: SocialLink[] = [
     label: "X",
   },
   {
+    href: "https://www.instagram.com/abhoeq31/",
+    label: "Instagram",
+  },
+  {
     href: "https://github.com/abhieq31",
     label: "GitHub",
   },
@@ -77,6 +81,10 @@ export const SOCIAL_LINKS: SocialLink[] = [
   {
     href: "https://x.com/abhieq31",
     label: "X",
+  },
+  {
+    href: "https://www.instagram.com/abhoeq31/",
+    label: "Instagram",
   },
   {
     href: "https://github.com/abhieq31",

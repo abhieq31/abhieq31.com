@@ -1,5 +1,4 @@
 ---
-import { ClientRouter } from "astro:transitions";
 import { SITE } from "@/config";
 import "@/styles/global.css";
 import Analytics from "@/components/Analytics.astro";
@@ -114,7 +113,7 @@ const structuredData = {
       href={`${SITE.website}rss.xml`}
     />
 
-    <meta name="theme-color" content="#1e1f21" />
+    <meta name="theme-color" content="#111111" />
     <meta name="color-scheme" content="dark" />
 
     {
@@ -129,9 +128,7 @@ const structuredData = {
       )
     }
 
-    <ClientRouter />
-
-    <!-- Force dark theme (nav.al style) -->
+    <!-- No ClientRouter: keeps nav/width identical on click vs hard refresh -->
     <script is:inline>
       document.documentElement.setAttribute("data-theme", "dark");
     </script>
@@ -145,12 +142,12 @@ const structuredData = {
   </body>
 </html>
 
-<style>
+<style is:global>
   html,
   body {
     margin: 0;
     width: 100%;
     min-height: 100%;
-    background: #1e1f21;
+    background: #111111;
   }
 </style>
