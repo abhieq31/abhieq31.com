@@ -67,7 +67,7 @@ export const NAV_LINKS: SocialLink[] = [
     label: "X",
   },
   {
-    href: "https://www.instagram.com/abhoeq31/",
+    href: "https://www.instagram.com/abhieq31/",
     label: "Instagram",
   },
   {
@@ -83,7 +83,7 @@ export const SOCIAL_LINKS: SocialLink[] = [
     label: "X",
   },
   {
-    href: "https://www.instagram.com/abhoeq31/",
+    href: "https://www.instagram.com/abhieq31/",
     label: "Instagram",
   },
   {
