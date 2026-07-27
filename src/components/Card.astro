@@ -1,7 +1,6 @@
 ---
 import type { CollectionEntry } from "astro:content";
 import { getPath } from "@/utils/getPath";
-import { slugifyStr } from "@/utils/slugify";
 
 export interface Props extends CollectionEntry<"blog"> {
   variant?: "h2" | "h3";
@@ -20,8 +19,6 @@ const date = pubDatetime
   })
   .replace(",", "");
 
-const titleStyle = { viewTransitionName: slugifyStr(title) };
-
 const raw = (description?.trim() || body || "")
   .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
   .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
@@ -35,7 +32,7 @@ const HeadingTag = variant;
 ---
 
 <li class="blog-item">
-  <HeadingTag class="blog-title" style={titleStyle}>
+  <HeadingTag class="blog-title">
     <a href={path}>{title}</a>
   </HeadingTag>
 
