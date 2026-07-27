@@ -13,12 +13,43 @@ export interface Props {
 const { frontmatter } = Astro.props;
 ---
 
-<Layout title={`${frontmatter.title} | ${SITE.title}`} description={frontmatter.description}>
+<Layout
+  title={`${frontmatter.title} | ${SITE.title}`}
+  description={frontmatter.description}
+>
   <Header />
-  <main id="main-content" class="mx-auto w-full max-w-5xl px-4 pb-12">
-    <section id="about" class="prose mb-28 max-w-5xl prose-img:border-0 mt-8">
-      <h1 class="text-2xl tracking-wider sm:text-3xl">{frontmatter.title}</h1>
+  <main id="main-content" class="site-shell about-page">
+    <h1 class="page-title">{frontmatter.title}</h1>
+    <hr class="page-rule" />
+    <article class="prose">
       <slot />
-    </section>
+    </article>
   </main>
 </Layout>
+
+<style>
+  .about-page {
+    padding-top: 36px;
+    padding-bottom: 96px;
+  }
+
+  .page-title {
+    margin: 0 0 12px;
+    font-size: 40px;
+    line-height: 1.2;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .page-rule {
+    border: 0;
+    border-top: 1px solid rgba(229, 229, 229, 0.2);
+    margin: 0 0 32px;
+  }
+
+  @media (max-width: 640px) {
+    .page-title {
+      font-size: 30px;
+    }
+  }
+</style>

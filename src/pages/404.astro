@@ -1,28 +1,39 @@
 ---
 import Header from "@/components/Header.astro";
-import LinkButton from "@/components/LinkButton.astro";
 import { SITE } from "@/config";
 import Layout from "@/layouts/Layout.astro";
 ---
 
-<Layout title={`404 Not Found | ${SITE.title}`} description="Page not found. The requested page doesn't exist on Abhi's blog.">
+<Layout
+  title={`404 Not Found | ${SITE.title}`}
+  description="Page not found."
+>
   <Header />
-
-  <main
-    id="main-content"
-    class="mx-auto flex max-w-5xl flex-1 items-center justify-center"
-  >
-    <div class="mb-14 flex flex-col items-center justify-center">
-      <h1 class="text-9xl font-bold text-accent">404</h1>
-      <span aria-hidden="true">¯\_(ツ)_/¯</span>
-      <p class="mt-4 text-2xl sm:text-3xl">Page Not Found</p>
-      <LinkButton
-        href="/"
-        class="my-6 text-lg underline decoration-dashed underline-offset-8"
-      >
-        Go back home
-      </LinkButton>
-    </div>
+  <main id="main-content" class="site-shell not-found">
+    <h1 class="page-title">404</h1>
+    <p class="page-desc">Page not found.</p>
+    <p>
+      <a href="/" class="red-link">Go back home</a>
+    </p>
   </main>
-
 </Layout>
+
+<style>
+  .not-found {
+    padding-top: 80px;
+    padding-bottom: 120px;
+  }
+
+  .page-title {
+    margin: 0 0 12px;
+    font-size: 40px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .page-desc {
+    margin: 0 0 24px;
+    color: var(--muted);
+    font-size: 18px;
+  }
+</style>

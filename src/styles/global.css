@@ -3,7 +3,7 @@
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
-/* Font definitions */
+/* Self-hosted body font (Atkinson ≈ readable Benton-like sans) */
 @font-face {
   font-family: "Atkinson";
   src: url("/fonts/atkinson-regular.woff") format("woff");
@@ -20,15 +20,29 @@
   font-display: swap;
 }
 
-/* X-style palette: black background, X-blue accent, off-white text, X gray (forced dark) */
+/*
+  nav.al dark theme (forced — matches the reference screenshots)
+  Accent: #f00048 (dark-mode red from nav.al)
+  Surface: #1e1f21
+*/
 :root,
+html,
 html[data-theme="light"],
 html[data-theme="dark"] {
-  --background: #000000;
-  --foreground: #e7e9ea;
-  --accent: #1d9bf0;
-  --muted: #71767b;
-  --border: #2f3336;
+  color-scheme: dark;
+  --background: #1e1f21;
+  --foreground: #ffffff;
+  --accent: #f00048;
+  --accent-hover: #ff1a5c;
+  --muted: #b2b2b2;
+  --muted-soft: rgba(255, 255, 255, 0.5);
+  --muted-nav: rgba(255, 255, 255, 0.7);
+  --border: #2d3139;
+  --border-soft: #e5e5e5;
+  --content: #eeeeee;
+  --more: #aaaaaa;
+  --surface: #1e1f21;
+  --content-width: 780px;
 }
 
 @theme {
@@ -38,71 +52,209 @@ html[data-theme="dark"] {
   --color-accent: var(--accent);
   --color-muted: var(--muted);
   --color-border: var(--border);
+  --color-content: var(--content);
+  --color-more: var(--more);
+  --font-sans: "Atkinson", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
 }
 
 @layer base {
   * {
     @apply border-border outline-accent/75;
     scrollbar-width: auto;
-    scrollbar-color: var(--color-muted) transparent;
+    scrollbar-color: var(--muted) transparent;
   }
-  
-  /* View Transitions API for smooth theme switching (Safari 18+, Chrome 111+) */
-  :root {
-    view-transition-name: root;
-  }
-  
-  /* Apply to html element as well for better compatibility */
-  html {
-    view-transition-name: root;
-  }
-  
-  /* Ensure smooth transition between light and dark themes */
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation-duration: 0.25s;
-  }
-  
-  /* Customize the transition style */
-  ::view-transition-old(root) {
-    animation: fade-out 0.25s ease-out;
-  }
-  
-  ::view-transition-new(root) {
-    animation: fade-in 0.25s ease-out;
-  }
-  
-  @keyframes fade-out {
-    from { opacity: 1; }
-    to { opacity: 0; }
-  }
-  
-  @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  
+
   html {
     @apply scroll-smooth;
     scrollbar-gutter: stable both-edges;
   }
+
   body {
-    @apply flex min-h-svh flex-col bg-background font-sans tracking-tight text-foreground selection:bg-accent/75 selection:text-background;
+    margin: 0;
+    min-height: 100svh;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 18px;
+    line-height: 1.55;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  a,
-  button {
-    @apply outline-offset-1 outline-accent focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-dashed;
+
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 75%, transparent);
+    color: #fff;
   }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: #fff;
+  }
+
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+
+  /* Centered content column — nav.al ~900px container with side padding */
+  .site-shell {
+    width: 100%;
+    max-width: var(--content-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 25px;
+    padding-right: 25px;
+  }
+
+  @media (min-width: 767px) {
+    .site-shell {
+      padding-left: 60px;
+      padding-right: 60px;
+    }
+  }
+
   section,
   footer {
-    @apply mx-auto max-w-5xl px-4;
+    max-width: none;
+    margin: 0;
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 
-.active-nav {
-  @apply underline decoration-wavy decoration-2 underline-offset-4;
+/* Red accent utility used across the site */
+.red-link {
+  color: var(--accent) !important;
+}
+
+.red-link:hover {
+  color: var(--accent-hover) !important;
+}
+
+/* Subscribe form — matches nav.al header subscribe */
+.subscribe-form {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.subscribe-form input[type="email"] {
+  height: 39px;
+  width: min(220px, 52vw);
+  padding: 0 12px;
+  border: 1px solid var(--accent);
+  border-right: 0;
+  border-radius: 4px 0 0 4px;
+  background: transparent;
+  color: #fff;
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+}
+
+.subscribe-form input[type="email"]::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.subscribe-form button[type="submit"] {
+  height: 39px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0 4px 4px 0;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.subscribe-form button[type="submit"]:hover {
+  background: var(--accent-hover);
+}
+
+.subscribe-cancel {
+  margin-left: 10px;
+  color: var(--muted-nav);
+  font-size: 15px;
+  background: none;
+  border: 0;
+  font-family: inherit;
+  padding: 0;
+}
+
+.subscribe-cancel:hover {
+  color: #fff;
+}
+
+/* Archive search underline field */
+.archive-search {
+  position: relative;
+  margin: 28px 0 40px;
+}
+
+.archive-search input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 16px;
+  font-family: inherit;
+  padding: 8px 0 10px 28px;
+  outline: none;
+  border-radius: 0;
+}
+
+.archive-search input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.archive-search .search-icon {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-55%);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+/* Hide legacy theme toggle if present */
+#theme-btn,
+[data-theme-toggle] {
+  display: none !important;
+}
+
+/* Pagefind search UI — dark nav.al surface */
+.pagefind-ui {
+  --pagefind-ui-scale: 0.95;
+  --pagefind-ui-primary: #f00048;
+  --pagefind-ui-text: #ffffff;
+  --pagefind-ui-background: #1e1f21;
+  --pagefind-ui-border: #2d3139;
+  --pagefind-ui-tag: #2d3139;
+  --pagefind-ui-border-width: 1px;
+  --pagefind-ui-border-radius: 6px;
+  --pagefind-ui-font: inherit;
+}
+
+.pagefind-ui .pagefind-ui__search-input {
+  background: transparent !important;
+  color: #fff !important;
+  border-color: #2d3139 !important;
+}
+
+.pagefind-ui .pagefind-ui__result-link {
+  color: #fff !important;
+}
+
+.pagefind-ui .pagefind-ui__result-excerpt {
+  color: #b2b2b2 !important;
 }

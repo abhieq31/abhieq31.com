@@ -1,9 +1,12 @@
 ---
 title: "Managers: The Real Bottleneck to People's Growth"
 pubDatetime: 2026-06-24T00:00:00Z
-description: ""
+description: "Most companies treat management as a necessary layer for coordination and development. This view is backwards."
+subtitle: "On ownership, feedback, and getting out of the way"
+featured: true
 tags:
-  
+  - management
+  - growth
 ---
 
 Most companies treat management as a necessary layer for coordination and development. This view is backwards.

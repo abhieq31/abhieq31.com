@@ -1,70 +1,159 @@
 @plugin '@tailwindcss/typography';
 
 @layer base {
+  /* Article body — nav.al single-post content */
   .prose {
-    @apply prose-headings:!mb-3 prose-headings:!font-bold prose-headings:!text-[#ff4d4d] prose-p:!text-foreground prose-p:!leading-relaxed prose-a:!text-foreground prose-a:!decoration-dashed prose-a:underline-offset-8 hover:prose-a:text-accent prose-blockquote:!border-l-accent/50 prose-blockquote:opacity-80 prose-figcaption:!text-foreground prose-figcaption:opacity-70 prose-strong:!text-foreground prose-code:rounded prose-code:bg-muted/75 prose-code:p-1 prose-code:!text-foreground prose-code:before:!content-none prose-code:after:!content-none prose-ol:!text-foreground prose-ul:overflow-x-clip prose-ul:!text-foreground prose-li:marker:!text-accent prose-table:text-foreground prose-th:border prose-th:border-border prose-td:border prose-td:border-border prose-img:mx-auto prose-img:!my-2 prose-img:border-2 prose-img:border-border prose-hr:!border-border;
+    --tw-prose-body: var(--content);
+    --tw-prose-headings: var(--accent);
+    --tw-prose-links: var(--content);
+    --tw-prose-bold: #fff;
+    --tw-prose-counters: var(--muted);
+    --tw-prose-bullets: #f0f0f0;
+    --tw-prose-hr: var(--border);
+    --tw-prose-quotes: var(--muted);
+    --tw-prose-quote-borders: var(--accent);
+    --tw-prose-captions: var(--muted);
+    --tw-prose-code: #fff;
+    --tw-prose-pre-code: #e1e4e8;
+    --tw-prose-pre-bg: #151617;
+    --tw-prose-th-borders: var(--border);
+    --tw-prose-td-borders: var(--border);
+
+    color: var(--content);
+    font-size: 18px;
+    line-height: 1.7;
+    max-width: none;
   }
+
+  .prose p {
+    margin-bottom: 1.35em;
+  }
+
   .prose a {
-    @apply break-words hover:!text-accent;
-  }
-  .prose thead th:first-child,
-  tbody td:first-child,
-  tfoot td:first-child {
-    padding-inline-start: 0.5714286em !important;
-  }
-  .prose h2#table-of-contents {
-    @apply mb-2;
-  }
-  .prose details {
-    @apply inline-block cursor-pointer text-foreground select-none;
-  }
-  .prose summary {
-    @apply focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent focus-visible:outline-dashed;
-  }
-  .prose h2#table-of-contents + p {
-    @apply hidden;
+    color: var(--content);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    word-break: break-word;
   }
 
-  /* ===== Code Blocks & Syntax Highlighting ===== */
-  pre:has(code) {
-    @apply border border-border;
+  .prose a:hover {
+    color: #fff;
   }
 
-  .prose code,
+  /* Section headings in accent red with underline — exact nav.al pattern */
+  .prose h2 {
+    color: var(--accent) !important;
+    font-size: 22px;
+    line-height: 1.4;
+    font-weight: 700;
+    margin: 2.4em 0 1.1em;
+    padding-bottom: 18px;
+    border-bottom: 1.5px solid rgba(229, 229, 229, 0.25);
+  }
+
+  .prose h2 * {
+    color: var(--accent) !important;
+  }
+
+  .prose h3 {
+    color: #fff !important;
+    font-size: 20px;
+    line-height: 1.4;
+    font-weight: 700;
+    margin: 1.8em 0 0.9em;
+  }
+
+  .prose h4 {
+    color: #fff !important;
+    font-size: 18px;
+    font-weight: 700;
+    margin: 1.5em 0 0.8em;
+  }
+
+  .prose strong {
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .prose ul,
+  .prose ol {
+    margin-bottom: 1.5em;
+    padding-left: 1.4em;
+  }
+
+  .prose li {
+    margin-bottom: 0.7em;
+  }
+
+  .prose li::marker {
+    color: var(--muted);
+  }
+
   .prose blockquote {
-    @apply break-words;
+    border-left: 3px solid color-mix(in srgb, var(--accent) 50%, transparent);
+    opacity: 0.9;
+    padding-left: 1em;
+    font-style: normal;
   }
 
-  .prose table code {
-    /* add line breaks whenever necessary for codes under table */
-    @apply break-all sm:break-normal;
+  .prose code {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    padding: 0.15em 0.4em;
+    font-size: 0.9em;
   }
 
-  pre > code {
-    white-space: pre;
+  .prose code::before,
+  .prose code::after {
+    content: none !important;
   }
 
-  /* Light mode syntax highlighting contrast improvements */
-  html[data-theme="light"] pre:has(code),
-  html[data-theme="light"] pre:has(code) span,
-  :root pre:has(code),
-  :root pre:has(code) span {
-    /* Darken comment colors by ~30% total for better contrast */
-    --shiki-color-comment: #495057;
-    --shiki-token-comment: #495057;
+  .prose pre {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #151617 !important;
   }
 
-  /* Override inline styles for comments in light mode */
-  html[data-theme="light"] pre code span[style*="color:#6C757D"],
-  :root pre code span[style*="color:#6C757D"] {
-    color: #495057 !important;
+  .prose pre code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
   }
 
-  /* Apply Dark Theme (if multi-theme specified) */
+  .prose img {
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 2px;
+  }
+
+  .prose hr {
+    border-color: var(--border);
+  }
+
+  .prose h2#table-of-contents {
+    margin-bottom: 0.5em;
+  }
+
+  .prose h2#table-of-contents + p {
+    display: none;
+  }
+
+  .prose details {
+    cursor: pointer;
+    color: var(--foreground);
+    user-select: none;
+  }
+
+  /* Dark Shiki blocks */
+  html pre:has(code),
+  html pre:has(code) span,
   html[data-theme="dark"] pre:has(code),
-  html[data-theme="dark"] pre:has(code) span {
+  html[data-theme="dark"] pre:has(code) span,
+  html[data-theme="light"] pre:has(code),
+  html[data-theme="light"] pre:has(code) span {
     color: var(--shiki-dark) !important;
-    background-color: var(--shiki-dark-bg) !important;
+    background-color: var(--shiki-dark-bg, #151617) !important;
     font-style: var(--shiki-dark-font-style) !important;
     font-weight: var(--shiki-dark-font-weight) !important;
     text-decoration: var(--shiki-dark-text-decoration) !important;

@@ -1,142 +1,190 @@
 ---
-import IconLogo from "@/assets/icons/IconLogo.svg";
-import IconMenuDeep from "@/assets/icons/IconMenuDeep.svg";
-import IconX from "@/assets/icons/IconX.svg";
 import { SITE } from "@/config";
 
 const { pathname } = Astro.url;
-const currentPath = pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
-const isActive = (path: string) =>
-  currentPath === path || currentPath.split("/")[1] === path.split("/")[1];
+const currentPath =
+  pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
+const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
 ---
 
-<header class="mb-20 sm:mb-28">
+<header class="site-header">
   <a
     id="skip-to-content"
     href="#main-content"
-    class="absolute -top-full left-16 z-50 bg-background px-3 py-2 text-accent backdrop-blur-lg transition-all focus:top-4"
+    class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-background focus:px-3 focus:py-2 focus:text-accent"
   >
     Skip to content
   </a>
-  <div
-    id="nav-container"
-    class="mx-auto flex max-w-5xl flex-col items-center justify-between sm:flex-row"
-  >
-    <div
-      id="top-nav-wrap"
-      class="relative flex w-full items-baseline justify-between bg-background p-4 sm:items-center sm:py-6"
-    >
-      <a
-        href="/"
-        class="absolute flex items-center gap-2 py-1 text-2xl leading-7 font-bold whitespace-nowrap text-foreground sm:static"
-      >
-        <IconLogo class="size-7" />
-        {SITE.title}
-      </a>
-      <nav
-        id="nav-menu"
-        class="flex w-full flex-col items-center sm:ml-2 sm:flex-row sm:justify-end sm:space-x-4 sm:py-0"
-      >
-        <button
-          id="menu-btn"
-          class="focus-outline self-end p-2 sm:hidden"
-          aria-label="Open Menu"
-          aria-expanded="false"
-          aria-controls="menu-items"
+
+  <div class="site-shell header-inner">
+    <a href="/" class="site-logo" aria-label={`${SITE.title} home`}>
+      {SITE.title}
+    </a>
+
+    <nav class="site-nav" aria-label="Primary">
+      <!-- Default nav links -->
+      <div id="nav-links" class="nav-links">
+        <a href="/posts" class:list={[{ "is-active": isArchive }]}>Archive</a>
+        <a href="https://x.com/abhieq31" target="_blank" rel="me noopener">X</a>
+        <a href="https://github.com/abhieq31" target="_blank" rel="me noopener"
+          >GitHub</a
         >
-          <IconX id="close-icon" class="hidden" />
-          <IconMenuDeep id="menu-icon" />
+        <button type="button" id="subscribe-open" class="nav-btn">
+          Subscribe
         </button>
-        <ul
-          id="menu-items"
-          class:list={[
-            "mt-4 flex w-full flex-col items-center gap-2",
-            "[&>li>a]:block [&>li>a]:px-4 [&>li>a]:py-3 [&>li>a]:text-center [&>li>a]:font-medium [&>li>a]:hover:text-accent sm:[&>li>a]:px-2 sm:[&>li>a]:py-1",
-            "hidden",
-            "sm:mt-0 sm:ml-0 sm:flex sm:w-auto sm:flex-row sm:gap-x-5 sm:gap-y-0",
-          ]}
-        >
-          <li>
-            <a href="/posts" class:list={{ "active-nav": isActive("/posts") }}>Archive</a>
-          </li>
-          <li>
-            <a href="/now" class:list={{ "active-nav": isActive("/now") }}>Now</a>
-          </li>
-          <li>
-            <a href="/about" class:list={{ "active-nav": isActive("/about") }}>About</a>
-          </li>
-          <li><a href="https://x.com/abhieq31" target="_blank" rel="me noopener">X</a></li>
-          <li class="relative">
-            <a id="gh-nav" href="https://github.com/abhieq31" target="_blank" rel="me noopener">GitHub</a>
-            <div
-              id="gh-graph"
-              class="invisible absolute top-full right-0 z-30 mt-2 w-[330px] max-w-[80vw] rounded-lg border border-border bg-background p-3 text-left opacity-0 shadow-xl transition-opacity duration-150"
-            >
-              <a href="https://github.com/abhieq31" target="_blank" rel="me noopener" class="block">
-                <img
-                  src="https://ghchart.rshah.org/abhieq31"
-                  alt="Abhi's GitHub contribution graph"
-                  class="w-full"
-                  loading="lazy"
-                />
-                <p class="mt-2 text-center text-xs text-muted">Open GitHub profile →</p>
-              </a>
-            </div>
-          </li>
-        </ul>
-      </nav>
-    </div>
+      </div>
+
+      <!-- Inline subscribe form (nav.al pattern) -->
+      <div id="subscribe-box" class="subscribe-box" hidden>
+        <form class="subscribe-form" id="subscribe-form">
+          <input
+            type="email"
+            name="email"
+            id="subscribe-email"
+            placeholder="Email"
+            required
+            autocomplete="email"
+            aria-label="Email address"
+          />
+          <button type="submit">Subscribe</button>
+        </form>
+        <button type="button" id="subscribe-cancel" class="subscribe-cancel">
+          Cancel
+        </button>
+      </div>
+    </nav>
   </div>
 </header>
 
+<style>
+  .site-header {
+    padding: 40px 0 28px;
+    width: 100%;
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .site-logo {
+    font-size: 22px;
+    line-height: 1.2;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+    flex-shrink: 0;
+  }
+
+  .site-logo:hover {
+    color: var(--accent-hover);
+  }
+
+  .site-nav {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 39px;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .nav-links a,
+  .nav-btn {
+    color: var(--muted-nav);
+    font-size: 16px;
+    line-height: 22px;
+    font-weight: 500;
+    background: none;
+    border: 0;
+    padding: 0;
+    font-family: inherit;
+  }
+
+  .nav-links a:hover,
+  .nav-btn:hover,
+  .nav-links a.is-active {
+    color: #fff;
+  }
+
+  .subscribe-box {
+    display: flex;
+    align-items: center;
+  }
+
+  .subscribe-box[hidden] {
+    display: none;
+  }
+
+  @media (max-width: 520px) {
+    .nav-links {
+      gap: 12px;
+    }
+
+    .nav-links a,
+    .nav-btn {
+      font-size: 14px;
+    }
+
+    .site-logo {
+      font-size: 20px;
+    }
+  }
+</style>
+
 <script>
-  function toggleNav() {
-    const menuBtn = document.querySelector("#menu-btn");
-    const menuItems = document.querySelector("#menu-items");
-    const menuIcon = document.querySelector("#menu-icon");
-    const closeIcon = document.querySelector("#close-icon");
+  function setupSubscribe() {
+    const openBtn = document.getElementById("subscribe-open");
+    const cancelBtn = document.getElementById("subscribe-cancel");
+    const box = document.getElementById("subscribe-box");
+    const links = document.getElementById("nav-links");
+    const form = document.getElementById(
+      "subscribe-form",
+    ) as HTMLFormElement | null;
+    const email = document.getElementById(
+      "subscribe-email",
+    ) as HTMLInputElement | null;
 
-    if (!menuBtn || !menuItems || !menuIcon || !closeIcon) return;
+    if (!openBtn || !cancelBtn || !box || !links) return;
 
-    menuBtn.addEventListener("click", () => {
-      const openMenu = menuBtn.getAttribute("aria-expanded") === "true";
+    const show = () => {
+      links.setAttribute("hidden", "");
+      box.removeAttribute("hidden");
+      email?.focus();
+    };
 
-      menuBtn.setAttribute("aria-expanded", openMenu ? "false" : "true");
-      menuBtn.setAttribute("aria-label", openMenu ? "Open Menu" : "Close Menu");
+    const hide = () => {
+      box.setAttribute("hidden", "");
+      links.removeAttribute("hidden");
+    };
 
-      menuItems.classList.toggle("hidden");
-      menuIcon.classList.toggle("hidden");
-      closeIcon.classList.toggle("hidden");
+    openBtn.addEventListener("click", show);
+    cancelBtn.addEventListener("click", hide);
+
+    // Newsletter provider not wired yet — keep the nav.al UI.
+    // After submit, thank the reader and leave them on the page.
+    form?.addEventListener("submit", e => {
+      e.preventDefault();
+      const value = email?.value?.trim();
+      if (!value) return;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.textContent = "Subscribed";
+      setTimeout(() => {
+        if (submitBtn) submitBtn.textContent = "Subscribe";
+        form.reset();
+        hide();
+      }, 1200);
     });
   }
 
-  // GitHub nav link: hover (or focus) reveals the contribution graph; click opens the profile.
-  function setupGithubGraph() {
-    const link = document.getElementById("gh-nav");
-    const graph = document.getElementById("gh-graph");
-    if (!link || !graph) return;
-    let hideTimer: ReturnType<typeof setTimeout> | undefined;
-    const show = () => {
-      clearTimeout(hideTimer);
-      graph.classList.remove("invisible", "opacity-0");
-    };
-    const hide = () => {
-      hideTimer = setTimeout(() => graph.classList.add("invisible", "opacity-0"), 150);
-    };
-    link.addEventListener("mouseenter", show);
-    link.addEventListener("focus", show);
-    link.addEventListener("mouseleave", hide);
-    link.addEventListener("blur", hide);
-    graph.addEventListener("mouseenter", show);
-    graph.addEventListener("mouseleave", hide);
-  }
-
-  toggleNav();
-  setupGithubGraph();
-
-  // Runs on view transitions navigation
-  document.addEventListener("astro:after-swap", () => {
-    toggleNav();
-    setupGithubGraph();
-  });
+  setupSubscribe();
+  document.addEventListener("astro:after-swap", setupSubscribe);
 </script>

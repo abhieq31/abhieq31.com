@@ -1,9 +1,7 @@
 ---
 import { getCollection } from "astro:content";
-import IconArrowRight from "@/assets/icons/IconArrowRight.svg";
 import Card from "@/components/Card.astro";
 import Header from "@/components/Header.astro";
-import LinkButton from "@/components/LinkButton.astro";
 import StructuredData from "@/components/StructuredData.astro";
 import { SITE } from "@/config";
 import Layout from "@/layouts/Layout.astro";
@@ -11,53 +9,38 @@ import getSortedPosts from "@/utils/getSortedPosts";
 
 const posts = await getCollection("blog");
 const sortedPosts = getSortedPosts(posts);
-const featuredPosts = sortedPosts.filter(({ data }) => data.featured);
-const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
+const homePosts = sortedPosts.slice(0, SITE.postPerIndex);
+const hasMore = sortedPosts.length > SITE.postPerIndex;
 ---
 
-<Layout description="Technology, software, and business — thinking out loud.">
+<Layout description={SITE.desc}>
   <StructuredData type="WebSite" data={{}} />
   <StructuredData type="Person" data={{}} />
   <Header />
-  <main id="main-content" data-layout="index">
-    <section id="intro" class="pt-8 pb-2">
-      <p class="text-lg leading-relaxed text-foreground/70">
-        I build software and write down what survives. The five things most on
-        my mind are on <a href="/now" class="text-accent hover:underline">Now</a>.
-      </p>
-    </section>
 
+  <main id="main-content" data-layout="index" class="site-shell main-home">
     {
-      featuredPosts.length > 0 && (
-        <section id="featured" class="pt-8 pb-2">
-          <ul>
-            {featuredPosts.map(data => (
+      homePosts.length > 0 ? (
+        <section class="post-list" aria-label="Recent posts">
+          <ul class="post-list-ul">
+            {homePosts.map(data => (
               <Card variant="h2" {...data} showImage={false} />
             ))}
           </ul>
-        </section>
-      )
-    }
 
-    {
-      recentPosts.length > 0 && (
-        <section id="recent-posts" class="pt-2 pb-6">
-          <ul>
-            {recentPosts.map(
-              (data, index) =>
-                index < SITE.postPerIndex && <Card variant="h2" {...data} showImage={false} />
-            )}
-          </ul>
+          {hasMore && (
+            <p class="read-more-wrap">
+              <a href="/posts" class="read-more">
+                Read More
+              </a>
+            </p>
+          )}
         </section>
-      )
-    }
-
-    {
-      sortedPosts.length === 0 && (
-        <section class="py-16 text-center">
-          <p class="text-lg leading-relaxed text-foreground/70">
+      ) : (
+        <section class="empty-state">
+          <p>
             No posts yet — check back soon, or{" "}
-            <a href="/about" class="text-accent hover:underline">
+            <a href="/about" class="red-link">
               learn more about me
             </a>
             .
@@ -65,23 +48,48 @@ const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
         </section>
       )
     }
-
-    {
-      sortedPosts.length > SITE.postPerIndex && (
-        <div class="my-8 text-center">
-          <LinkButton href="/posts/" class="text-accent hover:underline">
-            All Posts
-            <IconArrowRight class="inline-block" />
-          </LinkButton>
-        </div>
-      )
-    }
   </main>
 </Layout>
 
+<style>
+  .main-home {
+    padding-top: 48px;
+    padding-bottom: 80px;
+  }
+
+  .post-list-ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .read-more-wrap {
+    margin: 8px 0 0;
+  }
+
+  .read-more {
+    color: var(--accent);
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  .read-more:hover {
+    color: var(--accent-hover);
+  }
+
+  .empty-state {
+    padding: 48px 0;
+    color: var(--muted);
+    font-size: 17px;
+    line-height: 1.6;
+  }
+</style>
+
 <script>
   document.addEventListener("astro:page-load", () => {
-    const indexLayout = (document.querySelector("#main-content") as HTMLElement)?.dataset?.layout;
+    const indexLayout = (
+      document.querySelector("#main-content") as HTMLElement
+    )?.dataset?.layout;
     if (indexLayout) {
       sessionStorage.setItem("backUrl", "/");
     }

@@ -37,14 +37,14 @@ export const SITE: Site = {
   desc: "Technology, software, and business — thinking out loud.",
   title: "Abhi",
   ogImage: "icon-512.png",
-  lightAndDarkMode: true,
+  lightAndDarkMode: false, // nav.al-style: always dark
   postPerIndex: 10,
   postPerPage: 10,
   scheduledPostMargin: 15 * 60 * 1000,
-  showArchives: false,
+  showArchives: true,
   showBackButton: false,
   editPost: {
-    enabled: true,
+    enabled: false,
     text: "Edit on GitHub",
     url: "https://github.com/abhieq31/abhieq31.com/edit/main/",
   },
@@ -56,15 +56,19 @@ export const SITE: Site = {
 export const SITE_TITLE = SITE.title;
 export const SITE_DESCRIPTION = SITE.desc;
 
-// Navigation links
+// Navigation links (nav.al pattern: Archive + socials + Subscribe in Header)
 export const NAV_LINKS: SocialLink[] = [
   {
-    href: "/",
-    label: "Blog",
+    href: "/posts",
+    label: "Archive",
   },
   {
-    href: "/about",
-    label: "About",
+    href: "https://x.com/abhieq31",
+    label: "X",
+  },
+  {
+    href: "https://github.com/abhieq31",
+    label: "GitHub",
   },
 ];
 

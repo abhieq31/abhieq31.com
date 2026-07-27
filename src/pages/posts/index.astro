@@ -1,79 +1,209 @@
 ---
 import { getCollection } from "astro:content";
-import Card from "@/components/Card.astro";
 import Header from "@/components/Header.astro";
 import { SITE } from "@/consts";
 import Layout from "@/layouts/Layout.astro";
 import getPostsByGroupCondition from "@/utils/getPostsByGroupCondition";
+import getSortedPosts from "@/utils/getSortedPosts";
+import { getPath } from "@/utils/getPath";
 
 const posts = await getCollection("blog", ({ data }) => !data.draft);
+const sorted = getSortedPosts(posts);
 
-const months = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
+// Top posts: featured first, else newest
+const featured = sorted.filter(p => p.data.featured);
+const topPosts = (featured.length ? featured : sorted).slice(0, 5);
+
+const byYear = Object.entries(
+  getPostsByGroupCondition(posts, post => {
+    const pubDate = post.data.pubDatetime || new Date();
+    return new Date(pubDate).getFullYear();
+  }),
+).sort(([a], [b]) => Number(b) - Number(a));
+
+// Client-side search payload
+const searchIndex = sorted.map(p => ({
+  title: p.data.title,
+  path: getPath(p.id, p.filePath),
+  year: new Date(p.data.pubDatetime).getFullYear(),
+  subtitle: p.data.subtitle || "",
+  description: p.data.description || "",
+}));
 ---
 
-<Layout title={`Posts | ${SITE.title}`} description="Archive of all blog posts by Abhi. iOS, Swift, web development, and open source insights.">
+<Layout
+  title={`Archive | ${SITE.title}`}
+  description="Archive of all writing by Abhi."
+>
   <Header />
-  <main id="main-content" class="mx-auto w-full max-w-5xl px-4 pb-4">
-    <h1 class="text-2xl font-semibold sm:text-3xl mt-8">All Posts</h1>
-    <p class="mt-2 mb-6 italic">Browse all blog posts by year and month</p>
-    {
-      Object.entries(
-        getPostsByGroupCondition(posts, (post) => {
-          const pubDate = post.data.pubDatetime || new Date();
-          return new Date(pubDate).getFullYear();
-        }),
-      )
-        .sort(([yearA], [yearB]) => Number(yearB) - Number(yearA))
-        .map(([year, yearGroup]) => (
-          <div class="mb-8">
-            <h2 class="text-2xl font-bold mb-6 border-b border-accent pb-2">
-              {year}
-              <sup class="text-sm ml-1">{yearGroup.length}</sup>
+  <main id="main-content" class="site-shell archive-page">
+    <h1 class="archive-title">Archive</h1>
+
+    <div class="archive-search">
+      <span class="search-icon" aria-hidden="true">⌕</span>
+      <input
+        type="search"
+        id="archive-search-input"
+        placeholder="Search…"
+        autocomplete="off"
+        aria-label="Search posts"
+      />
+    </div>
+
+    <div id="archive-default">
+      {
+        topPosts.length > 0 && (
+          <section class="archive-section" aria-labelledby="top-posts-heading">
+            <h2 id="top-posts-heading" class="section-label">
+              Top Posts
             </h2>
-            {Object.entries(
-              getPostsByGroupCondition(yearGroup, (post) => {
-                const pubDate = post.data.pubDatetime || new Date();
-                return new Date(pubDate).getMonth() + 1;
-              }),
-            )
-              .sort(([monthA], [monthB]) => Number(monthB) - Number(monthA))
-              .map(([month, monthGroup]) => (
-                <div class="mt-8">
-                  <h3 class="text-xl font-bold mb-4">
-                    {months[Number(month) - 1]}
-                    <sup class="text-sm ml-1">{monthGroup.length}</sup>
-                  </h3>
-                  <ul>
-                    {monthGroup
-                      .sort((a, b) => {
-                        const aDate = a.data.pubDatetime || new Date();
-                        const bDate = b.data.pubDatetime || new Date();
-                        return (
-                          Math.floor(new Date(bDate).getTime() / 1000) -
-                          Math.floor(new Date(aDate).getTime() / 1000)
-                        );
-                      })
-                      .map((data) => (
-                        <Card {...data} />
-                      ))}
-                  </ul>
-                </div>
+            <ul class="title-list">
+              {topPosts.map(p => (
+                <li>
+                  <a href={getPath(p.id, p.filePath)}>{p.data.title}</a>
+                </li>
               ))}
-          </div>
-        ))
-    }
+            </ul>
+          </section>
+        )
+      }
+
+      {
+        byYear.map(([year, yearGroup]) => {
+          const items = [...yearGroup].sort(
+            (a, b) =>
+              new Date(b.data.pubDatetime).getTime() -
+              new Date(a.data.pubDatetime).getTime(),
+          );
+          return (
+            <section class="archive-section" aria-labelledby={`year-${year}`}>
+              <h2 id={`year-${year}`} class="section-label">
+                {year}
+              </h2>
+              <ul class="title-list">
+                {items.map(p => (
+                  <li>
+                    <a href={getPath(p.id, p.filePath)}>{p.data.title}</a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })
+      }
+    </div>
+
+    <div id="archive-results" class="archive-section" hidden>
+      <h2 class="section-label">Results</h2>
+      <ul id="archive-results-list" class="title-list"></ul>
+      <p id="archive-empty" class="archive-empty" hidden>No matching posts.</p>
+    </div>
   </main>
 </Layout>
+
+<script define:vars={{ searchIndex }}>
+  function initArchiveSearch() {
+    const input = document.getElementById("archive-search-input");
+    const defaults = document.getElementById("archive-default");
+    const results = document.getElementById("archive-results");
+    const list = document.getElementById("archive-results-list");
+    const empty = document.getElementById("archive-empty");
+    if (!input || !defaults || !results || !list || !empty) return;
+
+    const render = (q) => {
+      const query = (q || "").trim().toLowerCase();
+      if (!query) {
+        defaults.hidden = false;
+        results.hidden = true;
+        list.innerHTML = "";
+        empty.hidden = true;
+        return;
+      }
+
+      const matches = searchIndex.filter((p) => {
+        const hay = `${p.title} ${p.subtitle} ${p.description}`.toLowerCase();
+        return hay.includes(query);
+      });
+
+      defaults.hidden = true;
+      results.hidden = false;
+      list.innerHTML = matches
+        .map((p) => `<li><a href="${p.path}">${p.title}</a></li>`)
+        .join("");
+      empty.hidden = matches.length > 0;
+    };
+
+    input.addEventListener("input", (e) => {
+      render(e.target.value);
+    });
+  }
+
+  initArchiveSearch();
+  document.addEventListener("astro:after-swap", initArchiveSearch);
+</script>
+
+<style>
+  .archive-page {
+    padding-top: 36px;
+    padding-bottom: 96px;
+  }
+
+  .archive-title {
+    margin: 0;
+    font-size: 40px;
+    line-height: 1.25;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .archive-section {
+    margin-bottom: 40px;
+  }
+
+  .section-label {
+    margin: 0 0 18px;
+    font-size: 14px;
+    line-height: 1.3;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 0.01em;
+  }
+
+  .title-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .title-list li {
+    margin: 0 0 14px;
+  }
+
+  .title-list a {
+    color: #fff;
+    font-size: 20px;
+    line-height: 1.35;
+    font-weight: 600;
+  }
+
+  .title-list a:hover {
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .archive-empty {
+    color: var(--muted);
+    font-size: 16px;
+  }
+
+  @media (max-width: 640px) {
+    .archive-title {
+      font-size: 32px;
+    }
+
+    .title-list a {
+      font-size: 18px;
+    }
+  }
+</style>

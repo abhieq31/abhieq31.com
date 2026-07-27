@@ -19,26 +19,47 @@ const { props } = Astro;
 const backUrl = SITE.showBackButton ? Astro.url.pathname : "/";
 ---
 
-<main
-  data-backUrl={backUrl}
-  id="main-content"
-  class="mx-auto w-full max-w-5xl px-4 pb-4"
->
+<main data-backUrl={backUrl} id="main-content" class="site-shell main-page">
   {
     "titleTransition" in props ? (
-      <h1 class="text-2xl font-semibold sm:text-3xl mt-8">
+      <h1 class="page-title">
         {props.pageTitle[0]}
-        <span transition:name={props.titleTransition}>
-          {props.pageTitle[1]}
-        </span>
+        <span transition:name={props.titleTransition}>{props.pageTitle[1]}</span>
       </h1>
     ) : (
-      <h1 class="text-2xl font-semibold sm:text-3xl mt-8">{props.pageTitle}</h1>
+      <h1 class="page-title">{props.pageTitle}</h1>
     )
   }
-  <p class="mt-2 mb-6 italic">{props.pageDesc}</p>
+  {props.pageDesc && <p class="page-desc">{props.pageDesc}</p>}
   <slot />
 </main>
+
+<style>
+  .main-page {
+    padding-top: 36px;
+    padding-bottom: 80px;
+  }
+
+  .page-title {
+    margin: 0 0 12px;
+    font-size: 40px;
+    line-height: 1.2;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .page-desc {
+    margin: 0 0 28px;
+    color: var(--muted);
+    font-size: 17px;
+  }
+
+  @media (max-width: 640px) {
+    .page-title {
+      font-size: 30px;
+    }
+  }
+</style>
 
 <script>
   document.addEventListener("astro:page-load", () => {
