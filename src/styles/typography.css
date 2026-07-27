@@ -1,161 +1,206 @@
 @plugin '@tailwindcss/typography';
 
-@layer base {
-  /* Article body — nav.al single-post content */
-  .prose {
-    --tw-prose-body: var(--content);
-    --tw-prose-headings: var(--accent);
-    --tw-prose-links: var(--content);
-    --tw-prose-bold: #fff;
-    --tw-prose-counters: var(--muted);
-    --tw-prose-bullets: #f0f0f0;
-    --tw-prose-hr: var(--border);
-    --tw-prose-quotes: var(--muted);
-    --tw-prose-quote-borders: var(--accent);
-    --tw-prose-captions: var(--muted);
-    --tw-prose-code: #fff;
-    --tw-prose-pre-code: #e1e4e8;
-    --tw-prose-pre-bg: #151617;
-    --tw-prose-th-borders: var(--border);
-    --tw-prose-td-borders: var(--border);
+/*
+  Post body — match nav.al single-post readability.
+  Force high-contrast colors so Tailwind prose gray never wins.
+*/
+.prose {
+  --tw-prose-body: #eeeeee !important;
+  --tw-prose-headings: #f00048 !important;
+  --tw-prose-links: #eeeeee !important;
+  --tw-prose-bold: #ffffff !important;
+  --tw-prose-counters: #b2b2b2 !important;
+  --tw-prose-bullets: #f0f0f0 !important;
+  --tw-prose-hr: #2d3139 !important;
+  --tw-prose-quotes: #b2b2b2 !important;
+  --tw-prose-quote-borders: #f00048 !important;
+  --tw-prose-captions: #b2b2b2 !important;
+  --tw-prose-code: #ffffff !important;
+  --tw-prose-pre-code: #e1e4e8 !important;
+  --tw-prose-pre-bg: #151617 !important;
+  --tw-prose-th-borders: #2d3139 !important;
+  --tw-prose-td-borders: #2d3139 !important;
+  --tw-prose-invert-body: #eeeeee !important;
+  --tw-prose-invert-headings: #f00048 !important;
+  --tw-prose-invert-links: #eeeeee !important;
+  --tw-prose-invert-bold: #ffffff !important;
 
-    color: var(--content);
-    font-size: 18px;
-    line-height: 1.7;
-    max-width: none;
-  }
+  color: #eeeeee !important;
+  font-size: 18px !important;
+  line-height: 28px !important;
+  max-width: none !important;
+  font-weight: 400;
+}
 
-  .prose p {
-    margin-bottom: 1.35em;
-  }
+/* Body copy — bright enough to read (nav.al uses #eee on #1e1f21) */
+.prose p,
+.prose li,
+.prose td,
+.prose th,
+.prose dd,
+.prose figcaption {
+  color: #eeeeee !important;
+}
 
-  .prose a {
-    color: var(--content);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    word-break: break-word;
-  }
+.prose p {
+  margin-top: 0 !important;
+  margin-bottom: 25px !important;
+}
 
-  .prose a:hover {
-    color: #fff;
-  }
+.prose a {
+  color: #eeeeee !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+  word-break: break-word;
+}
 
-  /* Section headings in accent red with underline — exact nav.al pattern */
-  .prose h2 {
-    color: var(--accent) !important;
-    font-size: 22px;
-    line-height: 1.4;
-    font-weight: 700;
-    margin: 2.4em 0 1.1em;
-    padding-bottom: 18px;
-    border-bottom: 1.5px solid rgba(229, 229, 229, 0.25);
-  }
+.prose a:hover {
+  color: #ffffff !important;
+}
 
-  .prose h2 * {
-    color: var(--accent) !important;
-  }
+/*
+  Section headings — nav.al pattern:
+  red title + thin rule underneath
+  Use ## in Markdown → this style
+*/
+.prose h2 {
+  color: #f00048 !important;
+  font-size: 22px !important;
+  line-height: 31px !important;
+  font-weight: 700 !important;
+  margin: 43px 0 27px !important;
+  padding-bottom: 25px !important;
+  border-bottom: 1.5px solid rgba(229, 229, 229, 0.35) !important;
+}
 
-  .prose h3 {
-    color: #fff !important;
-    font-size: 20px;
-    line-height: 1.4;
-    font-weight: 700;
-    margin: 1.8em 0 0.9em;
-  }
+.prose h2 * {
+  color: #f00048 !important;
+}
 
-  .prose h4 {
-    color: #fff !important;
-    font-size: 18px;
-    font-weight: 700;
-    margin: 1.5em 0 0.8em;
-  }
+.prose h2 a.heading-link {
+  color: #f00048 !important;
+  text-decoration: none !important;
+  opacity: 0.5;
+}
 
-  .prose strong {
-    color: #fff;
-    font-weight: 600;
-  }
+.prose h3 {
+  color: #ffffff !important;
+  font-size: 20px !important;
+  line-height: 28px !important;
+  font-weight: 700 !important;
+  margin: 0 0 23px !important;
+}
 
-  .prose ul,
-  .prose ol {
-    margin-bottom: 1.5em;
-    padding-left: 1.4em;
-  }
+.prose h4 {
+  color: #ffffff !important;
+  font-size: 18px !important;
+  line-height: 28px !important;
+  font-weight: 700 !important;
+  margin: 0 0 23px !important;
+}
 
-  .prose li {
-    margin-bottom: 0.7em;
-  }
+/* Bold names / emphasis like "Naval:" / "Guillermo Rauch:" on nav.al */
+.prose strong,
+.prose b {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
 
-  .prose li::marker {
-    color: var(--muted);
-  }
+.prose em,
+.prose i {
+  color: #eeeeee !important;
+}
 
-  .prose blockquote {
-    border-left: 3px solid color-mix(in srgb, var(--accent) 50%, transparent);
-    opacity: 0.9;
-    padding-left: 1em;
-    font-style: normal;
-  }
+.prose ul,
+.prose ol {
+  margin: 0 0 30px !important;
+  padding-left: 1.35em !important;
+  color: #eeeeee !important;
+}
 
-  .prose code {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 4px;
-    padding: 0.15em 0.4em;
-    font-size: 0.9em;
-  }
+.prose li {
+  margin-bottom: 18px !important;
+  color: #eeeeee !important;
+}
 
-  .prose code::before,
-  .prose code::after {
-    content: none !important;
-  }
+.prose li::marker {
+  color: #b2b2b2 !important;
+}
 
-  .prose pre {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: #151617 !important;
-  }
+.prose blockquote {
+  border-left: 3px solid rgba(240, 0, 72, 0.5) !important;
+  color: #b2b2b2 !important;
+  padding-left: 1em !important;
+  font-style: normal !important;
+  margin: 1.5em 0 !important;
+}
 
-  .prose pre code {
-    background: transparent;
-    padding: 0;
-    color: inherit;
-  }
+.prose blockquote p {
+  color: #b2b2b2 !important;
+}
 
-  .prose img {
-    margin-left: auto;
-    margin-right: auto;
-    border-radius: 2px;
-  }
+.prose code {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+  font-size: 0.9em;
+}
 
-  .prose hr {
-    border-color: var(--border);
-  }
+.prose code::before,
+.prose code::after {
+  content: none !important;
+}
 
-  .prose h2#table-of-contents {
-    margin-bottom: 0.5em;
-  }
+.prose pre {
+  border: 1px solid #2d3139 !important;
+  border-radius: 6px;
+  background: #151617 !important;
+  color: #e1e4e8 !important;
+}
 
-  .prose h2#table-of-contents + p {
-    display: none;
-  }
+.prose pre code {
+  background: transparent !important;
+  padding: 0 !important;
+  color: inherit !important;
+}
 
-  .prose details {
-    cursor: pointer;
-    color: var(--foreground);
-    user-select: none;
-  }
+.prose img {
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 2px;
+}
 
-  /* Dark Shiki blocks */
-  html pre:has(code),
-  html pre:has(code) span,
-  html[data-theme="dark"] pre:has(code),
-  html[data-theme="dark"] pre:has(code) span,
-  html[data-theme="light"] pre:has(code),
-  html[data-theme="light"] pre:has(code) span {
-    color: var(--shiki-dark) !important;
-    background-color: var(--shiki-dark-bg, #151617) !important;
-    font-style: var(--shiki-dark-font-style) !important;
-    font-weight: var(--shiki-dark-font-weight) !important;
-    text-decoration: var(--shiki-dark-text-decoration) !important;
-  }
+.prose hr {
+  border: 0 !important;
+  border-top: 1px solid rgba(229, 229, 229, 0.2) !important;
+  margin: 2em 0 !important;
+}
+
+.prose h2#table-of-contents {
+  margin-bottom: 0.5em !important;
+}
+
+.prose h2#table-of-contents + p {
+  display: none;
+}
+
+.prose details {
+  cursor: pointer;
+  color: #eeeeee;
+  user-select: none;
+}
+
+/* Dark Shiki */
+html pre:has(code),
+html pre:has(code) span,
+html[data-theme="dark"] pre:has(code),
+html[data-theme="dark"] pre:has(code) span,
+html[data-theme="light"] pre:has(code),
+html[data-theme="light"] pre:has(code) span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg, #151617) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
 }

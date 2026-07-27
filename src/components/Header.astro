@@ -16,13 +16,13 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
     Skip to content
   </a>
 
-  <div class="site-shell header-inner">
+  <!-- Full viewport width — logo far left, nav far right (nav.al) -->
+  <div class="page-gutter header-inner">
     <a href="/" class="site-logo" aria-label={`${SITE.title} home`}>
       {SITE.title}
     </a>
 
     <nav class="site-nav" aria-label="Primary">
-      <!-- Default nav links -->
       <div id="nav-links" class="nav-links">
         <a href="/posts" class:list={[{ "is-active": isArchive }]}>Archive</a>
         <a href="https://x.com/abhieq31" target="_blank" rel="me noopener">X</a>
@@ -34,7 +34,6 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
         </button>
       </div>
 
-      <!-- Inline subscribe form (nav.al pattern) -->
       <div id="subscribe-box" class="subscribe-box" hidden>
         <form class="subscribe-form" id="subscribe-form">
           <input
@@ -58,7 +57,7 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
 
 <style>
   .site-header {
-    padding: 40px 0 28px;
+    padding: 43px 0 35px;
     width: 100%;
   }
 
@@ -67,6 +66,7 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
     align-items: center;
     justify-content: space-between;
     gap: 16px;
+    max-width: none; /* full width, not the content column */
   }
 
   .site-logo {
@@ -92,7 +92,7 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
   .nav-links {
     display: flex;
     align-items: center;
-    gap: 18px;
+    gap: 22px;
     flex-wrap: wrap;
     justify-content: flex-end;
   }
@@ -100,7 +100,7 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
   .nav-links a,
   .nav-btn {
     color: var(--muted-nav);
-    font-size: 16px;
+    font-size: 17px;
     line-height: 22px;
     font-weight: 500;
     background: none;
@@ -125,6 +125,10 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
   }
 
   @media (max-width: 520px) {
+    .site-header {
+      padding: 28px 0 20px;
+    }
+
     .nav-links {
       gap: 12px;
     }
@@ -169,8 +173,6 @@ const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
     openBtn.addEventListener("click", show);
     cancelBtn.addEventListener("click", hide);
 
-    // Newsletter provider not wired yet — keep the nav.al UI.
-    // After submit, thank the reader and leave them on the page.
     form?.addEventListener("submit", e => {
       e.preventDefault();
       const value = email?.value?.trim();

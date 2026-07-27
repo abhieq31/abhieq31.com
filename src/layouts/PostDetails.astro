@@ -111,19 +111,25 @@ if (related.length < 3) {
   <Header />
 
   <main id="main-content" class="site-shell post-page" data-pagefind-body>
-    <p class="post-date">
-      <time datetime={pubDatetime.toISOString()}>{displayDate}</time>
-    </p>
+    <header class="post-header">
+      <p class="post-date">
+        <time datetime={pubDatetime.toISOString()}>{displayDate}</time>
+      </p>
 
-    <h1 transition:name={slugifyStr(title)} class="post-title">
-      {title}
-    </h1>
+      <h1 transition:name={slugifyStr(title)} class="post-title">
+        {title}
+      </h1>
 
-    {subtitle && <p class="post-subtitle">{subtitle}</p>}
+      {
+        subtitle ? (
+          <p class="post-subtitle has-rule">{subtitle}</p>
+        ) : (
+          <hr class="post-rule" />
+        )
+      }
+    </header>
 
-    <hr class="post-rule" />
-
-    <article id="article" class="prose">
+    <article id="article" class="prose post-body">
       {
         heroImage && (
           <img
@@ -261,37 +267,53 @@ if (related.length < 3) {
 
 <style>
   .post-page {
-    padding-top: 36px;
+    padding-top: 28px;
     padding-bottom: 96px;
   }
 
+  .post-header {
+    margin-bottom: 32px;
+  }
+
   .post-date {
-    margin: 0 0 18px;
+    margin: 0 0 16px;
     font-size: 15px;
-    color: var(--muted-soft);
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.5);
   }
 
   .post-title {
-    margin: 0 0 12px;
+    margin: 0 0 14px;
     font-size: 40px;
     line-height: 1.2;
     font-weight: 700;
     letter-spacing: -0.02em;
-    color: #fff;
+    color: #ffffff;
   }
 
+  /* nav.al: subtitle sits under title, then a rule before body */
   .post-subtitle {
-    margin: 0 0 0;
+    margin: 0;
     font-size: 20px;
     line-height: 1.45;
-    color: rgba(255, 255, 255, 0.85);
+    color: #eeeeee;
+    font-weight: 400;
+  }
+
+  .post-subtitle.has-rule {
     padding-bottom: 28px;
+    margin-bottom: 0;
+    border-bottom: 1px solid rgba(229, 229, 229, 0.25);
   }
 
   .post-rule {
     border: 0;
-    border-top: 1px solid rgba(229, 229, 229, 0.2);
-    margin: 0 0 32px;
+    border-top: 1px solid rgba(229, 229, 229, 0.25);
+    margin: 8px 0 0;
+  }
+
+  .post-body {
+    color: #eeeeee !important;
   }
 
   .hero-img {

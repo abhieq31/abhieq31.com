@@ -3,7 +3,6 @@
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
-/* Self-hosted body font (Atkinson ≈ readable Benton-like sans) */
 @font-face {
   font-family: "Atkinson";
   src: url("/fonts/atkinson-regular.woff") format("woff");
@@ -21,9 +20,9 @@
 }
 
 /*
-  nav.al dark theme (forced — matches the reference screenshots)
-  Accent: #f00048 (dark-mode red from nav.al)
-  Surface: #1e1f21
+  nav.al dark theme
+  Header = full viewport width (logo left / nav right)
+  Content = centered column ~900px
 */
 :root,
 html,
@@ -38,11 +37,18 @@ html[data-theme="dark"] {
   --muted-soft: rgba(255, 255, 255, 0.5);
   --muted-nav: rgba(255, 255, 255, 0.7);
   --border: #2d3139;
-  --border-soft: #e5e5e5;
   --content: #eeeeee;
   --more: #aaaaaa;
   --surface: #1e1f21;
-  --content-width: 780px;
+  /* Content reading column — matches nav.al .container max-width: 900px */
+  --content-width: 900px;
+  --page-gutter: 25px;
+}
+
+@media (min-width: 767px) {
+  :root {
+    --page-gutter: 60px;
+  }
 }
 
 @theme {
@@ -60,31 +66,31 @@ html[data-theme="dark"] {
 
 @layer base {
   * {
-    @apply border-border outline-accent/75;
+    box-sizing: border-box;
+    border-color: var(--border);
     scrollbar-width: auto;
     scrollbar-color: var(--muted) transparent;
   }
 
   html {
-    @apply scroll-smooth;
-    scrollbar-gutter: stable both-edges;
+    scroll-behavior: smooth;
   }
 
   body {
     margin: 0;
     min-height: 100svh;
     background: var(--background);
-    color: var(--foreground);
+    color: #ffffff;
     font-family: var(--font-sans);
     font-size: 18px;
-    line-height: 1.55;
+    line-height: 28px;
     font-weight: 400;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   ::selection {
-    background: color-mix(in srgb, var(--accent) 75%, transparent);
+    background: color-mix(in srgb, var(--accent) 70%, transparent);
     color: #fff;
   }
 
@@ -102,23 +108,6 @@ html[data-theme="dark"] {
     cursor: pointer;
   }
 
-  /* Centered content column — nav.al ~900px container with side padding */
-  .site-shell {
-    width: 100%;
-    max-width: var(--content-width);
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: 25px;
-    padding-right: 25px;
-  }
-
-  @media (min-width: 767px) {
-    .site-shell {
-      padding-left: 60px;
-      padding-right: 60px;
-    }
-  }
-
   section,
   footer {
     max-width: none;
@@ -128,7 +117,23 @@ html[data-theme="dark"] {
   }
 }
 
-/* Red accent utility used across the site */
+/* Full-bleed page gutters (header + outer edges) */
+.page-gutter {
+  width: 100%;
+  padding-left: var(--page-gutter);
+  padding-right: var(--page-gutter);
+}
+
+/* Centered reading column — posts / home / archive body */
+.site-shell {
+  width: 100%;
+  max-width: var(--content-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--page-gutter);
+  padding-right: var(--page-gutter);
+}
+
 .red-link {
   color: var(--accent) !important;
 }
@@ -137,7 +142,7 @@ html[data-theme="dark"] {
   color: var(--accent-hover) !important;
 }
 
-/* Subscribe form — matches nav.al header subscribe */
+/* Subscribe form — nav.al header pattern */
 .subscribe-form {
   display: flex;
   align-items: stretch;
@@ -193,7 +198,7 @@ html[data-theme="dark"] {
   color: #fff;
 }
 
-/* Archive search underline field */
+/* Archive search */
 .archive-search {
   position: relative;
   margin: 28px 0 40px;
@@ -226,13 +231,12 @@ html[data-theme="dark"] {
   pointer-events: none;
 }
 
-/* Hide legacy theme toggle if present */
 #theme-btn,
 [data-theme-toggle] {
   display: none !important;
 }
 
-/* Pagefind search UI — dark nav.al surface */
+/* Pagefind — dark */
 .pagefind-ui {
   --pagefind-ui-scale: 0.95;
   --pagefind-ui-primary: #f00048;
