@@ -1,0 +1,94 @@
+---
+import { PROJECTS } from "@/data/projects";
+
+interface Props {
+  // the home page shows the one-liners; /projects also shows why each exists
+  detailed?: boolean;
+}
+const { detailed = false } = Astro.props;
+---
+
+<ul class="project-list">
+  {
+    PROJECTS.map(p => (
+      <li class="project">
+        <div class="project-head">
+          <h3>{p.name}</h3>
+          <span class="project-links">
+            {p.live && (
+              <a href={p.live.href} class="red-link">
+                {p.live.label}
+              </a>
+            )}
+            <a href={p.code} target="_blank" rel="noopener">
+              Code
+            </a>
+          </span>
+        </div>
+        <p class="project-tagline">{p.tagline}</p>
+        {detailed && (
+          <>
+            <p class="project-why">
+              <strong>Why:</strong> {p.why}
+            </p>
+            <p class="project-stack">{p.stack}</p>
+          </>
+        )}
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .project-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .project {
+    padding: 18px 0;
+    border-top: 1px solid var(--border);
+  }
+  .project:first-child {
+    border-top: 0;
+    padding-top: 4px;
+  }
+  .project-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .project-head h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--foreground);
+  }
+  .project-links {
+    display: flex;
+    gap: 14px;
+    font-size: 0.95rem;
+    white-space: nowrap;
+  }
+  .project-links a {
+    color: var(--muted);
+  }
+  .project-links a:hover {
+    color: var(--foreground);
+  }
+  .project-tagline {
+    margin: 4px 0 0;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+  .project-why {
+    margin: 10px 0 0;
+    line-height: 1.65;
+  }
+  .project-stack {
+    margin: 8px 0 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+</style>

@@ -5,6 +5,7 @@ const { pathname } = Astro.url;
 const currentPath =
   pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
 const isArchive = currentPath === "/posts" || currentPath.startsWith("/posts/");
+const isProjects = currentPath === "/projects";
 
 // Optional: set PUBLIC_NEWSLETTER_ACTION in Vercel env to a Formspree/Buttondown URL.
 // Example Formspree: https://formspree.io/f/xxxxxxxx
@@ -28,6 +29,7 @@ const newsletterAction = import.meta.env.PUBLIC_NEWSLETTER_ACTION || "";
     <nav class="site-nav" aria-label="Primary">
       <div id="nav-links" class="nav-links">
         <a href="/posts" class:list={[{ "is-active": isArchive }]}>Archive</a>
+        <a href="/projects" class:list={[{ "is-active": isProjects }]}>Projects</a>
         <a href="/deskmate" title="Deskmate: play chess with a colleague">Chess</a>
         <a href="https://x.com/abhieq31" target="_blank" rel="me noopener">X</a>
         <a

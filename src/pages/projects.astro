@@ -1,0 +1,20 @@
+---
+import Header from "@/components/Header.astro";
+import ProjectList from "@/components/ProjectList.astro";
+import { SITE } from "@/config";
+import Layout from "@/layouts/Layout.astro";
+import Main from "@/layouts/Main.astro";
+---
+
+<Layout
+  title={`Projects | ${SITE.title}`}
+  description="Things I've built, and why: Deskmate, Pragati and Room to Breathe. All open source."
+>
+  <Header />
+  <Main
+    pageTitle="Projects"
+    pageDesc="Each one started with a problem I kept running into. All open source; take them, run them, make them better."
+  >
+    <ProjectList detailed />
+  </Main>
+</Layout>
