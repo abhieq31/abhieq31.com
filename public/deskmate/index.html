@@ -1985,6 +1985,22 @@ body.focus .focus-acts {
     opacity: 0;
   }
 }
+/* ?debug-input: the last pointer events, bottom left */
+.input-log {
+  position: fixed;
+  left: 8px;
+  bottom: 8px;
+  z-index: 9999;
+  margin: 0;
+  padding: 8px 10px;
+  max-width: 70vw;
+  background: rgba(0, 0, 0, 0.85);
+  color: #9f9;
+  font: 11px/1.35 var(--mono);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
 /* ---------- player cards ---------- */
 .player {
   display: flex;
@@ -7206,9 +7222,6 @@ var Board = class {
     window.addEventListener("pointermove", (e) => this._move(e));
     window.addEventListener("pointerup", (e) => this._up(e));
     window.addEventListener("pointercancel", () => this._cancelDrag());
-    root.addEventListener("lostpointercapture", (e) => {
-      if (this.drag) this._up({ ...e, clientX: this.drag.px ?? e.clientX, clientY: this.drag.py ?? e.clientY });
-    });
     window.addEventListener("blur", () => this._cancelDrag());
     root.addEventListener("contextmenu", (e) => e.preventDefault());
     this._layoutSquares();
@@ -7260,6 +7273,7 @@ var Board = class {
       this.shapes = [];
       this._renderShapes();
     }
+    if (this.drag && (posChanged || !this.state.movable)) this._cancelDrag();
     if (this.selected && !(this.state.dests.get(this.selected) && this.state.movable)) this.selected = null;
     this._syncPieces();
     this._highlight();
@@ -7372,7 +7386,7 @@ var Board = class {
       const isDest = this.prefs.showDests && targets.includes(sq);
       s.classList.toggle("move-dest", isDest && !occupied.has(sq));
       s.classList.toggle("capture-dest", isDest && occupied.has(sq));
-      s.classList.toggle("hover", !!this.drag?.moved && this.drag.over === sq);
+      s.classList.toggle("hover", !!(this.drag?.moved || this.drag?.held) && this.drag.over === sq);
       s.classList.toggle("can-move", !!movable && dests.has(sq));
     }
     this.root.classList.toggle("movable", !!movable);
@@ -7396,6 +7410,21 @@ var Board = class {
       this.shapes = [];
       this._renderShapes();
     }
+    const d = this.drag;
+    if (d) {
+      e.preventDefault();
+      if (sq !== d.from && (this.state.dests.get(d.from) || []).includes(sq)) {
+        this._drop(d, sq);
+        return;
+      }
+      if (sq === d.from) {
+        Object.assign(d, { x: e.clientX, y: e.clientY, moved: false, pressed: true, retap: true });
+        this._capture(e);
+        this._follow(e.clientX, e.clientY);
+        return;
+      }
+      this._putBack(d, false);
+    }
     const targets = this.selected ? this.state.dests.get(this.selected) || [] : [];
     if (this.selected && targets.includes(sq)) {
       const from = this.selected;
@@ -7406,20 +7435,36 @@ var Board = class {
     }
     if (this._canMoveFrom(sq)) {
       e.preventDefault();
-      try {
-        this.root.setPointerCapture(e.pointerId);
-      } catch {
-      }
+      this._capture(e);
       const wasSelected = this.selected === sq;
       this.selected = sq;
       const el2 = this.pieces.get(sq).el;
-      this.drag = { from: sq, el: el2, x: e.clientX, y: e.clientY, rect: this.inner.getBoundingClientRect(), moved: false, wasSelected, over: sq };
+      this.drag = {
+        from: sq,
+        el: el2,
+        x: e.clientX,
+        y: e.clientY,
+        rect: this.inner.getBoundingClientRect(),
+        moved: false,
+        wasSelected,
+        over: sq,
+        pressed: true,
+        held: false,
+        retap: false
+      };
       el2.classList.add("dragging");
       this._follow(e.clientX, e.clientY);
       this._highlight();
     } else if (this.selected) {
       this.selected = null;
       this._highlight();
+    }
+  }
+  /** Keep getting pointer events even if the pointer leaves the board mid-drag. */
+  _capture(e) {
+    try {
+      this.root.setPointerCapture(e.pointerId);
+    } catch {
     }
   }
   /** Put the dragged piece's centre at the pointer; batched to one update per frame. */
@@ -7438,11 +7483,8 @@ var Board = class {
   _move(e) {
     const d = this.drag;
     if (!d) return;
-    if (e.pointerType === "mouse" && e.buttons === 0) {
-      this._up(e);
-      return;
-    }
-    if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 3) d.moved = true;
+    if (!d.pressed && e.pointerType !== "mouse") return;
+    if (d.pressed && !d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 3) d.moved = true;
     this._follow(e.clientX, e.clientY);
     const over = this._eventSquare(e);
     if (over !== d.over) {
@@ -7459,31 +7501,55 @@ var Board = class {
     }
     const d = this.drag;
     if (!d) return;
-    this.drag = null;
-    if (d.raf) cancelAnimationFrame(d.raf);
     const to = this._eventSquare(e);
-    const targets = this.state.dests.get(d.from) || [];
-    this.root.classList.add("no-anim");
-    d.el.classList.remove("dragging");
-    if (to && to !== d.from && targets.includes(to)) {
-      const { code } = this.pieces.get(d.from);
-      const captured = this.pieces.get(to);
-      if (captured) captured.el.remove();
-      this.pieces.delete(d.from);
-      this.pieces.set(to, { el: d.el, code });
-      this._place(d.el, to);
-      reflow(d.el);
-      this.root.classList.remove("no-anim");
-      this.selected = null;
-      this._highlight();
-      this.onMove(d.from, to);
+    if (to && to !== d.from && (this.state.dests.get(d.from) || []).includes(to)) {
+      this._drop(d, to);
       return;
     }
+    if (!d.pressed) return;
+    d.pressed = false;
+    if (d.moved) {
+      this._putBack(d, true);
+      return;
+    }
+    if (d.retap || d.wasSelected) this._putBack(d, false);
+    else if (e.pointerType === "mouse") {
+      d.held = true;
+      this._highlight();
+    } else this._putBack(d, true);
+  }
+  /** Put the piece in hand down on `to` without sliding, and report the move. */
+  _drop(d, to) {
+    this.drag = null;
+    if (d.raf) cancelAnimationFrame(d.raf);
+    this.root.classList.add("no-anim");
+    d.el.classList.remove("dragging");
+    const { code } = this.pieces.get(d.from);
+    this.pieces.get(to)?.el.remove();
+    this.pieces.delete(d.from);
+    this.pieces.set(to, { el: d.el, code });
+    this._place(d.el, to);
+    reflow(d.el);
+    this.root.classList.remove("no-anim");
+    this.selected = null;
+    this._highlight();
+    this.onMove(d.from, to);
+  }
+  /** Put the piece in hand back on its square; `keepSelected` leaves its moves showing. */
+  _putBack(d, keepSelected) {
+    this.drag = null;
+    if (d.raf) cancelAnimationFrame(d.raf);
+    this.root.classList.add("no-anim");
+    d.el.classList.remove("dragging");
     this._place(d.el, d.from);
     reflow(d.el);
     this.root.classList.remove("no-anim");
-    if (!d.moved && d.wasSelected) this.selected = null;
+    this.selected = keepSelected ? d.from : null;
     this._highlight();
+  }
+  /** Drop whatever is in hand back on its square (Escape, window switch, new position). */
+  cancel() {
+    this._cancelDrag();
   }
   _cancelDrag() {
     if (!this.drag) return;
@@ -9753,7 +9819,10 @@ $("#btn-pgn-download").addEventListener("click", () => download(active()));
 $("#btn-fen").addEventListener("click", () => copy(active().fenAt(viewPly), "FEN"));
 document.addEventListener("keydown", (e) => {
   if (e.target.closest("input, textarea") || $$("dialog[open]").length) return;
-  if (e.key === "Escape") return setSidebar(false);
+  if (e.key === "Escape") {
+    board.cancel();
+    return setSidebar(false);
+  }
   const k = e.key;
   if (k === "ArrowLeft") goto(viewPly - 1);
   else if (k === "ArrowRight") goto(viewPly + 1);
@@ -9899,6 +9968,25 @@ board.setOrientation(homeOrientation());
 setView(inProgress() ? "game" : "home");
 if (game.remote) connectRoom(game.remote.room);
 computerMove();
+if (new URLSearchParams(location.search).has("debug-input")) {
+  const box = document.body.appendChild(document.createElement("pre"));
+  box.className = "input-log";
+  const lines = [];
+  let lastMove = "";
+  const log = (e) => {
+    const p = e;
+    const line = `${e.type.padEnd(18)} ${p.pointerType ?? ""} button=${e.button} buttons=${e.buttons} detail=${e.detail} ${Math.round(e.clientX)},${Math.round(e.clientY)}`;
+    if (e.type.endsWith("move")) {
+      const key = `${e.type} ${p.pointerType} ${e.buttons}`;
+      if (key === lastMove) return;
+      lastMove = key;
+    }
+    lines.push(line);
+    box.textContent = lines.slice(-16).join("\n");
+  };
+  for (const t of ["pointerdown", "pointermove", "pointerup", "pointercancel", "lostpointercapture", "mousedown", "mouseup", "click", "dblclick"])
+    addEventListener(t, log, true);
+}
 var linkCode = parseRoomCode(location.hash);
 if (location.hash) history.replaceState(null, "", location.pathname + location.search);
 if (linkCode && linkCode !== game.remote?.room) openRemote("join", linkCode);
