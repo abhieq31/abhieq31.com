@@ -113,7 +113,9 @@ body { padding-left: var(--sb-w); }
   /* centred by padding, not min-height: a min-height would stretch the 1fr row past the board */
   padding: max(24px, calc((100vh - var(--board)) / 2)) 64px 0 50px; /* left: eval bar; right: corner buttons */
 }
-.game.analysing { --lw: 250px; }
+/* analysing: the review takes the right column, between the clocks */
+.game.analysing { --lw: 200px; --rw: 320px; }
+.game.analysing .side { display: none; }
 .player.top { grid-area: ptop; align-self: start; }
 .player.bottom { grid-area: pbot; align-self: end; }
 .clock-top { grid-area: ctop; align-self: start; }
@@ -144,7 +146,7 @@ body[data-view="home"] #btn-focus { display: none; }
 .panel { align-self: center; display: flex; flex-direction: column; min-height: 0; max-height: 100%; }
 /* taken out of flow so it fills the space between the players without ever stretching the grid */
 .game { position: relative; }
-.game.analysing .panel { position: absolute; inset: 0; align-self: stretch; justify-self: stretch; background: #262522; border-radius: 8px; overflow: hidden; }
+.game.analysing .panel { grid-area: side; position: absolute; inset: 0; align-self: stretch; justify-self: stretch; background: #262522; border-radius: 8px; overflow: hidden; }
 .icon-btn {
   display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 6px; flex: none;
   background: transparent; color: var(--text); cursor: pointer; transition: background 0.15s, color 0.15s;
@@ -226,6 +228,17 @@ body[data-view="home"] #btn-focus { display: none; }
 .an-progress { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
 .an-progress span { display: block; height: 100%; width: 0; background: var(--accent-2); transition: width 0.2s; }
 .an-progress.done { visibility: hidden; }
+.an-moves {
+  flex: 1 1 120px; min-height: 90px; overflow-y: auto; display: grid; grid-template-columns: 30px 1fr 1fr;
+  align-content: start; gap: 1px 2px; padding: 4px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  scrollbar-width: thin;
+}
+.an-num { color: var(--muted); font-size: 0.85rem; padding: 4px 0 0 2px; }
+.an-moves .mv { text-align: left; }
+.tk { border: 0; background: none; padding: 1px 3px; border-radius: 3px; font: inherit; color: var(--muted); cursor: pointer; }
+.tk:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+.tk:disabled { cursor: default; opacity: 0.6; }
+.tk.k-blunder:not(:disabled) { color: #e35b58; } .tk.k-mistake:not(:disabled) { color: #e58f2a; } .tk.k-inaccuracy:not(:disabled) { color: #f7c045; }
 .an-acc { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; }
 .an-acc div { display: flex; flex-direction: column; align-items: center; padding: 8px; border-radius: 6px; background: #1f1e1c; }
 .an-acc b { font-size: 1.35rem; color: var(--text-strong); }
@@ -841,13 +854,14 @@ kbd {
       </div>
     </div>
 
-    <!-- left column, between the players: the result, and the analysis after a game -->
+    <!-- the result (left, between the players); after a game the analysis, on the right between the clocks -->
     <aside class="panel" id="panel" aria-label="Game">
       <div class="analysis hidden" id="analysis">
         <p class="an-verdict" id="an-verdict"></p>
         <div class="an-head"><span class="an-eval" id="an-eval">0.0</span><span class="an-line" id="an-line"></span></div>
         <svg class="an-graph" id="an-graph" viewBox="0 0 100 40" preserveAspectRatio="none" aria-label="Evaluation graph"></svg>
         <div class="an-progress" id="an-progress"><span></span></div>
+        <div class="an-moves" id="an-moves" aria-label="Moves"></div>
         <div class="an-acc" id="an-acc"></div>
         <div class="an-nav">
           <button class="pn" id="nav-first" title="First move (↑)" aria-label="First move"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-8 6 8 6z"/></svg></button>
@@ -6273,11 +6287,26 @@ function appBase() {
   const last = p.slice(p.lastIndexOf('/') + 1);
   return last.includes('.') ? p.slice(0, p.lastIndexOf('/') + 1) : `${p}/`;
 }
-const engineUrl = () => new URL(`${appBase()}vendor/stockfish/stockfish.js`, location.href).href;
+const engineFile = (file) => new URL(`${appBase()}vendor/stockfish/${file}`, location.href).href;
+const engineUrl = () => engineFile('stockfish.js');
+
+/**
+ * Engine builds to try, fastest first. The WebAssembly build is ~25x faster, but some company
+ * laptops run Chrome with the JIT switched off by policy, which removes WebAssembly entirely;
+ * the asm.js build is plain JavaScript and runs anywhere.
+ */
+function engineCandidates() {
+  let wasm = false;
+  try { wasm = typeof WebAssembly === 'object' && WebAssembly.validate(Uint8Array.of(0, 97, 115, 109, 1, 0, 0, 0)); } catch { /* no wasm */ }
+  return [...(wasm ? [{ url: engineFile('stockfish.js'), flavor: 'wasm' }] : []), { url: engineFile('stockfish.asm.js'), flavor: 'asm' }];
+}
+
+// a build that has not said "uciok" by then is treated as broken (blocked download, no wasm…)
+const LOAD_TIMEOUT = 25000;
 
 class Engine {
-  constructor(url = engineUrl()) {
-    this.url = url;
+  constructor(candidates = engineCandidates()) {
+    this.candidates = candidates;
     this.listeners = new Set();
     this.busy = Promise.resolve();
   }
@@ -6291,34 +6320,53 @@ class Engine {
     });
   }
 
-  /** Starts the worker once; rejects if the browser can't run it (e.g. opened from a file). */
+  /** Boots one build; rejects on a worker error or if it never answers. */
+  _boot({ url, flavor }) {
+    return new Promise((resolve, reject) => {
+      let worker;
+      try { worker = new Worker(url); } catch (e) { reject(e); return; }
+      this.worker = worker;
+      this.flavor = flavor;
+      const fail = (msg) => { clearTimeout(timer); worker.terminate(); this.listeners.clear(); reject(new Error(msg)); };
+      const timer = setTimeout(() => fail(`${flavor} engine did not start`), LOAD_TIMEOUT);
+      worker.onmessage = (e) => { for (const l of [...this.listeners]) l(String(e.data)); };
+      worker.onerror = (e) => { e.preventDefault?.(); fail(e.message || `${flavor} engine failed to load`); };
+      this._waitFor('uciok').then(() => {
+        clearTimeout(timer);
+        this._send('setoption name Hash value 32');
+        // Stockfish 11 "contempt" makes it rate positions in favour of the side it analyses for
+        // (to avoid draws when it plays); for an even-handed analysis it must be off
+        this._send('setoption name Contempt value 0');
+        this._send('setoption name Analysis Contempt value Off');
+        this._send('isready');
+        return this._waitFor('readyok');
+      }).then(resolve);
+      this._send('uci');
+    });
+  }
+
+  /** Starts the first build that works; rejects if none does (e.g. the page was opened from a file). */
   start() {
     if (!this.ready) {
-      this.ready = new Promise((resolve, reject) => {
-        try { this.worker = new Worker(this.url); } catch (e) { reject(e); return; }
-        this.worker.onmessage = (e) => { for (const l of [...this.listeners]) l(String(e.data)); };
-        this.worker.onerror = (e) => reject(new Error(e.message || 'engine failed to load'));
-        const ok = this._waitFor('uciok').then(() => {
-          this._send('setoption name Hash value 32');
-          // Stockfish 11 "contempt" makes it rate positions in favour of the side it analyses for
-          // (to avoid draws when it plays); for an even-handed analysis it must be off
-          this._send('setoption name Contempt value 0');
-          this._send('setoption name Analysis Contempt value Off');
-          this._send('isready');
-          return this._waitFor('readyok');
-        });
-        this._send('uci');
-        ok.then(resolve, reject);
-      });
+      this.ready = (async () => {
+        let err;
+        for (const c of this.candidates) {
+          try { await this._boot(c); return this.flavor; } catch (e) { err = e; }
+        }
+        this.worker = null;
+        throw err || new Error('no engine');
+      })();
+      this.ready.catch(() => { this.ready = null; });
     }
     return this.ready;
   }
 
   /**
    * Evaluate a position. Resolves to { cp | mate, pv: ['e2e4', …], depth }, scored from White's
-   * side. Calls are queued, one search at a time.
+   * side. Calls are queued, one search at a time. The search ends at `depth` or after `movetime`
+   * ms, whichever comes first, so a slow laptop still finishes a whole game in reasonable time.
    */
-  analyse(fen, depth, onInfo) {
+  analyse(fen, { depth, movetime }, onInfo) {
     const run = async () => {
       await this.start();
       const whiteToMove = fen.split(' ')[1] === 'w';
@@ -6337,13 +6385,19 @@ class Engine {
             }
           } else if (line.startsWith('bestmove')) {
             this.listeners.delete(l);
+            clearTimeout(watchdog);
             resolve(best);
           }
         };
         this.listeners.add(l);
+        // never wait forever: ask it to stop, then take what it has
+        const watchdog = setTimeout(() => {
+          this._send('stop');
+          setTimeout(() => { if (this.listeners.delete(l)) resolve(best); }, 3000);
+        }, movetime + 4000);
       });
       this._send(`position fen ${fen}`);
-      this._send(`go depth ${depth}`);
+      this._send(`go depth ${depth} movetime ${movetime}`);
       return done;
     };
     const result = this.busy.then(run, run);
@@ -6361,7 +6415,7 @@ class Engine {
   }
 }
 
-return { engineUrl, Engine };
+return { engineUrl, engineCandidates, Engine };
 })();
 
 __mods["js/analysis.js"] = (() => {
@@ -7610,7 +7664,9 @@ $('#btn-remote').addEventListener('click', () => (game.remote && !game.over && !
 
 /* ---------------- post-game analysis (Stockfish) ---------------- */
 
-const AN_DEPTH = 16;
+// depth 16 or one second per position on WebAssembly; the plain-JS fallback is ~25x slower,
+// so it gets less depth and less time (a 40-move game then takes about a minute)
+const AN_LIMITS = { wasm: { depth: 16, movetime: 1000 }, asm: { depth: 12, movetime: 700 } };
 
 /** A finished position needs no engine: mate or draw on the board. */
 function terminalEval(fen) {
@@ -7647,19 +7703,24 @@ async function startAnalysis() {
   const run = { game: g, evals: [], summary: null, done: false };
   an = run;
   render();
+  let limits;
   try {
     engine = engine || new Engine();
-    await engine.start();
+    limits = AN_LIMITS[await engine.start()];
   } catch {
     if (an === run) { an = null; render(); }
-    return toast('Analysis needs the hosted page (e.g. abhieq31.com/deskmate), not a downloaded file.');
+    return toast(location.protocol === 'file:'
+      ? 'Analysis needs the hosted page (e.g. abhieq31.com/deskmate), not a downloaded file.'
+      : 'Stockfish could not start in this browser (blocked download?). Try reloading the page.');
   }
+  if (an !== run) return;
+  run.flavor = engine.flavor;
   // the position on screen first, then the whole game from the start
   const order = [viewPly, ...Array.from({ length: g.length + 1 }, (_, i) => i).filter((i) => i !== viewPly)];
   for (const i of order) {
     if (an !== run) return;
     const fen = g.fenAt(i);
-    run.evals[i] = terminalEval(fen) || await engine.analyse(fen, AN_DEPTH);
+    run.evals[i] = terminalEval(fen) || await engine.analyse(fen, limits) || { cp: 0, pv: [], depth: 0 };
     if (an !== run) return;
     run.summary = summarize(run.evals, g.length);
     renderMoves();
@@ -7697,7 +7758,8 @@ function renderAnalysis() {
   evEl.textContent = formatEval(ev);
   evEl.classList.toggle('black', !!ev && white < 50);
   const fen = g.fenAt(viewPly);
-  $('#an-line').textContent = !ev ? 'Stockfish is thinking…' : ev.pv?.length ? pvSan(fen, ev.pv) : g.result && viewPly === g.length ? g.termination : '';
+  const evalsDone = an.evals.filter(Boolean).length;
+  $('#an-line').textContent = !ev ? `Stockfish is thinking… ${evalsDone}/${g.length + 1}` : ev.pv?.length ? pvSan(fen, ev.pv) : g.result && viewPly === g.length ? g.termination : '';
   const best = ev?.pv?.[0];
   board.setAutoShapes(best ? [{ from: best.slice(0, 2), to: best.slice(2, 4) }] : []);
 
@@ -7739,11 +7801,51 @@ function renderAnalysis() {
   const card = (c) => {
     const s = sum?.[c];
     const acc = s?.accuracy == null ? '…' : `${s.accuracy.toFixed(1)}%`;
-    const tally = s ? [['blunder', '??'], ['mistake', '?'], ['inaccuracy', '?!']].map(([k, m]) => `${s[k]}${m}`).join(' · ') : '';
+    // each count jumps to that player's next move of that kind
+    const tally = s ? [['blunder', '??'], ['mistake', '?'], ['inaccuracy', '?!']].map(([k, m]) =>
+      `<button class="tk k-${k}" data-color="${c}" data-kind="${k}" ${s[k] ? '' : 'disabled'} title="Next ${k}">${s[k]}${m}</button>`).join('') : '';
     return `<div><small>${esc(g.nameOf(c) || colorName(c))}</small><b>${acc}</b><span class="tally">${tally}</span></div>`;
   };
   $('#an-acc').innerHTML = card('w') + card('b');
+  renderAnMoves();
 }
+
+/** The whole game under the graph, two moves a row, with the analysis marks. */
+function renderAnMoves() {
+  const g = active();
+  const marks = an?.summary?.moves || [];
+  const rows = [];
+  for (let i = 0; i < g.length; i += 2) {
+    const cell = (j) => {
+      const p = g.plies[j];
+      if (!p) return '<span></span>';
+      const k = marks[j]?.kind;
+      return `<button class="mv${viewPly === j + 1 ? ' active' : ''}${k ? ` ${k}` : ''}" data-ply="${j + 1}">${san(p.san)}${k ? `<span class="mark">${MARKS[k]}</span>` : ''}</button>`;
+    };
+    rows.push(`<span class="an-num">${i / 2 + 1}.</span>${cell(i)}${cell(i + 1)}`);
+  }
+  const list = $('#an-moves');
+  list.innerHTML = rows.join('');
+  // keep the current move in view by scrolling the list itself (never the page)
+  const act = list.querySelector('.active');
+  if (act) {
+    const t = act.offsetTop - list.offsetTop;
+    if (t < list.scrollTop + 8) list.scrollTop = t - 40;
+    else if (t + act.offsetHeight > list.scrollTop + list.clientHeight - 8) list.scrollTop = t - list.clientHeight + 60;
+  }
+}
+
+$('#an-moves').addEventListener('click', (e) => { const b = e.target.closest('[data-ply]'); if (b) goto(+b.dataset.ply); });
+$('#an-acc').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-kind]');
+  if (!b || !an?.summary) return;
+  const moves = an.summary.moves;
+  const mine = (j) => moves[j]?.kind === b.dataset.kind && (j % 2 === 0 ? 'w' : 'b') === b.dataset.color;
+  // next one after the move on screen, wrapping round to the first
+  let j = moves.findIndex((_, k) => k >= viewPly && mine(k));
+  if (j < 0) j = moves.findIndex((_, k) => mine(k));
+  if (j >= 0) goto(j + 1);
+});
 
 $('#an-graph').addEventListener('click', (e) => {
   const r = e.currentTarget.getBoundingClientRect();

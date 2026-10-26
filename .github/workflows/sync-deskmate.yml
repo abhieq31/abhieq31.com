@@ -25,7 +25,7 @@ jobs:
           curl -fsSL "$base/deskmate.html" -o public/deskmate/index.html
           # Stockfish (GPLv3) for post-game analysis, loaded from /deskmate/vendor/stockfish/
           mkdir -p public/deskmate/vendor/stockfish
-          for f in stockfish.js stockfish.wasm COPYING.txt README.md; do
+          for f in stockfish.js stockfish.wasm stockfish.asm.js COPYING.txt README.md; do
             curl -fsSL "$base/vendor/stockfish/$f" -o "public/deskmate/vendor/stockfish/$f"
           done
 

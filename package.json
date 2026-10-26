@@ -71,7 +71,7 @@
     "vite": "^6.3.5"
   },
   "lint-staged": {
-    "*.{js,ts,tsx}": [
+    "{*.{js,ts,tsx},!(public)/**/*.{js,ts,tsx}}": [
       "oxfmt --write",
       "oxlint --fix"
     ],
