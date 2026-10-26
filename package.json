@@ -75,7 +75,7 @@
       "oxfmt --write",
       "oxlint --fix"
     ],
-    "*.json": [
+    "{*.json,!(public)/**/*.json}": [
       "oxfmt --write"
     ]
   },

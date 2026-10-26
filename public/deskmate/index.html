@@ -90,46 +90,43 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .half { font-size: 1.25rem; font-weight: 700; line-height: 1; }
 
 /* ---------- layout (desktop game view) ----------
-   [sidebar] [avatar name     ][eval][        ][ clock     ]   [⤢]
-             [  taken pieces  ]      [        ][ ‹ moves › ]   [⚙]
-             [                ]      [ board  ][ ½ Draw    ]
-             [ result/analysis]      [        ][ ⚑ Resign  ]
-             [avatar name     ]      [        ][ clock     ]
-   Players on the left, clocks on the right, each pair level with the board's top and bottom edge.
-   The board takes whatever is left: width = sidebar + both columns + gaps + padding + eval bar. */
+   [sidebar] [avatar name · pieces        clock] [⚙] [ opening          ]
+             [                                 ] [⤢] [ analysis         ]
+             [             board               ]     [ 1. e4  e5        ]
+             [                                 ]     [ |<  <  >  >|     ]
+             [avatar name · pieces        clock]     [ ½ Draw  ⚑ Resign ]
+   Every track is a fixed size, so the edges line up exactly: each bar is as wide as the board
+   with its clock flush to the board's right edge, and the panel's top and bottom are level with
+   the top bar's top and the bottom bar's bottom.
+   Board = whatever is left: height minus both bars, width minus sidebar, panel, tools, gaps, padding. */
 body { padding-left: var(--sb-w); }
 .game {
-  --card-h: 44px; --lw: 220px; --rw: 210px;
-  --board: min(calc(100vh - 48px), calc(100vw - var(--sb-w) - var(--lw) - var(--rw) - 160px), 1000px);
+  --bar-h: 42px; --pw: clamp(300px, 26vw, 400px); --tools: 40px;
+  --board: min(calc(100vh - 2 * var(--bar-h) - 48px), calc(100vw - var(--sb-w) - var(--pw) - var(--tools) - 116px), 1000px);
   display: grid;
-  grid-template-columns: var(--lw) var(--board) var(--rw);
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: var(--board) var(--tools) var(--pw);
+  grid-template-rows: var(--bar-h) var(--board) var(--bar-h);
   grid-template-areas:
-    "ptop  board ctop"
-    "panel board side"
-    "pbot  board cbot";
-  gap: 14px 22px;
-  justify-content: center;
-  /* centred by padding, not min-height: a min-height would stretch the 1fr row past the board */
-  padding: max(24px, calc((100vh - var(--board)) / 2)) 64px 0 50px; /* left: eval bar; right: corner buttons */
+    "ptop  tools panel"
+    "board tools panel"
+    "pbot  .     panel";
+  gap: 8px 10px;
+  justify-content: center; align-content: center;
+  min-height: 100vh; min-height: 100dvh;
+  padding: 16px 16px 16px 40px; /* left: room for the eval bar */
 }
-/* analysing: the review takes the right column, between the clocks */
-.game.analysing { --lw: 200px; --rw: 320px; }
-.game.analysing .side, .game.analysing .clock-wrap { display: none; }
-.pclock { display: none; font: 600 0.95rem var(--mono); color: var(--text-strong); font-variant-numeric: tabular-nums; }
-.game.analysing .pclock:not(.hidden) { display: block; }
-.player.top { grid-area: ptop; align-self: start; }
-.player.bottom { grid-area: pbot; align-self: end; }
-.clock-top { grid-area: ctop; align-self: start; }
-.clock-bottom { grid-area: cbot; align-self: end; }
+.game.analysing { --pw: clamp(340px, 30vw, 440px); }
+.player.top { grid-area: ptop; }
+.player.bottom { grid-area: pbot; }
+.player { align-self: center; justify-self: start; max-width: calc(var(--board) - 170px); }
+.clock-top { grid-area: ptop; }
+.clock-bottom { grid-area: pbot; }
+.clock-wrap { align-self: center; justify-self: end; }
 .board-area { grid-area: board; position: relative; }
+.board-tools { grid-area: 1 / 2 / 3 / 3; align-self: start; display: flex; flex-direction: column; gap: 4px; }
+.board-tools .icon-btn { color: #9a958e; width: 40px; }
 .panel { grid-area: panel; }
-.side { grid-area: side; }
-.mobile-bar { display: none; }
-
-/* focus and settings, stacked in the top-right corner of the page */
-.corner-tools { position: fixed; top: 12px; right: 12px; z-index: 20; display: flex; flex-direction: column; gap: 4px; }
-.corner-tools .icon-btn { color: #9a958e; }
+.focus-acts, .mobile-bar { display: none; }
 body[data-view="home"] #btn-focus { display: none; }
 
 /* eval bar, left of the board (analysis only) */
@@ -144,11 +141,31 @@ body[data-view="home"] #btn-focus { display: none; }
 .evalbar-num { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; font: 700 9px/1 var(--font); color: #333; }
 .evalbar.black-better .evalbar-num { bottom: auto; top: 4px; color: #ddd; }
 
-/* left column: result line, analysis after a game */
-.panel { align-self: center; display: flex; flex-direction: column; min-height: 0; max-height: 100%; }
-/* taken out of flow so it fills the space between the players without ever stretching the grid */
-.game { position: relative; }
-.game.analysing .panel { grid-area: 1 / 3 / 4 / 4; position: absolute; inset: 0; align-self: stretch; justify-self: stretch; background: #161617; border-radius: 8px; overflow: hidden; }
+/* the right panel: opening, analysis, the moves, navigation, actions */
+.panel {
+  display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+  background: #161617; border: 1px solid var(--line); border-radius: 8px;
+}
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none;
+  padding: 0 14px; height: 42px; border-bottom: 1px solid var(--line);
+}
+.opening { color: var(--text); font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tc-label { color: var(--muted); font: 600 0.8rem var(--mono); flex: none; }
+.panel-nav { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--line); flex: none; }
+.panel-actions { display: flex; align-items: center; gap: 4px; padding: 6px 8px 8px; flex: none; min-height: 50px; }
+.panel-actions .flip-btn { margin-left: auto; color: var(--muted); }
+.txt-btn {
+  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 10px; border: 0; border-radius: 6px;
+  background: transparent; color: #bdbab5; font: 600 0.95rem var(--font); cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.txt-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.07); color: #fff; }
+.txt-btn:disabled { opacity: 0.35; cursor: default; }
+.txt-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.txt-btn .half, .sq-btn .half { font-size: 1.15rem; font-weight: 700; line-height: 1; }
+.txt-btn.act-resign:hover:not(:disabled) { color: #f08c8c; }
+.txt-btn.offer, .sq-btn.offer { color: var(--gold); animation: offerPulse 1.4s ease-in-out infinite; }
+.panel-actions .act-analyse { flex: 1; }
 .icon-btn {
   display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 6px; flex: none;
   background: transparent; color: var(--text); cursor: pointer; transition: background 0.15s, color 0.15s;
@@ -189,28 +206,11 @@ body[data-view="home"] #btn-focus { display: none; }
 .result-line strong { font-size: 1.3rem; color: var(--text-strong); }
 .result-line span { font-size: 0.85rem; color: var(--muted); font-style: italic; }
 
-.game.analysing .analysis { flex: 1 1 auto; overflow-y: auto; }
-
-/* right column: moves under the top clock, then Draw / Resign centred between the clocks */
-.side { display: flex; flex-direction: column; min-height: 0; }
-.side .moveline { border-radius: 6px; }
-.side-acts { margin: auto 0; display: flex; flex-direction: column; gap: 8px; padding: 12px 0; }
-.act {
-  display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; background: #161617; color: #bdbab5;
-  font: 600 0.95rem var(--font); cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.act:hover:not(:disabled) { background: #222224; color: #fff; border-color: rgba(255, 255, 255, 0.16); }
-.act:disabled { opacity: 0.4; cursor: default; }
-.act svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.act .half { font-size: 1.1rem; }
-.act.act-resign:hover:not(:disabled) { color: #f08c8c; border-color: rgba(240, 140, 140, 0.4); }
-.act.primary { background: linear-gradient(180deg, #e5383b, #c1121f); border-color: transparent; color: #fff; height: 44px; }
-.act.primary:hover:not(:disabled) { background: linear-gradient(180deg, #ef4b4e, #d01b28); }
-.act.offer { color: var(--gold); border-color: rgba(232, 182, 76, 0.6); animation: offerPulse 1.4s ease-in-out infinite; }
+/* while analysing, the moves list gets the slack; everything else keeps its height */
+.game.analysing .analysis { flex: none; }
 
 /* analysis */
-.analysis { padding: 12px 12px 6px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.analysis { padding: 12px 12px 10px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; min-height: 0; }
 .an-verdict { margin: 0; padding: 10px 12px; border-radius: 8px; background: #f2f2f2; color: #2a2926; font-size: 0.95rem; min-height: 42px; }
 .an-verdict:empty { display: none; }
 .an-verdict b { font-weight: 800; }
@@ -231,19 +231,22 @@ body[data-view="home"] #btn-focus { display: none; }
 .an-progress span { display: block; height: 100%; width: 0; background: var(--accent-2); transition: width 0.2s; }
 .an-progress.done { visibility: hidden; }
 .an-moves {
-  flex: 1 1 200px; min-height: 140px; overflow-y: auto; display: grid; grid-template-columns: 30px 1fr 1fr;
-  align-content: start; gap: 1px 2px; padding: 4px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
-  scrollbar-width: thin;
+  position: relative; flex: 1 1 0; min-height: 96px; overflow-y: auto; display: grid; grid-template-columns: 40px 1fr 1fr;
+  align-content: start; gap: 1px 4px; padding: 6px 10px; scrollbar-width: thin;
 }
-.an-num { color: var(--muted); font-size: 0.85rem; padding: 4px 0 0 2px; }
+.an-moves > :nth-child(6n + 1), .an-moves > :nth-child(6n + 2), .an-moves > :nth-child(6n + 3) { background: rgba(255, 255, 255, 0.025); }
+.an-empty { grid-column: 1 / -1; color: var(--muted); font-size: 0.9rem; padding: 8px 4px; }
+.an-num { color: var(--muted); font-size: 0.85rem; display: flex; align-items: center; padding-left: 4px; }
 .an-moves .mv { text-align: left; }
 .tk { border: 0; background: none; padding: 1px 3px; border-radius: 3px; font: inherit; color: var(--muted); cursor: pointer; }
 .tk:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
 .tk:disabled { cursor: default; opacity: 0.6; }
 .tk.k-blunder:not(:disabled) { color: #e35b58; } .tk.k-mistake:not(:disabled) { color: #e58f2a; } .tk.k-inaccuracy:not(:disabled) { color: #f7c045; }
-.an-acc { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; }
-.an-acc div { display: flex; flex-direction: column; align-items: center; padding: 8px; border-radius: 6px; background: #111112; }
-.an-acc b { font-size: 1.35rem; color: var(--text-strong); }
+.an-acc { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; padding: 8px 10px 0; border-top: 1px solid var(--line); flex: none; }
+.an-acc.hidden { display: none; }
+.an-acc div { display: flex; flex-direction: column; align-items: center; padding: 6px; border-radius: 6px; background: #111112; min-width: 0; }
+.an-acc b { font-size: 1.25rem; color: var(--text-strong); }
+.an-acc small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .an-acc small { color: var(--muted); }
 .an-acc .tally { font-size: 0.78rem; color: var(--muted); }
 .an-nav { display: flex; justify-content: space-between; gap: 6px; }
@@ -329,11 +332,49 @@ body[data-view="home"] .game, body[data-view="game"] .home { display: none; }
 .link-btn:hover { color: var(--text-strong); text-decoration: none; }
 .link-btn svg { width: 16px; height: 16px; fill: currentColor; }
 
-/* ---------- focus mode: just the board, the players and the clocks ---------- */
+/* ---------- focus mode (Z): the board, the players, both clocks and two buttons ----------
+   [avatar name ]  [          ]  [⚙ ⤢]
+   [            ]  [          ]
+   [   clock    ]  [  board   ]  [ ½ ]
+   [   clock    ]  [          ]  [ ⚑ ]
+   [avatar name ]  [          ]
+   Centred by padding, not min-height, so the 1fr rows never grow past the board. */
 #btn-focus .ico-compress, body.focus #btn-focus .ico-expand { display: none; }
 body.focus #btn-focus .ico-compress { display: block; }
 body.focus { --sb-w: 0px; }
-body.focus .sidebar, body.focus .mobile-bar, body.focus .side .moveline-slot { display: none; }
+body.focus .sidebar, body.focus .mobile-bar, body.focus .panel { display: none; }
+body.focus .game {
+  --lw: 200px; --rw: 120px;
+  --board: min(calc(100vh - 48px), calc(100vw - var(--lw) - var(--rw) - 444px), 1100px); /* gaps 48 + padding 76 */
+  grid-template-columns: var(--lw) var(--board) var(--rw);
+  grid-template-rows: auto minmax(0, 1fr) auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "ptop board tools"
+    ".    board ."
+    "ctop board acts"
+    "cbot board acts"
+    ".    board ."
+    "pbot board .";
+  gap: 8px 24px;
+  min-height: 0;
+  padding: max(24px, calc((100vh - var(--board)) / 2)) 24px 0 52px;
+}
+body.focus .player.top { grid-area: ptop; align-self: start; max-width: 100%; }
+body.focus .player.bottom { grid-area: pbot; align-self: end; max-width: 100%; }
+body.focus .clock-top { grid-area: ctop; justify-self: stretch; }
+body.focus .clock-bottom { grid-area: cbot; justify-self: stretch; }
+body.focus .clock { width: 100%; }
+body.focus .board-area { grid-area: 1 / 2 / 7 / 3; }
+body.focus .board-tools { grid-area: tools; flex-direction: row; justify-self: start; }
+body.focus .focus-acts { grid-area: acts; display: flex; flex-direction: column; gap: 10px; align-self: center; justify-self: start; }
+.sq-btn {
+  display: grid; place-items: center; width: 56px; height: 56px; border-radius: 8px; border: 1px solid var(--line);
+  background: #1d1d1f; color: #d6d4d1; cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.sq-btn:hover:not(:disabled) { background: #29292c; color: #fff; }
+.sq-btn:disabled { opacity: 0.35; cursor: default; }
+.sq-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.sq-btn.act-resign:hover:not(:disabled) { color: #f08c8c; }
 
 
 .set-grid { display: grid; gap: 2px; }
@@ -453,6 +494,10 @@ body.focus .sidebar, body.focus .mobile-bar, body.focus .side .moveline-slot { d
   filter: drop-shadow(0 14px 14px rgba(0, 0, 0, 0.45)); /* lifted: a bit bigger, a deeper shadow */
 }
 .piece.fade { opacity: 0; z-index: 1; }
+/* carried after a click: the piece rides under the mouse, its square keeps a faint copy */
+.piece.ghost { transition: none; z-index: 10; pointer-events: none; filter: drop-shadow(0 14px 14px rgba(0, 0, 0, 0.45)); }
+.piece.carried { opacity: 0.35; }
+.board.carrying, .board.carrying .sq { cursor: grabbing !important; }
 .piece.appear { animation: appear 0.24s ease-out; }
 @keyframes appear { from { opacity: 0; } }
 .board.movable { cursor: default; }
@@ -506,26 +551,25 @@ body.focus .sidebar, body.focus .mobile-bar, body.focus .side .moveline-slot { d
 @keyframes fadeIn { from { opacity: 0; } }
 
 /* ---------- player cards ---------- */
-.player { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.player { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .avatar {
-  width: var(--card-h); height: var(--card-h); flex: none; border-radius: 6px;
+  width: 40px; height: 40px; flex: none; border-radius: 5px;
   background: #cfcac2 center / 78% no-repeat; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
   transition: box-shadow 0.25s;
 }
 .player[data-color="w"] .avatar { background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHN0eWxlPSJjb2xvci1zY2hlbWU6bGlnaHQgb25seSIgd2lkdGg9IjQ1IiBoZWlnaHQ9IjQ1IiB2aWV3Qm94PSIwIDAgNDUgNDUiPjxwYXRoIGZpbGw9IiNmZmYiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2Utd2lkdGg9IjEuNSIgZD0iTTIyLjUgOWMtMi4yMSAwLTQgMS43OS00IDQgMCAuODkuMjkgMS43MS43OCAyLjM4QzE3LjMzIDE2LjUgMTYgMTguNTkgMTYgMjFjMCAyLjAzLjk0IDMuODQgMi40MSA1LjAzLTMgMS4wNi03LjQxIDUuNTUtNy40MSAxMy40N2gyM2MwLTcuOTItNC40MS0xMi40MS03LjQxLTEzLjQ3IDEuNDctMS4xOSAyLjQxLTMgMi40MS01LjAzIDAtMi40MS0xLjMzLTQuNS0zLjI4LTUuNjIuNDktLjY3Ljc4LTEuNDkuNzgtMi4zOCAwLTIuMjEtMS43OS00LTQtNHoiLz48L3N2Zz4="); background-color: #b9b4ab; }
 .player[data-color="b"] .avatar { background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHN0eWxlPSJjb2xvci1zY2hlbWU6bGlnaHQgb25seSIgd2lkdGg9IjQ1IiBoZWlnaHQ9IjQ1IiB2aWV3Qm94PSIwIDAgNDUgNDUiPjxwYXRoIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2Utd2lkdGg9IjEuNSIgZD0iTTIyLjUgOWE0IDQgMCAwIDAtMy4yMiA2LjM4IDYuNDggNi40OCAwIDAgMC0uODcgMTAuNjVjLTMgMS4wNi03LjQxIDUuNTUtNy40MSAxMy40N2gyM2MwLTcuOTItNC40MS0xMi40MS03LjQxLTEzLjQ3YTYuNDYgNi40NiAwIDAgMC0uODctMTAuNjVBNC4wMSA0LjAxIDAgMCAwIDIyLjUgOXoiLz48L3N2Zz4="); background-color: #d8d4cc; }
 .player.to-move .avatar { box-shadow: 0 0 0 2px var(--accent-2), 0 0 18px rgba(229, 56, 59, 0.45); }
-.pmeta { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-height: var(--card-h); }
-.pline { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
-.pname { color: var(--text-strong); font-weight: 700; font-size: 1.08rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pstatus { font-size: 0.82rem; color: var(--muted); min-height: 1.2em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pmeta { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.pline { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.pname { color: var(--text-strong); font-weight: 700; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pstatus { font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player.to-move .pstatus { color: var(--accent-2); }
 .player.winner .pstatus { color: var(--gold); font-weight: 600; }
 .player.offer .pstatus { color: var(--gold); }
-.material { display: flex; flex-wrap: wrap; align-items: center; row-gap: 2px; color: var(--muted); font-size: 0.85rem; min-height: 1.45em; }
-.material:empty { display: none; }
+.material { display: flex; align-items: center; color: var(--muted); font-size: 0.82rem; height: 1.35em; white-space: nowrap; overflow: hidden; }
 .material .cap { display: inline-flex; margin-right: 4px; }
-.material .pc { width: 1.45em; height: 1.45em; margin-right: -0.6em; }
+.material .pc { width: 1.35em; height: 1.35em; margin-right: -0.55em; }
 .material .cap .pc:last-child { margin-right: 0; }
 .material .pc[class*=" b"] { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.6)); }
 .material b { margin-left: 0.6em; font-weight: 600; }
@@ -533,12 +577,12 @@ body.focus .sidebar, body.focus .mobile-bar, body.focus .side .moveline-slot { d
 /* ---------- clocks ---------- */
 .clock {
   display: flex; align-items: center; justify-content: flex-end; gap: 10px;
-  height: 52px; width: 100%; padding: 0 16px; border-radius: 6px;
-  font: 600 1.75rem/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+  height: 42px; width: 150px; padding: 0 12px; border-radius: 5px;
+  font: 600 1.55rem/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
   background: #121213; color: #9a958e; border: 1px solid var(--line);
   transition: background 0.25s, color 0.25s, box-shadow 0.25s;
 }
-.clock-ico { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; opacity: 0; transition: opacity 0.2s; margin-right: auto; }
+.clock-ico { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; opacity: 0; transition: opacity 0.2s; margin-right: auto; }
 .clock.active { background: #f4f2ee; color: #0e0e0f; box-shadow: 0 0 24px rgba(255, 255, 255, 0.12); }
 .clock.active .clock-ico { opacity: 1; }
 .clock.running .clock-ico { animation: tick 1s steps(2) infinite; }
@@ -690,45 +734,49 @@ kbd {
 
 /* ---------- responsive ---------- */
 @media (max-width: 760px) {
-  /* rows: move strip, 2 player rows, action row, gaps, padding */
+  /* rows: menu + move strip, top bar, board, bottom bar, actions (+ the review after a game) */
   :root { --sb-w: 0px; }
   body { font-size: 14px; }
-  .game {
-    --board: min(100vw, calc(100vh - 250px)); --board: min(100vw, calc(100dvh - 250px));
+  .game, body.focus .game {
+    --board: min(100vw, calc(100vh - 230px)); --board: min(100vw, calc(100dvh - 230px));
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: none;
-    grid-template-areas: "mbar mbar" "ptop ctop" "board board" "pbot cbot" "side side" "panel panel";
-    gap: 8px;
+    grid-template-areas: "mbar mbar" "ptop ptop" "board board" "pbot pbot" "panel panel";
+    gap: 6px; min-height: 0;
     padding: 6px 0 calc(8px + env(safe-area-inset-bottom));
     justify-content: stretch; align-content: start;
   }
-  .game.analysing { --lw: 0px; }
-  .player.top, .player.bottom, .clock-top, .clock-bottom { align-self: center; }
-  .corner-tools { top: 6px; right: 6px; flex-direction: row; }
-  .mobile-bar { grid-area: mbar; display: flex; align-items: center; gap: 4px; padding: 0 84px 0 6px; min-width: 0; }
+  .player, body.focus .player.top, body.focus .player.bottom { margin-left: 10px; max-width: calc(100% - 140px); align-self: center; }
+  .player.top, body.focus .player.top { grid-area: ptop; }
+  .player.bottom, body.focus .player.bottom { grid-area: pbot; }
+  .clock-top, body.focus .clock-top { grid-area: ptop; justify-self: end; }
+  .clock-bottom, body.focus .clock-bottom { grid-area: pbot; justify-self: end; }
+  .clock-wrap { margin-right: 10px; }
+  .clock, body.focus .clock { width: 120px; height: 40px; font-size: 1.35rem; padding: 0 10px; }
+  .clock-ico { width: 18px; height: 18px; }
+  .board-area, body.focus .board-area { grid-area: board; justify-self: center; width: var(--board); }
+  .board-frame { border-radius: 0; }
+  .mobile-bar, body.focus .mobile-bar { grid-area: mbar; display: flex; align-items: center; gap: 4px; padding: 0 90px 0 6px; min-width: 0; }
+  body.focus .mobile-bar .moveline-slot { visibility: hidden; }
   .mobile-bar .moveline-slot { flex: 1; min-width: 0; }
   .moveline { border-radius: 8px; min-height: 40px; }
-  .player { padding-left: 10px; }
-  .pline { flex-direction: row; align-items: center; gap: 8px; }
-  .material:empty { display: flex; }
-  .clock-wrap { margin-right: 6px; }
-  .clock { width: auto; min-width: 108px; height: 44px; font-size: 1.45rem; padding: 0 10px; }
-  .clock-ico { width: 20px; height: 20px; }
-  .board-area { justify-self: center; width: var(--board); }
-  .board-frame { border-radius: 0; }
+  .board-tools, body.focus .board-tools { grid-area: mbar; justify-self: end; align-self: center; flex-direction: row; margin-right: 6px; }
+  .focus-acts, body.focus .focus-acts { display: none; }
   .evalbar { right: auto; left: 0; top: auto; bottom: calc(100% + 2px); width: 100%; height: 6px; }
   .evalbar-fill { top: 0; height: 100%; width: var(--w, 50%); }
   .evalbar.flip .evalbar-fill { left: auto; right: 0; }
   .evalbar-num { display: none; }
-  .side .moveline-slot { display: none; }
-  .side-acts { margin: 0; flex-direction: row; padding: 0 10px; }
-  .side-acts .act { flex: 1; height: 44px; }
-  .panel { margin: 0 10px; }
-  .game.analysing .panel { position: static; }
+  /* the panel shrinks to its action row; after a game it also holds the review */
+  .panel, body.focus .panel { display: flex; margin: 0 10px; border: 0; background: transparent; }
+  .panel-head, .panel-nav { display: none; }
+  .an-moves { display: none; }
+  .game.analysing .an-moves { display: grid; max-height: 40vh; }
+  .game.analysing .panel { background: #161617; }
+  .panel-actions { padding: 0; }
+  .panel-actions .txt-btn { flex: 1; justify-content: center; height: 44px; background: #1d1d1f; }
   .sidebar { width: 0; padding: 10px 0; }
   .sidebar.open { width: 240px; padding: 10px 8px; }
   .sb-backdrop.open { display: block; position: fixed; inset: 0; z-index: 25; background: rgba(0, 0, 0, 0.5); }
-  body.focus .game { --board: min(100vw, calc(100dvh - 200px)); grid-template-areas: "ptop ctop" "board board" "pbot cbot" "side side" "panel panel"; padding-top: 52px; align-content: center; }
   .home { padding: 28px 16px; }
   .home-hero h1 { font-size: 1.9rem; }
   .home-games li { grid-template-columns: 54px 1fr; }
@@ -775,7 +823,6 @@ kbd {
       <button class="sb-item" id="btn-remote" title="Play a colleague"><svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span>Play a colleague</span></button>
       <button class="sb-item" id="btn-archive" title="Saved games"><svg viewBox="0 0 24 24"><path d="M3 5h18v4H3zM5 9h14v10H5zM9 13h6"/></svg><span>Saved games</span></button>
       <button class="sb-item" id="btn-analyse" title="Analysis"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8M7.5 12l2-2.5 2 1.5 2-3"/></svg><span>Analysis</span></button>
-      <button class="sb-item" id="btn-import" title="Import PGN"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M5 14v6h14v-6"/></svg><span>Import PGN</span></button>
     <span class="sb-gap"></span>
       <button class="sb-item sb-toggle" id="sb-toggle" title="Expand menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="m13 6 6 6-6 6M5 6l6 6-6 6"/></svg><span>Collapse</span></button>
   </aside>
@@ -826,36 +873,33 @@ kbd {
       </section>
       <footer class="home-foot">
         <button class="link-btn" id="btn-help">How to play</button>
-        <button class="link-btn" id="home-import">Import a PGN</button>
         <a class="link-btn" href="https://github.com/abhieq31/Deskmate" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" class="fill"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .8.1-.7.4-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5a3.9 3.9 0 0 1 1-2.7 3.6 3.6 0 0 1 .1-2.7s.8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .6 1.4.2 2.4.1 2.7a3.9 3.9 0 0 1 1 2.7c0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg> Source code</a>
       </footer>
     </div>
   </section>
 
-  <!-- top-right corner: focus and settings, one above the other -->
-  <div class="corner-tools">
-    <button class="icon-btn" id="btn-focus" title="Hide menu and moves (Z)" aria-label="Focus on the board"><svg viewBox="0 0 24 24" class="ico-expand"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><svg viewBox="0 0 24 24" class="ico-compress"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
-    <button class="icon-btn gear" id="btn-settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
-  </div>
-
   <main class="game">
-    <!-- phones: menu button + the one-line move strip -->
+    <!-- phones: menu, the one-line move strip, focus and settings -->
     <div class="mobile-bar">
       <button class="icon-btn" id="btn-sidebar" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-      <div class="moveline-slot" id="moveline-slot-mobile"></div>
+      <div class="moveline-slot" id="moveline-slot-mobile">
+        <div class="moveline" id="moveline">
+          <button class="ml-arrow" id="nav-prev" title="Back (←)" aria-label="Previous move"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <div class="ml-moves" id="moves" aria-label="Moves"></div>
+          <button class="ml-arrow" id="nav-next" title="Forward (→)" aria-label="Next move"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+        </div>
+      </div>
     </div>
 
+    <!-- each player's bar spans the board exactly: name and taken pieces on the left, clock flush with the board's right edge -->
     <section class="player top" id="player-top">
       <span class="avatar" aria-hidden="true"></span>
       <div class="pmeta">
-        <div class="pline"><span class="pname" data-name></span><span class="material" data-material></span></div>
-        <div class="pstatus" data-status></div>
-        <span class="pclock hidden" data-pclock></span>
+        <div class="pline"><span class="pname" data-name></span><span class="pstatus" data-status></span></div>
+        <span class="material" data-material></span>
       </div>
     </section>
-    <div class="clock-wrap clock-top">
-      <div class="clock" id="clock-top" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div>
-    </div>
+    <div class="clock-wrap clock-top"><div class="clock" id="clock-top" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div></div>
 
     <section class="board-area">
       <div class="evalbar hidden" id="evalbar" aria-label="Evaluation"><div class="evalbar-fill" id="evalbar-fill"></div><span class="evalbar-num" id="evalbar-num"></span></div>
@@ -871,51 +915,50 @@ kbd {
     <section class="player bottom" id="player-bottom">
       <span class="avatar" aria-hidden="true"></span>
       <div class="pmeta">
-        <div class="pline"><span class="pname" data-name></span><span class="material" data-material></span></div>
-        <div class="pstatus" data-status></div>
-        <span class="pclock hidden" data-pclock></span>
+        <div class="pline"><span class="pname" data-name></span><span class="pstatus" data-status></span></div>
+        <span class="material" data-material></span>
       </div>
     </section>
-    <div class="clock-wrap clock-bottom">
-      <div class="clock" id="clock-bottom" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div>
+    <div class="clock-wrap clock-bottom"><div class="clock" id="clock-bottom" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div></div>
+
+    <!-- next to the board's top-right corner -->
+    <div class="board-tools">
+      <button class="icon-btn gear" id="btn-settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      <button class="icon-btn" id="btn-focus" title="Hide menu and moves (Z)" aria-label="Focus on the board"><svg viewBox="0 0 24 24" class="ico-expand"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><svg viewBox="0 0 24 24" class="ico-compress"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
     </div>
 
-    <!-- right column, between the clocks: the one line of moves, then Draw / Resign -->
-    <div class="side">
-      <div class="moveline-slot" id="moveline-slot-side">
-        <div class="moveline" id="moveline">
-          <button class="ml-arrow" id="nav-prev" title="Back (←)" aria-label="Previous move"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
-          <div class="ml-moves" id="moves" aria-label="Moves"></div>
-          <button class="ml-arrow" id="nav-next" title="Forward (→)" aria-label="Next move"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-        </div>
-      </div>
-      <div class="side-acts" aria-label="Game actions">
-        <button class="act act-draw"><span class="half">½</span><span>Draw</span></button>
-        <button class="act act-resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
-        <button class="act act-pause hidden"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
-        <button class="act primary act-analyse hidden"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8M7.5 12l2-2.5 2 1.5 2-3"/></svg><span>Analyse game</span></button>
-      </div>
+    <!-- focus mode: Draw and Resign as two squares beside the board -->
+    <div class="focus-acts" aria-label="Game actions">
+      <button class="sq-btn act-draw" title="Draw"><span class="half">½</span></button>
+      <button class="sq-btn act-resign" title="Resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></button>
     </div>
 
-    <!-- the result (left, between the players); after a game the analysis, on the right between the clocks -->
+    <!-- right panel, top and bottom level with the player bars -->
     <aside class="panel" id="panel" aria-label="Game">
+      <div class="panel-head"><span class="opening" id="opening">Starting position</span><span class="tc-label" id="tc-label"></span></div>
       <div class="analysis hidden" id="analysis">
         <p class="an-verdict" id="an-verdict"></p>
         <div class="an-head"><span class="an-eval" id="an-eval">0.0</span><span class="an-line" id="an-line"></span></div>
         <svg class="an-graph" id="an-graph" viewBox="0 0 100 40" preserveAspectRatio="none" aria-label="Evaluation graph"></svg>
         <div class="an-progress" id="an-progress"><span></span></div>
-        <div class="an-moves" id="an-moves" aria-label="Moves"></div>
-        <div class="an-acc" id="an-acc"></div>
-        <div class="an-nav">
-          <button class="pn" id="nav-first" title="First move (↑)" aria-label="First move"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-8 6 8 6z"/></svg></button>
-          <button class="pn" data-nav="prev" aria-label="Previous move"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
-          <button class="pn" data-nav="next" aria-label="Next move"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-          <button class="pn" id="nav-last" title="Last move (↓)" aria-label="Last move"><svg viewBox="0 0 24 24"><path d="M18 5v14M6 6l8 6-8 6z"/></svg></button>
-        </div>
       </div>
+      <div class="an-moves" id="an-moves" aria-label="Moves"></div>
+      <div class="an-acc hidden" id="an-acc"></div>
       <div class="result-line hidden" id="result-line"></div>
+      <div class="panel-nav">
+        <button class="pn" id="nav-first" title="First move (↑)" aria-label="First move"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-8 6 8 6z"/></svg></button>
+        <button class="pn" data-nav="prev" title="Back (←)" aria-label="Previous move"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <button class="pn" data-nav="next" title="Forward (→)" aria-label="Next move"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+        <button class="pn" id="nav-last" title="Last move (↓)" aria-label="Last move"><svg viewBox="0 0 24 24"><path d="M18 5v14M6 6l8 6-8 6z"/></svg></button>
+      </div>
+      <div class="panel-actions">
+        <button class="txt-btn act-draw"><span class="half">½</span><span>Draw</span></button>
+        <button class="txt-btn act-resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
+        <button class="txt-btn act-pause hidden"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
+        <button class="btn primary small act-analyse hidden"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8M7.5 12l2-2.5 2 1.5 2-3"/></svg>Analyse game</button>
+        <button class="icon-btn flip-btn" id="btn-flip2" title="Flip board (F)" aria-label="Flip board"><svg viewBox="0 0 24 24"><path d="M7 4v13M3.5 13.5 7 17l3.5-3.5M17 20V7M13.5 10.5 17 7l3.5 3.5"/></svg></button>
+      </div>
     </aside>
-
   </main>
 
   <!-- Settings (⚙ next to the board) -->
@@ -945,7 +988,7 @@ kbd {
       <button class="btn small" id="btn-fen">Copy FEN</button>
       <span class="tc-badge" id="tc-badge"></span>
     </div>
-    <p class="side-foot muted">Games are stored only in this browser.<span class="offline-dl"> <a href="" download="deskmate.html">Download the offline version</a>.</span></p>
+    <p class="side-foot muted">Games are stored only in this browser.</p>
   </dialog>
 
   <!-- New game -->
@@ -1085,20 +1128,6 @@ kbd {
     </div>
   </dialog>
 
-  <!-- Import -->
-  <dialog id="dlg-import" class="modal wide">
-    <form method="dialog" id="form-import">
-      <h2>Import PGN</h2>
-      <textarea id="import-text" rows="9" placeholder="Paste a PGN here…" spellcheck="false"></textarea>
-      <label class="btn small file-btn">Choose .pgn file<input type="file" id="import-file" accept=".pgn,text/plain" hidden /></label>
-      <p class="error hidden" id="import-error"></p>
-      <div class="modal-actions">
-        <button type="button" class="btn" data-close>Cancel</button>
-        <button type="submit" class="btn primary">Import &amp; review</button>
-      </div>
-    </form>
-  </dialog>
-
   <!-- Help -->
   <dialog id="dlg-help" class="modal">
     <div class="modal-head">
@@ -1106,7 +1135,7 @@ kbd {
       <button class="btn icon-only ghost" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <ul class="help">
-      <li>Click or drag a piece. Dots show where it can go; rings show captures.</li>
+      <li>Drag a piece, or click it once to pick it up and click the square to put it on. Dots show where it can go; rings show captures.</li>
       <li>On one laptop, the board turns to the side of whoever is to move (setting: <em>Turn the board for each player</em>).</li>
       <li>Right-click and drag to draw arrows; right-click a square to circle it.</li>
       <li><em>Play a colleague</em>: create a game and share its 6-character code once. Moves then appear on both laptops as they are played.</li>
@@ -6363,7 +6392,9 @@ function appBase() {
   const last = p.slice(p.lastIndexOf('/') + 1);
   return last.includes('.') ? p.slice(0, p.lastIndexOf('/') + 1) : `${p}/`;
 }
-const engineFile = (file) => new URL(`${appBase()}vendor/stockfish/${file}`, location.href).href;
+/** URL of a file under vendor/, next to the app on any host. */
+const vendorUrl = (path) => new URL(`${appBase()}vendor/${path}`, location.href).href;
+const engineFile = (file) => vendorUrl(`stockfish/${file}`);
 const engineUrl = () => engineFile('stockfish.js');
 
 /**
@@ -6523,7 +6554,35 @@ class Engine {
   }
 }
 
-return { engineUrl, engineCandidates, Engine };
+return { vendorUrl, engineUrl, engineCandidates, Engine };
+})();
+
+__mods["js/openings.js"] = (() => {
+// Opening names from lichess's chess-openings data set (CC0), built into vendor/openings/openings.json
+// by scripts/build-openings.mjs. Fetched once, only when a game has moves to name.
+const { vendorUrl } = __mods["js/engine.js"];
+let table = null;
+
+/** The table: position (FEN without move counters) → "ECO Name". */
+function loadOpenings() {
+  table = table || fetch(vendorUrl('openings/openings.json')).then((r) => {
+    if (!r.ok) throw new Error(`openings: ${r.status}`);
+    return r.json();
+  });
+  table.catch(() => { table = null; });
+  return table;
+}
+
+/** Name of the deepest known position in `fens` (oldest first), without the ECO code; or null. */
+function openingName(openings, fens) {
+  for (let i = fens.length - 1; i >= 0; i--) {
+    const hit = openings[fens[i].split(' ').slice(0, 4).join(' ')];
+    if (hit) return hit.slice(4);
+  }
+  return null;
+}
+
+return { loadOpenings, openingName };
 })();
 
 __mods["js/analysis.js"] = (() => {
@@ -6658,6 +6717,8 @@ class Board {
     this.shapes = []; // { from, to } arrows drawn by the player, from === to is a circle
     this.autoShapes = []; // arrows the app draws (engine's best move)
     this.drawing = null;
+    this.carry = null; // a piece picked up by a click, following the mouse until it's put down
+    this.pointer = null; // last mouse position, for the carried piece
 
     root.classList.add('board');
     this.inner = el('div', 'board-inner', root);
@@ -6849,6 +6910,7 @@ class Board {
       s.classList.toggle('hover', !!this.drag?.moved && this.drag.over === sq);
       s.classList.toggle('can-move', !!movable && dests.has(sq));
     }
+    this._syncCarry();
     this.root.classList.toggle('movable', !!movable);
     this.root.classList.toggle('dragging-piece', !!this.drag);
   }
@@ -6862,6 +6924,7 @@ class Board {
   }
 
   _down(e) {
+    this.pointerType = e.pointerType;
     const sq = this._eventSquare(e);
     if (!sq) return;
     if (e.button === 2) {
@@ -6874,6 +6937,17 @@ class Board {
     const targets = this.selected ? this.state.dests.get(this.selected) || [] : [];
     if (this.selected && targets.includes(sq)) {
       const from = this.selected;
+      // a carried piece is put down right there, without sliding over from its square
+      if (this.carry) {
+        const p = this.pieces.get(from);
+        this.root.classList.add('no-anim');
+        this.pieces.get(sq)?.el.remove();
+        this.pieces.delete(from);
+        this.pieces.set(sq, p);
+        this._place(p.el, sq);
+        reflow(p.el);
+        this.root.classList.remove('no-anim');
+      }
       this.selected = null;
       this._highlight();
       this.onMove(from, sq);
@@ -6912,8 +6986,12 @@ class Board {
   }
 
   _move(e) {
+    if (e.pointerType === 'mouse') this.pointer = { x: e.clientX, y: e.clientY };
     const d = this.drag;
-    if (!d) return;
+    if (!d) {
+      if (this.carry) this._carryFollow();
+      return;
+    }
     if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 3) d.moved = true;
     this._follow(e.clientX, e.clientY);
     const over = this._eventSquare(e);
@@ -6966,6 +7044,47 @@ class Board {
     this.drag = null;
     this.selected = null;
     this._highlight();
+  }
+
+  /* ---------- carrying: click a piece, it follows the mouse, click a square to put it down ---------- */
+
+  _syncCarry() {
+    const want = this.selected && !this.drag && this.pointerType === 'mouse' && this.pointer ? this.selected : null;
+    if (this.carry && this.carry.from === want && this.carry.el === this.pieces.get(want)?.el) return;
+    if (this.carry) {
+      this.carry.ghost.remove();
+      this.carry.el.classList.remove('carried');
+      this._sqByName.get(this.carry.over)?.classList.remove('hover');
+      this.root.classList.remove('carrying');
+      this.carry = null;
+    }
+    const p = want && this.pieces.get(want);
+    if (!p) return;
+    const ghost = el('div', `piece piece-img ${p.code} ghost`, this.piecesEl);
+    p.el.classList.add('carried');
+    this.root.classList.add('carrying');
+    this.carry = { from: want, el: p.el, ghost, over: null };
+    this._carryFollow();
+  }
+
+  _carryFollow() {
+    const c = this.carry;
+    if (!c || !this.pointer) return;
+    if (c.raf) return;
+    c.raf = requestAnimationFrame(() => {
+      c.raf = 0;
+      if (this.carry !== c) return;
+      const rect = this.inner.getBoundingClientRect();
+      const size = rect.width / 8;
+      c.ghost.style.transform = `translate3d(${this.pointer.x - rect.left - size / 2}px, ${this.pointer.y - rect.top - size / 2}px, 0) scale(1.14)`;
+      const over = this._eventSquare({ clientX: this.pointer.x, clientY: this.pointer.y });
+      if (over !== c.over) {
+        this._sqByName.get(c.over)?.classList.remove('hover');
+        c.over = over;
+        const targets = this.state.dests.get(c.from) || [];
+        if (targets.includes(over)) this._sqByName.get(over)?.classList.add('hover');
+      }
+    });
   }
 
   /* ---------- arrows & circles ---------- */
@@ -7192,6 +7311,7 @@ const { packMoves, unpackMoves } = __mods["js/remote.js"];
 const { Room, newRoomCode, parseRoomCode, formatRoomCode } = __mods["js/live.js"];
 const { Engine } = __mods["js/engine.js"];
 const { standings } = __mods["js/office.js"];
+const { loadOpenings, openingName } = __mods["js/openings.js"];
 const { summarize, winPct, formatEval, MARKS } = __mods["js/analysis.js"];
 const { Chess } = __mods["vendor/chess.js"];
 const $ = (sel) => document.querySelector(sel);
@@ -7320,11 +7440,10 @@ function fmtClock(ms) {
 function renderClocks() {
   const g = active();
   const bottom = board.orientation;
-  for (const [sel, color, card] of [['#clock-top', other(bottom), '#player-top'], ['#clock-bottom', bottom, '#player-bottom']]) {
+  for (const [sel, color] of [['#clock-top', other(bottom)], ['#clock-bottom', bottom]]) {
     const clock = $(sel);
     clock.parentElement.classList.toggle('hidden', !g.hasClock);
-    const pclock = $(`${card} [data-pclock]`);
-    pclock.classList.toggle('hidden', !g.hasClock);
+
     const time = clock.querySelector('[data-time]');
     clock.classList.toggle('active', !g.over && !review && viewPly === g.length && g.turn === color && bothSeated());
     clock.classList.toggle('unlimited', !g.hasClock);
@@ -7338,7 +7457,6 @@ function renderClocks() {
     const past = review || viewPly < g.length;
     const ms = past ? g.clocksAt(viewPly)[color] : g.clocks[color];
     time.textContent = fmtClock(ms);
-    pclock.textContent = fmtClock(ms);
     clock.classList.toggle('running', !past && clockRunning() && game.turn === color);
     clock.classList.toggle('low', ms < 20000 && !past);
     clock.classList.toggle('paused', !review && paused && game.turn === color && game.length > 0 && !game.over);
@@ -7366,6 +7484,10 @@ function renderMoves() {
     else if (r > list.scrollLeft + list.clientWidth - 20) list.scrollLeft = r - list.clientWidth + 40;
   } else if (viewPly === 0) list.scrollLeft = 0;
   else list.scrollLeft = list.scrollWidth;
+
+  renderAnMoves();
+  renderOpening(g);
+  $('#tc-label').textContent = g.tcInfo.base ? g.tcInfo.label.replace(/ /g, '') : '';
 
   const rl = $('#result-line');
   rl.classList.toggle('hidden', !g.result);
@@ -7420,6 +7542,20 @@ function renderControls() {
     b.innerHTML = paused ? ICON_RESUME : ICON_PAUSE;
     b.title = paused ? 'Resume clocks (Space)' : 'Pause clocks (Space)';
   }
+}
+
+/** The opening's name above the moves, from lichess's open data set (loaded once, on first use). */
+let openings = null;
+function renderOpening(g) {
+  const el = $('#opening');
+  if (!g.length) { el.textContent = 'Starting position'; return; }
+  if (!openings) {
+    loadOpenings().then((t) => { openings = t; renderOpening(active()); }).catch(() => {});
+    return;
+  }
+  const fens = [];
+  for (let i = 1; i <= Math.min(viewPly || g.length, g.length); i++) fens.push(g.fenAt(i));
+  el.textContent = openingName(openings, fens) || el.textContent;
 }
 
 /* ---------------- moves ---------------- */
@@ -7940,6 +8076,7 @@ function renderAnalysis() {
   $('#analysis').classList.toggle('hidden', !on);
   $('#evalbar').classList.toggle('hidden', !on);
   $$('#board .sq-glyph').forEach((e) => e.remove());
+  $('#an-acc').classList.toggle('hidden', !on);
   if (!on) { board.setAutoShapes([]); return; }
   const ev = an.evals[viewPly];
   const white = winPct(ev);
@@ -8008,13 +8145,12 @@ function renderAnalysis() {
     return `<div><small>${esc(g.nameOf(c) || colorName(c))}</small><b>${acc}</b><span class="tally">${tally}</span></div>`;
   };
   $('#an-acc').innerHTML = card('w') + card('b');
-  renderAnMoves();
 }
 
-/** The whole game under the graph, two moves a row, with the analysis marks. */
+/** The whole game in the panel, two moves a row, with the analysis marks once there are some. */
 function renderAnMoves() {
   const g = active();
-  const marks = an?.summary?.moves || [];
+  const marks = an && an.game === g ? an.summary?.moves || [] : [];
   const rows = [];
   for (let i = 0; i < g.length; i += 2) {
     const cell = (j) => {
@@ -8026,14 +8162,15 @@ function renderAnMoves() {
     rows.push(`<span class="an-num">${i / 2 + 1}.</span>${cell(i)}${cell(i + 1)}`);
   }
   const list = $('#an-moves');
-  list.innerHTML = rows.join('');
+  list.innerHTML = rows.join('') || '<span class="an-empty">No moves yet</span>';
   // keep the current move in view by scrolling the list itself (never the page)
   const act = list.querySelector('.active');
   if (act) {
-    const t = act.offsetTop - list.offsetTop;
-    if (t < list.scrollTop + 8) list.scrollTop = t - 40;
-    else if (t + act.offsetHeight > list.scrollTop + list.clientHeight - 8) list.scrollTop = t - list.clientHeight + 60;
-  }
+    // offsets relative to the list itself (it is positioned), so this never scrolls the page
+    const t = act.offsetTop;
+    if (t < list.scrollTop) list.scrollTop = t - 8;
+    else if (t + act.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = t + act.offsetHeight - list.clientHeight + 8;
+  } else if (viewPly === g.length) list.scrollTop = list.scrollHeight;
 }
 
 $('#an-moves').addEventListener('click', (e) => { const b = e.target.closest('[data-ply]'); if (b) goto(+b.dataset.ply); });
@@ -8155,29 +8292,6 @@ $('#archive-export').addEventListener('click', () => {
   saveFile(`deskmate-games-${Date.now()}.pgn`, list.map((g) => new Game(g).pgn()).join('\n'));
 });
 
-$('#form-import').addEventListener('submit', (e) => {
-  const text = $('#import-text').value.trim();
-  const err = $('#import-error');
-  try {
-    if (!text) throw new Error('Paste a PGN first.');
-    const g = Game.fromPGN(text);
-    if (!g.length) throw new Error('No moves found in this PGN.');
-    storage.archive(g.toJSON());
-    err.classList.add('hidden');
-    $('#import-text').value = '';
-    openReview(g);
-    toast('Game imported and saved');
-  } catch (ex) {
-    e.preventDefault();
-    err.textContent = `Could not read PGN: ${ex.message}`;
-    err.classList.remove('hidden');
-  }
-});
-$('#import-file').addEventListener('change', async (e) => {
-  const f = e.target.files[0];
-  if (f) $('#import-text').value = await f.text();
-});
-
 /* ---------------- export helpers ---------------- */
 
 function saveFile(name, text) {
@@ -8237,6 +8351,7 @@ $('#over-analyse').addEventListener('click', () => { $('#dlg-over').close(); sta
 $('[data-nav="prev"]').addEventListener('click', () => goto(viewPly - 1));
 $('[data-nav="next"]').addEventListener('click', () => goto(viewPly + 1));
 $$('.act-pause').forEach((b) => b.addEventListener('click', togglePause));
+$('#btn-flip2').addEventListener('click', () => $('#btn-flip').click());
 $('#btn-flip').addEventListener('click', () => { clearTimeout(flipTimer); board.flip(); renderPlayers(); renderAnalysis(); });
 $('#btn-undo').addEventListener('click', takeback);
 
@@ -8316,7 +8431,6 @@ $('#review-exit').addEventListener('click', () => (review ? exitReview() : goto(
 $('#btn-pgn-copy').addEventListener('click', () => copy(active().pgn(), 'PGN'));
 $('#btn-pgn-download').addEventListener('click', () => download(active()));
 $('#btn-fen').addEventListener('click', () => copy(active().fenAt(viewPly), 'FEN'));
-$('#btn-import').addEventListener('click', () => { $('#import-error').classList.add('hidden'); openDialog('#dlg-import'); });
 
 document.addEventListener('keydown', (e) => {
   if (e.target.closest('input, textarea') || $$('dialog[open]').length) return;
@@ -8367,10 +8481,6 @@ function applyPrefs() {
   $$('.swatch').forEach((s) => s.setAttribute('aria-checked', String(s.dataset.theme === settings.theme)));
 }
 
-// The one-line move strip sits under the top clock on wide screens and above the board on phones.
-const phoneLayout = matchMedia('(max-width: 760px)');
-const placeMoves = () => $(phoneLayout.matches ? '#moveline-slot-mobile' : '#moveline-slot-side').appendChild($('#moveline'));
-phoneLayout.addEventListener('change', placeMoves);
 
 /* ---------------- sidebar ---------------- */
 
@@ -8476,16 +8586,12 @@ $('#form-ai').addEventListener('submit', () => {
   startGame({ white: me === 'w' ? name : bot, black: me === 'b' ? name : bot, tc, ai: { color: other(me), level } });
 });
 $('#home-all').addEventListener('click', () => { renderArchive(); openDialog('#dlg-archive'); });
-$('#home-import').addEventListener('click', () => { $('#import-error').classList.add('hidden'); openDialog('#dlg-import'); });
 $('#sb-home').addEventListener('click', (e) => { e.preventDefault(); setSidebar(false); setView('home'); });
 $('#btn-focus').addEventListener('click', toggleFocus);
 
 /* ---------------- boot ---------------- */
 
-placeMoves();
 applyPrefs();
-// the offline download link only makes sense on the hosted site
-if (!/^https?:$/.test(location.protocol)) $('.offline-dl')?.remove();
 board.setOrientation(homeOrientation());
 setView(inProgress() ? 'game' : 'home');
 if (game.remote) connectRoom(game.remote.room);

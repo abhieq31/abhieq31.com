@@ -28,6 +28,11 @@ jobs:
           for f in stockfish.js stockfish.wasm stockfish.asm.js COPYING.txt README.md; do
             curl -fsSL "$base/vendor/stockfish/$f" -o "public/deskmate/vendor/stockfish/$f"
           done
+          # opening names (lichess chess-openings, CC0)
+          mkdir -p public/deskmate/vendor/openings
+          for f in openings.json COPYING.txt README.md; do
+            curl -fsSL "$base/vendor/openings/$f" -o "public/deskmate/vendor/openings/$f"
+          done
 
       - name: Check it is a Deskmate single-file build
         run: grep -q 'data-single-file' public/deskmate/index.html
