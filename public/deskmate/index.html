@@ -30,7 +30,8 @@
   --gold: #e8b64c;
   --radius: 10px;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25);
-  --board: min(calc(100vh - 210px), calc(100vw - 440px), 820px);
+  /* everything but the board: 2 player rows + gaps + padding (height), rail + gap + padding (width) */
+  --board: min(calc(100vh - 136px), calc(100vw - 130px), 980px);
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', Ubuntu, sans-serif;
   --mono: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Menlo, Consolas, monospace;
   color-scheme: dark;
@@ -68,17 +69,12 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
   100% { transform: translate(-6vmax, 9vmax) scale(0.95); }
 }
 
-/* ---------- top bar ---------- */
-.topbar {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 10px clamp(12px, 3vw, 28px); height: 58px;
-}
+/* ---------- brand (shown in the menu) ---------- */
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text-strong); font-size: 1.3rem; letter-spacing: 0.02em; }
 .brand:hover { text-decoration: none; }
 .brand b { color: var(--accent-2); font-weight: 700; }
 .brand img { filter: drop-shadow(0 2px 8px rgba(155, 199, 0, 0.35)); transition: transform 0.4s cubic-bezier(.3, 1.6, .5, 1); }
 .brand:hover img { transform: rotate(-12deg) scale(1.08); }
-.top-actions { display: flex; gap: 8px; align-items: center; }
 
 /* ---------- buttons ---------- */
 .btn {
@@ -110,32 +106,53 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .btn.small svg { width: 17px; height: 17px; }
 .half { font-size: 1.25rem; font-weight: 700; line-height: 1; }
 
-/* ---------- layout (chess.com-style) ----------
-   desktop:  [avatar name      clock]  [ moves panel ]        phone:  [avatar name   clock]
-             [        board         ]  [ draw  resign]                [       board       ]
-             [avatar name      clock]  [ |< < > >|   ]                [avatar name   clock]
-                                                                     [     toolbar       ]
-   Each clock shares its player's grid cell and sits at the right edge of the board. */
+/* ---------- layout: the board is the page ----------
+   desktop:  [avatar name        clock]          phone:  [avatar name   clock]
+             [                        ]  [½   ]           [       board       ]
+             [         board          ]  [⚑   ]           [avatar name   clock]
+             [                        ]  [☰   ]           [ ½ Draw ⚑ Resign ☰ ]
+             [avatar name        clock]
+   Each clock shares its player's grid cell, at the right edge of the board. */
 .game {
-  --card-h: 52px;
+  --card-h: 44px;
+  --rail-w: 76px;
   display: grid;
-  grid-template-columns: var(--board) minmax(300px, 360px);
+  grid-template-columns: var(--board) var(--rail-w);
   grid-template-areas:
-    "ptop  panel"
-    "board panel"
-    "pbot  panel";
-  gap: 8px 20px;
+    "ptop  ."
+    "board rail"
+    "pbot  .";
+  gap: 8px 14px;
   justify-content: center;
-  padding: 4px clamp(12px, 2vw, 24px) 20px;
+  align-content: center;
+  min-height: 100vh; min-height: 100dvh;
+  padding: 12px;
 }
 .player.top, .clock-top { grid-area: ptop; }
 .player.bottom, .clock-bottom { grid-area: pbot; }
-.player { justify-self: start; max-width: calc(100% - 190px); }
+.player { justify-self: start; max-width: calc(100% - 180px); }
 .clock { justify-self: end; }
 .board-area { grid-area: board; position: relative; }
-.panel { grid-area: panel; }
-.toolbar { grid-area: tools; display: none; }
-.mobile-only { display: none !important; }
+
+/* the rail: Draw, Resign, (Code / Pause when they apply) and the menu */
+.rail { grid-area: rail; display: flex; flex-direction: column; gap: 6px; }
+.rail-gap { flex: 1; }
+.rb {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  width: 100%; padding: 10px 4px; border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(38, 36, 33, 0.6); color: var(--text); cursor: pointer;
+  font: 600 0.75rem var(--font); letter-spacing: 0.02em;
+  transition: background 0.15s, color 0.15s, transform 0.12s;
+}
+.rb svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.rb .half { font-size: 1.3rem; font-weight: 700; line-height: 22px; height: 22px; }
+.rb:hover:not(:disabled) { background: rgba(255, 255, 255, 0.09); color: var(--text-strong); }
+.rb:active:not(:disabled) { transform: scale(0.96); }
+.rb:disabled { opacity: 0.3; cursor: default; }
+.rb:focus-visible { outline: 2px solid var(--blue); }
+.rb.danger { color: #f08c8c; }
+.rb.attn { color: var(--blue); border-color: rgba(54, 146, 231, 0.5); }
+.rb.offer { color: var(--gold); border-color: rgba(232, 182, 76, 0.5); animation: offerPulse 1.4s ease-in-out infinite; }
 
 .card {
   background: var(--panel);
@@ -147,7 +164,11 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
   -webkit-backdrop-filter: blur(14px);
 }
 
-/* ---------- options drawer ---------- */
+/* ---------- menu drawer ---------- */
+.menu-main { display: grid; gap: 8px; }
+.menu-main .btn { justify-content: flex-start; min-height: 42px; }
+.menu-foot { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 12px; }
+.menu-foot .btn svg { width: 17px; height: 17px; }
 .drawer {
   margin: 0 0 0 auto; height: 100vh; max-height: 100vh; width: min(400px, 100vw);
   padding: 18px 20px 28px; border: 0; border-left: 1px solid rgba(255, 255, 255, 0.08);
@@ -352,11 +373,11 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .material .pc { width: 1.15em; height: 1.15em; margin-right: -0.35em; opacity: 0.85; }
 .material b { margin-left: 0.6em; font-weight: 600; }
 
-/* ---------- clocks (right column on desktop) ---------- */
+/* ---------- clocks ---------- */
 .clock {
   display: flex; align-items: center; justify-content: flex-end; gap: 10px;
-  height: var(--card-h); min-width: 170px; padding: 0 16px; border-radius: 6px;
-  font: 600 1.9rem/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+  height: var(--card-h); min-width: 160px; padding: 0 14px; border-radius: 6px;
+  font: 600 1.75rem/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
   background: #1b1a17; color: #9a958e; border: 1px solid var(--line);
   transition: background 0.25s, color 0.25s, box-shadow 0.25s;
 }
@@ -370,58 +391,6 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .clock.low:not(.active) { color: #e57373; }
 .clock.paused { outline: 2px dashed rgba(255, 255, 255, 0.3); outline-offset: 2px; }
 @keyframes lowPulse { 50% { box-shadow: 0 0 26px rgba(220, 75, 75, 0.7); } }
-
-/* ---------- right panel ---------- */
-.panel {
-  display: flex; flex-direction: column; min-height: 0;
-  height: 0; min-height: 100%; /* follow the board column's height instead of setting it */
-  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--shadow); overflow: hidden; backdrop-filter: blur(14px);
-}
-.panel-head {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 0 12px 0 0; border-bottom: 1px solid var(--line); background: rgba(0, 0, 0, 0.18);
-}
-.panel-tab {
-  display: flex; align-items: center; gap: 8px; padding: 12px 16px; font-weight: 700; color: var(--text-strong);
-  border-bottom: 2px solid var(--accent-2);
-}
-.panel-tab svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
-.panel .moves-slot { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
-.panel #moves-block { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; padding: 0; border: 0; }
-.panel #moves-block .sec-head { display: none; }
-.panel .moves { flex: 1 1 0; max-height: none; margin: 0; border: 0; border-radius: 0; background: transparent; }
-.panel .result-line { padding: 10px; border-top: 1px solid var(--line); }
-.panel-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; border-top: 1px solid var(--line); }
-.btn.action { justify-content: center; min-height: 42px; font-size: 0.95rem; gap: 10px; }
-.btn.action .half { font-size: 1.15rem; }
-.panel-nav { display: flex; align-items: center; gap: 2px; padding: 6px 8px; border-top: 1px solid var(--line); background: rgba(0, 0, 0, 0.18); }
-.pn-gap { flex: 1; }
-.pn {
-  display: grid; place-items: center; width: 40px; height: 38px; border: 0; border-radius: 6px;
-  background: transparent; color: var(--text); cursor: pointer; transition: background 0.15s, color 0.15s;
-}
-.pn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.pn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.08); color: var(--text-strong); }
-.pn:disabled { opacity: 0.3; cursor: default; }
-.pn:focus-visible { outline: 2px solid var(--blue); }
-.pn.attn { color: var(--blue); }
-
-/* ---------- toolbar (chess.com-style) ---------- */
-.toolbar { justify-content: space-around; gap: 4px; padding: 0; } /* shown on phones only */
-.tb {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px;
-  border: 0; border-radius: 8px; background: transparent; color: var(--text); cursor: pointer;
-  font: 500 0.8rem var(--font); transition: background 0.15s, color 0.15s;
-}
-.tb svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.tb svg .dot { fill: currentColor; stroke: none; }
-.tb .half { font-size: 1.4rem; font-weight: 700; line-height: 24px; height: 24px; }
-.tb:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); color: var(--text-strong); }
-.tb:disabled { opacity: 0.35; cursor: default; }
-.tb:focus-visible { outline: 2px solid var(--blue); }
-.tb.danger { color: #f08c8c; }
-.tb.attn { color: var(--blue); }
 
 /* ---------- moves list (inside Options) ---------- */
 .moves {
@@ -560,8 +529,8 @@ kbd {
 
 /* toast & confetti */
 .toast {
-  /* top of the screen so it never covers the toolbar or the board's bottom rank */
-  position: fixed; left: 50%; top: 66px; transform: translate(-50%, -20px); z-index: 50;
+  /* top of the screen so it never covers the controls or the board's bottom rank */
+  position: fixed; left: 50%; top: 14px; transform: translate(-50%, -20px); z-index: 50;
   padding: 10px 18px; border-radius: 99px; background: rgba(20, 19, 17, 0.92); color: var(--text-strong);
   border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: var(--shadow);
   opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.3s cubic-bezier(.2, 1.4, .4, 1);
@@ -572,33 +541,25 @@ kbd {
 
 /* ---------- responsive ---------- */
 @media (max-width: 760px) {
-  :root { --board: min(100vw, calc(100vh - 250px)); }
+  /* 2 player rows + rail + gaps + padding */
+  :root { --board: min(100vw, calc(100vh - 190px)); --board: min(100vw, calc(100dvh - 190px)); }
   body { font-size: 14px; }
-  .topbar { height: 52px; padding: 6px 10px; }
-  .top-actions .btn span { display: none; }
-  .top-actions .btn { padding: 0; width: 38px; }
-  .brand { font-size: 1.1rem; }
   .game {
-    --card-h: 46px;
+    --card-h: 44px;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "ptop" "board" "pbot" "tools";
-    gap: 10px 10px;
-    padding: 4px 0 calc(8px + env(safe-area-inset-bottom));
+    grid-template-areas: "ptop" "board" "pbot" "rail";
+    gap: 8px;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
     justify-content: stretch;
-    min-height: calc(100vh - 52px); min-height: calc(100dvh - 52px);
-    align-content: center;
   }
-  .player { padding-left: 10px; }
-  .clock { margin-right: 10px; min-width: 116px; font-size: 1.55rem; padding: 0 12px; }
-  .player { max-width: calc(100% - 140px); }
-  .panel { display: none; }
-  .toolbar { display: flex; }
+  .player { padding-left: 10px; max-width: calc(100% - 140px); }
+  .clock { margin-right: 10px; min-width: 116px; font-size: 1.5rem; padding: 0 12px; }
   .clock-ico { width: 20px; height: 20px; }
   .board-area { justify-self: center; width: var(--board); }
   .board-frame { border-radius: 0; }
-  .mobile-only { display: flex !important; }
-  .toolbar { margin-top: 4px; padding: 4px 4px 0; border-top: 1px solid var(--line); }
-  .tb { padding: 6px 2px; font-size: 0.72rem; }
+  .rail { flex-direction: row; padding: 0 10px; }
+  .rail-gap { display: none; }
+  .rb { flex: 1; flex-direction: row; gap: 8px; padding: 10px 6px; font-size: 0.85rem; }
   .drawer {
     margin: auto 0 0; width: 100vw; max-width: 100vw; height: auto; max-height: 88vh;
     border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px 16px 0 0;
@@ -620,20 +581,6 @@ kbd {
 </head>
 <body>
   <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
-
-  <header class="topbar">
-    <a class="brand" href="#" aria-label="Deskmate home">
-      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjYzllMjY1Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNjI5OTI0Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNCIgZmlsbD0iIzI2MjQyMSIvPgogIDxwYXRoIGQ9Ik04IDhoMTJ2MTJIOHpNMzIgOGgxMnYxMkgzMnpNMjAgMjBoMTJ2MTJIMjB6TTQ0IDIwaDEydjEySDQ0ek04IDMyaDEydjEySDh6TTMyIDMyaDEydjEySDMyek0yMCA0NGgxMnYxMkgyMHpNNDQgNDRoMTJ2MTJINDR6IiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIuMDYiLz4KICA8cGF0aCBmaWxsPSJ1cmwoI2cpIiBkPSJNMjcgMTNjOSAuOCAxNSA3IDE1IDE5LjVWNTFIMTljMC04LjIgOC45LTcuNCA3LjItMTguNi0zIDIuMy00LjYgMi44LTcuNCA0LjYtMS41IDEtMi45LS40LTIuNS0yIDEuOC0zLjIgMi40LTMuNiAzLjQtNy40LjktMy4zIDMuOC02LjUgNS42LTguNEwyNyAxM3oiLz4KICA8Y2lyY2xlIGN4PSIyNSIgY3k9IjIzLjUiIHI9IjEuOCIgZmlsbD0iIzI2MjQyMSIvPgogIDxyZWN0IHg9IjE3IiB5PSI0OSIgd2lkdGg9IjI3IiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZykiLz4KPC9zdmc+Cg==" alt="" width="30" height="30" />
-      <span>Desk<b>mate</b></span>
-    </a>
-    <nav class="top-actions">
-      <button class="btn ghost" id="btn-remote" title="Play a colleague on another laptop"><svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span>Play remotely</span></button>
-      <button class="btn ghost" id="btn-archive" title="Saved games (H)"><svg viewBox="0 0 24 24"><path d="M3 5h18v4H3zM5 9h14v10H5zM9 13h6"/></svg><span>Saved games</span></button>
-      <button class="btn ghost icon-only" id="btn-help" title="Help & shortcuts (?)" aria-label="Help"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17.2v.3"/></svg></button>
-      <a class="btn ghost icon-only" href="https://github.com/abhieq31/Deskmate" target="_blank" rel="noopener" title="Source code on GitHub" aria-label="GitHub"><svg viewBox="0 0 24 24" class="fill"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .8.1-.7.4-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5a3.9 3.9 0 0 1 1-2.7 3.6 3.6 0 0 1 .1-2.7s.8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .6 1.4.2 2.4.1 2.7a3.9 3.9 0 0 1 1 2.7c0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg></a>
-      <button class="btn primary" id="btn-new"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>New game</span></button>
-    </nav>
-  </header>
 
   <main class="game">
     <section class="player top" id="player-top">
@@ -664,47 +611,29 @@ kbd {
     </section>
     <div class="clock clock-bottom" id="clock-bottom" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div>
 
-    <!-- right panel (desktop): moves, draw/resign, navigation -->
-    <aside class="panel" aria-label="Moves and game actions">
-      <div class="panel-head">
-        <span class="panel-tab"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1"/></svg>Moves</span>
-        <span class="tc-badge" id="panel-tc"></span>
-      </div>
-      <div class="moves-slot" id="moves-slot-panel"></div>
-      <div class="panel-actions">
-        <button class="btn action" id="btn-draw" title="Agree to a draw"><span class="half">½</span><span>Draw</span></button>
-        <button class="btn action danger" id="btn-resign" title="Resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
-      </div>
-      <div class="panel-nav">
-        <button class="pn" data-mirror="#nav-first" aria-label="First move"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-8 6 8 6z"/></svg></button>
-        <button class="pn" data-mirror="#nav-prev" aria-label="Previous move"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
-        <button class="pn" data-mirror="#nav-next" aria-label="Next move"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-        <button class="pn" data-mirror="#nav-last" aria-label="Last move"><svg viewBox="0 0 24 24"><path d="M18 5v14M6 6l8 6-8 6z"/></svg></button>
-        <span class="pn-gap"></span>
-        <button class="pn" data-mirror="#btn-flip" aria-label="Flip board"><svg viewBox="0 0 24 24"><path d="M7 4v13M3.5 13.5 7 17l3.5-3.5M17 20V7M13.5 10.5 17 7l3.5 3.5"/></svg></button>
-        <button class="pn" data-mirror="#btn-pause" data-mirror-icon aria-label="Pause clocks"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg></button>
-        <button class="pn" data-mirror="#btn-code" aria-label="Game code"><svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg></button>
-        <button class="pn" data-mirror="#btn-options" aria-label="Options and settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
-      </div>
-    </aside>
-
-    <nav class="toolbar" aria-label="Game controls">
-      <button class="tb" id="btn-options" title="Options, moves and settings (O)"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" class="dot"/><circle cx="4.5" cy="12" r="1.2" class="dot"/><circle cx="4.5" cy="18" r="1.2" class="dot"/></svg><span>Options</span></button>
-      <button class="tb" id="btn-pause" title="Pause clocks (Space)"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
-      <button class="tb hidden" id="btn-code" title="Paste or show a game code"><svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span>Code</span></button>
-      <button class="tb mobile-only" id="tb-draw" title="Draw"><span class="half">½</span><span>Draw</span></button>
-      <button class="tb mobile-only danger" id="tb-resign" title="Resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
-      <button class="tb" id="nav-prev" title="Back (←)"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span>Back</span></button>
-      <button class="tb" id="nav-next" title="Forward (→)"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg><span>Forward</span></button>
+    <!-- the only controls on screen; everything else is in the menu -->
+    <nav class="rail" aria-label="Game actions">
+      <button class="rb" id="btn-draw" title="Agree to a draw"><span class="half">½</span><span>Draw</span></button>
+      <button class="rb danger" id="btn-resign" title="Resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
+      <button class="rb hidden" id="btn-code" title="Paste or show a game code"><svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span>Code</span></button>
+      <button class="rb hidden" id="btn-pause" title="Pause clocks (Space)"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
+      <span class="rail-gap"></span>
+      <button class="rb" id="btn-options" title="Menu (O)"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Menu</span></button>
     </nav>
   </main>
 
   <!-- Options drawer: game info, moves, settings, tools -->
   <dialog id="dlg-options" class="drawer">
     <div class="modal-head">
-      <h2>Options</h2>
+      <a class="brand" href="#" aria-label="Deskmate home"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjYzllMjY1Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNjI5OTI0Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNCIgZmlsbD0iIzI2MjQyMSIvPgogIDxwYXRoIGQ9Ik04IDhoMTJ2MTJIOHpNMzIgOGgxMnYxMkgzMnpNMjAgMjBoMTJ2MTJIMjB6TTQ0IDIwaDEydjEySDQ0ek04IDMyaDEydjEySDh6TTMyIDMyaDEydjEySDMyek0yMCA0NGgxMnYxMkgyMHpNNDQgNDRoMTJ2MTJINDR6IiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIuMDYiLz4KICA8cGF0aCBmaWxsPSJ1cmwoI2cpIiBkPSJNMjcgMTNjOSAuOCAxNSA3IDE1IDE5LjVWNTFIMTljMC04LjIgOC45LTcuNCA3LjItMTguNi0zIDIuMy00LjYgMi44LTcuNCA0LjYtMS41IDEtMi45LS40LTIuNS0yIDEuOC0zLjIgMi40LTMuNiAzLjQtNy40LjktMy4zIDMuOC02LjUgNS42LTguNEwyNyAxM3oiLz4KICA8Y2lyY2xlIGN4PSIyNSIgY3k9IjIzLjUiIHI9IjEuOCIgZmlsbD0iIzI2MjQyMSIvPgogIDxyZWN0IHg9IjE3IiB5PSI0OSIgd2lkdGg9IjI3IiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZykiLz4KPC9zdmc+Cg==" alt="" width="28" height="28" /><span>Desk<b>mate</b></span></a>
       <button class="btn icon-only ghost" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
+
+    <section class="opt-sec menu-main">
+      <button class="btn primary" id="btn-new"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New game</button>
+      <button class="btn" id="btn-remote"><svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>Play remotely</button>
+      <button class="btn" id="btn-archive"><svg viewBox="0 0 24 24"><path d="M3 5h18v4H3zM5 9h14v10H5zM9 13h6"/></svg>Saved games</button>
+    </section>
 
     <section class="opt-sec status-card">
       <div class="status-head">
@@ -715,12 +644,13 @@ kbd {
       <p class="muted" id="status-sub"></p>
     </section>
 
-    <div class="moves-slot" id="moves-slot-drawer"></div>
     <section class="opt-sec" id="moves-block">
       <div class="sec-head">
         <h3>Moves</h3>
         <span class="nav-mini">
           <button class="btn small icon-only ghost" id="nav-first" title="First move (↑)" aria-label="First move"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-8 6 8 6z"/></svg></button>
+          <button class="btn small icon-only ghost" id="nav-prev" title="Back (←)" aria-label="Previous move"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <button class="btn small icon-only ghost" id="nav-next" title="Forward (→)" aria-label="Next move"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
           <button class="btn small icon-only ghost" id="nav-last" title="Last move (↓)" aria-label="Last move"><svg viewBox="0 0 24 24"><path d="M18 5v14M6 6l8 6-8 6z"/></svg></button>
         </span>
       </div>
@@ -753,6 +683,10 @@ kbd {
       </div>
     </section>
 
+    <div class="menu-foot">
+      <button class="btn small ghost" id="btn-help"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17.2v.3"/></svg>How to play</button>
+      <a class="btn small ghost" href="https://github.com/abhieq31/Deskmate" target="_blank" rel="noopener" title="Source code on GitHub" aria-label="GitHub"><svg viewBox="0 0 24 24" class="fill"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .8.1-.7.4-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5a3.9 3.9 0 0 1 1-2.7 3.6 3.6 0 0 1 .1-2.7s.8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .6 1.4.2 2.4.1 2.7a3.9 3.9 0 0 1 1 2.7c0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg>Source code</a>
+    </div>
     <p class="side-foot muted">Games are stored only in this browser. <a href="https://github.com/abhieq31/Deskmate" target="_blank" rel="noopener">Open source</a> — contributions welcome.<span class="offline-dl"> · <a href="" download="deskmate.html">Download the offline version</a> (one HTML file, no internet needed).</span></p>
   </dialog>
 
@@ -929,7 +863,7 @@ kbd {
       <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Takeback</td></tr>
       <tr><td><kbd>N</kbd></td><td>New game</td></tr>
       <tr><td><kbd>H</kbd></td><td>Saved games</td></tr>
-      <tr><td><kbd>O</kbd></td><td>Options (moves, settings)</td></tr>
+      <tr><td><kbd>O</kbd></td><td>Menu (new game, moves, settings)</td></tr>
     </table>
   </dialog>
 
@@ -5396,7 +5330,7 @@ const san = (s) => s.replace(/[KQRBN]/g, (c) => `<span class="fig">${FIG[c]}</sp
 function renderStatus() {
   const g = active();
   const tc = g.tcInfo;
-  $('#tc-badge').textContent = $('#panel-tc').textContent = tc.base ? `${tc.label} · ${tc.kind}` : 'Unlimited';
+  $('#tc-badge').textContent = tc.base ? `${tc.label} · ${tc.kind}` : 'Unlimited';
   $('#game-date').textContent = new Date(g.startedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
   let title, sub;
   if (g.result) {
@@ -5448,13 +5382,11 @@ function renderControls() {
   const noActions = !liveGame || game.over || game.length === 0;
   const theyOffer = game.remote && !game.over && game.remote.offer === other(game.remote.me);
   const drawTitle = game.remote ? (theyOffer ? 'Accept the draw offer' : 'Offer a draw') : 'Agree to a draw';
-  // the right column has Draw/Resign; on phones the toolbar carries copies of them
-  for (const id of ['#btn-draw', '#tb-draw']) {
-    $(id).disabled = noActions;
-    $(id).classList.toggle('offer', !!theyOffer);
-    $(id).title = drawTitle;
-  }
-  $('#btn-resign').disabled = $('#tb-resign').disabled = noActions;
+  const drawBtn = $('#btn-draw');
+  drawBtn.disabled = noActions;
+  drawBtn.classList.toggle('offer', !!theyOffer);
+  drawBtn.title = drawTitle;
+  $('#btn-resign').disabled = noActions;
   renderRemoteCard();
   const pauseBtn = $('#btn-pause');
   pauseBtn.classList.toggle('hidden', !game.hasClock || !liveGame || !!game.remote);
@@ -5464,31 +5396,8 @@ function renderControls() {
   const codeBtn = $('#btn-code');
   codeBtn.classList.toggle('hidden', !game.remote || !liveGame);
   codeBtn.classList.toggle('attn', !!game.remote && !game.over && !myTurn());
-  syncMirrors();
 }
 
-// Buttons in the desktop panel stand in for controls that live in the phone toolbar or
-// the Options drawer: they copy their state and forward clicks.
-function syncMirrors() {
-  for (const b of $$('[data-mirror]')) {
-    const src = $(b.dataset.mirror);
-    b.disabled = src.disabled;
-    b.title = src.title;
-    b.classList.toggle('hidden', src.classList.contains('hidden'));
-    b.classList.toggle('attn', src.classList.contains('attn'));
-    if (b.hasAttribute('data-mirror-icon')) b.innerHTML = src.querySelector('svg').outerHTML;
-  }
-}
-$$('[data-mirror]').forEach((b) => b.addEventListener('click', () => $(b.dataset.mirror).click()));
-
-// The move list sits in the right panel on wide screens and inside Options on phones.
-const phoneLayout = matchMedia('(max-width: 760px)');
-const placeMoves = () => {
-  $(phoneLayout.matches ? '#moves-slot-drawer' : '#moves-slot-panel').appendChild($('#moves-block'));
-  $('#moves .active')?.scrollIntoView({ block: 'nearest' });
-};
-phoneLayout.addEventListener('change', placeMoves);
-placeMoves();
 
 /* ---------------- moves ---------------- */
 
@@ -5656,6 +5565,8 @@ function goto(ply) {
 
 function openDialog(sel) {
   const d = $(sel);
+  // anything opened from the menu replaces it, so the two never stack
+  if (sel !== '#dlg-options' && $('#dlg-options').open) $('#dlg-options').close();
   if (!d.open) d.showModal();
 }
 function closeDialogs() { $$('dialog[open]').forEach((d) => d.close()); }
@@ -5831,8 +5742,6 @@ $('#btn-options').addEventListener('click', () => {
   openDialog('#dlg-options');
   $('#moves .active')?.scrollIntoView({ block: 'nearest' });
 });
-$('#tb-draw').addEventListener('click', () => $('#btn-draw').click());
-$('#tb-resign').addEventListener('click', () => $('#btn-resign').click());
 $('#btn-flip').addEventListener('click', async () => { clearTimeout(flipTimer); await board.flip(); renderPlayers(); });
 $('#btn-undo').addEventListener('click', takeback);
 $('#btn-pause').addEventListener('click', togglePause);
