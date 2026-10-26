@@ -242,7 +242,8 @@ body {
   --pw: clamp(300px, 26vw, 400px);
   --tools: 40px;
   /* the same size in focus mode (which inherits it): hiding the menu never resizes or moves the board */
-  --board: min(calc(100vh - 2 * var(--bar-h) - 48px), calc(100vw - 64px - var(--pw) - var(--tools) - 116px), 1000px);
+  /* --board-user: the size the player dragged the corner handle to, if any */
+  --board: min(calc(100vh - 2 * var(--bar-h) - 48px), calc(100vw - 64px - var(--pw) - var(--tools) - 116px), 1000px, var(--board-user, 4000px));
   display: grid;
   grid-template-columns: var(--board) var(--tools) var(--pw);
   grid-template-rows: var(--bar-h) var(--board) var(--bar-h);
@@ -291,12 +292,75 @@ body {
   position: relative;
 }
 
+/* the gear is always there; flip, focus and sound appear when the pointer comes to this column */
 .board-tools {
   grid-area: 1/2/3/3;
-  align-self: start;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.tool-more {
+  display: flex;
+  flex-direction: inherit;
+  gap: inherit;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.board-tools:hover .tool-more, .board-tools:focus-within .tool-more {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+#btn-sound .ico-sound-off, #btn-sound.off .ico-sound-on {
+  display: none;
+}
+
+#btn-sound.off .ico-sound-off {
+  display: block;
+}
+
+/* the corner handle: just past the board's bottom-right corner, shown with the tools */
+.board-resize {
+  position: absolute;
+  right: -30px;
+  bottom: -2px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: #8a8580;
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.15s;
+  touch-action: none;
+}
+
+.board-resize svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.board-resize:hover {
+  color: #fff;
+}
+
+.board-area:hover .board-resize, .game:has(.board-tools:hover) .board-resize, .board-resize:active {
+  opacity: 1;
+}
+
+.game > .focus-close {
+  display: none;
 }
 
 .board-tools .icon-btn {
@@ -778,31 +842,58 @@ body[data-view=home] #btn-focus {
   overflow: hidden;
 }
 
+.an-graph-wrap {
+  position: relative;
+}
+
 .an-graph {
   width: 100%;
-  height: 76px;
-  border-radius: 4px;
-  background: #2a2a2c;
+  height: 96px;
+  border-radius: 6px;
+  background: #2b2a28;
   cursor: pointer;
   display: block;
 }
 
 .an-graph .area {
-  fill: #f2f2f2;
+  fill: #f0eee9;
 }
 
 .an-graph .mid {
-  stroke: rgba(128, 128, 128, 0.6);
-  stroke-width: 0.15;
+  stroke: rgba(128, 128, 128, 0.55);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
 }
 
 .an-graph .cur {
   stroke: var(--accent-2);
-  stroke-width: 0.5;
+  stroke-width: 2;
+}
+
+.an-graph .hov {
+  stroke: rgba(54, 146, 231, 0.8);
+  stroke-width: 1;
 }
 
 .an-graph .dot {
-  stroke: none;
+  stroke: #1d1d1f;
+  stroke-width: 1.5;
+}
+
+.an-tip {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  font: 600 0.75rem var(--font);
+  color: #222;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 4px;
+  padding: 1px 6px;
+  pointer-events: none;
+}
+
+.an-tip:empty {
+  display: none;
 }
 
 .an-progress {
@@ -1354,7 +1445,7 @@ body.focus .sidebar, body.focus .mobile-bar, body.focus .panel {
   body.focus .game {
     --lw: 150px;
     --rw: 96px;
-    --board: min(calc(100vh - 28px), calc(100vw - var(--lw) - var(--rw) - 88px), 1400px); /* gaps 40 + padding 48 */
+    --board: min(calc(100vh - 28px), calc(100vw - var(--lw) - var(--rw) - 88px), 1400px, var(--board-user, 4000px)); /* gaps 40 + padding 48 */
     grid-template-columns: var(--lw) var(--board) var(--rw);
     grid-template-rows: auto minmax(0, 1fr) auto auto minmax(0, 1fr) auto;
     grid-template-areas: "ptop board tools" ".    board ." "ctop board acts" "cbot board acts" ".    board ." "pbot board nav";
@@ -1428,6 +1519,17 @@ body.focus .sidebar, body.focus .mobile-bar, body.focus .panel {
     gap: 4px;
     align-self: end;
     justify-self: start;
+  }
+  /* × in the top-left corner leaves focus mode, like chess.com */
+  body.focus .game > .focus-close {
+    display: grid;
+    position: fixed;
+    top: 10px;
+    left: 12px;
+    color: #9a958e;
+  }
+  body.focus .focus-acts .sq-btn.wide {
+    width: var(--rw);
   }
 }
 .focus-nav .icon-btn {
@@ -1805,7 +1907,7 @@ body.focus .sidebar, body.focus .mobile-bar, body.focus .panel {
   height: 12.5%;
   will-change: transform;
   z-index: 2;
-  transition: transform 0.15s cubic-bezier(0.25, 0.8, 0.35, 1), opacity 0.15s;
+  transition: transform var(--piece-ms, 150ms) cubic-bezier(0.25, 0.8, 0.35, 1), opacity 0.15s;
 }
 
 .board.no-anim .piece, .board.no-anim .board-inner {
@@ -2786,6 +2888,120 @@ kbd {
   display: block;
 }
 
+/* ---------- settings: tabs, one option per row, Save / Cancel ---------- */
+.modal.settings {
+  width: min(520px, 100vw - 24px);
+  padding: 0;
+}
+
+.set-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: #121213;
+  border-bottom: 1px solid var(--line);
+}
+
+.set-tabs button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px 10px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: 600 0.85rem var(--font);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.set-tabs button svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.set-tabs button[aria-selected=true] {
+  color: var(--text-strong);
+  border-bottom-color: var(--accent);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.set-pane {
+  padding: 6px 20px 4px;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+}
+
+.set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-strong);
+  font-size: 0.95rem;
+  cursor: default;
+}
+
+.set-row:last-of-type {
+  border-bottom: 0;
+}
+
+.set-row.switch {
+  cursor: pointer;
+}
+
+.set-row.switch .track {
+  order: 2;
+}
+
+.set-row select {
+  width: 52%;
+  height: 38px;
+  padding: 0 34px 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #1d1d1f url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23aaa' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center;
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 0.92rem;
+  appearance: none;
+  cursor: pointer;
+}
+
+.set-row select:focus-visible {
+  outline: 2px solid var(--blue);
+}
+
+.set-row .themes {
+  margin: 0;
+}
+
+.set-pane .tools {
+  margin: 14px 0 6px;
+}
+
+.set-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.btn.big {
+  min-height: 46px;
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
 /* ---------- responsive ---------- */
 @media (max-width: 760px) {
   /* rows: menu + move strip, top bar, board, bottom bar, actions (+ the review after a game) */
@@ -2874,6 +3090,14 @@ kbd {
     margin-right: 6px;
   }
   .focus-acts, body.focus .focus-acts {
+    display: none;
+  }
+  .tool-more {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  .board-resize {
     display: none;
   }
   .evalbar {
@@ -3150,6 +3374,7 @@ kbd {
       <div class="board-frame">
         <div id="board" aria-label="Chess board"></div>
       </div>
+      <div class="board-resize" id="board-resize" title="Drag to resize the board · double-click: as large as fits"><svg viewBox="0 0 24 24"><path d="M13 21h8v-8M21 21l-8-8M11 3H3v8M3 3l8 8"/></svg></div>
       <div class="review-banner hidden" id="review-banner">
         <span id="review-text"></span>
         <button class="btn small primary" id="review-exit">Back to live game</button>
@@ -3165,16 +3390,24 @@ kbd {
     </section>
     <div class="clock-wrap clock-bottom"><div class="clock" id="clock-bottom" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div></div>
 
-    <!-- next to the board's top-right corner -->
+    <!-- next to the board's top-right corner: the gear; the rest shows when the pointer comes near -->
     <div class="board-tools">
       <button class="icon-btn gear" id="btn-settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
-      <button class="icon-btn" id="btn-focus" title="Hide menu and moves (Z)" aria-label="Focus on the board"><svg viewBox="0 0 24 24" class="ico-expand"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><svg viewBox="0 0 24 24" class="ico-compress"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
+      <div class="tool-more">
+        <button class="icon-btn" id="btn-focus" title="Hide menu and moves (Z)" aria-label="Focus on the board"><svg viewBox="0 0 24 24" class="ico-expand"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><svg viewBox="0 0 24 24" class="ico-compress"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
+        <button class="icon-btn" id="btn-flip3" title="Flip board (F)" aria-label="Flip board"><svg viewBox="0 0 24 24"><path d="M7 4v13M3.5 13.5 7 17l3.5-3.5M17 20V7M13.5 10.5 17 7l3.5 3.5"/></svg></button>
+        <button class="icon-btn" id="btn-sound" title="Sound on/off" aria-label="Sound"><svg viewBox="0 0 24 24" class="ico-sound-on"><path d="M4 9v6h4l5 4V5L8 9H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg><svg viewBox="0 0 24 24" class="ico-sound-off"><path d="M4 9v6h4l5 4V5L8 9H4zM17 9l5 6M22 9l-5 6"/></svg></button>
+      </div>
     </div>
 
-    <!-- focus mode: Draw and Resign as two squares beside the board -->
+    <button class="icon-btn focus-close" id="focus-close" title="Exit focus mode (Z)" aria-label="Exit focus mode"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+
+    <!-- focus mode: Draw and Resign as two squares beside the board; New game and Rematch once it's over -->
     <div class="focus-acts" aria-label="Game actions">
       <button class="sq-btn act-draw" title="Draw"><span class="half">½</span></button>
       <button class="sq-btn act-resign" title="Resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></button>
+      <button class="sq-btn wide act-newgame hidden" title="New game"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="sq-btn wide act-rematch hidden" title="Rematch"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg></button>
     </div>
 
     <div class="focus-nav">
@@ -3188,7 +3421,7 @@ kbd {
       <div class="analysis hidden" id="analysis">
         <p class="an-verdict" id="an-verdict"></p>
         <div class="an-head"><span class="an-eval" id="an-eval">0.0</span><span class="an-line" id="an-line"></span></div>
-        <svg class="an-graph" id="an-graph" viewBox="0 0 100 40" preserveAspectRatio="none" aria-label="Evaluation graph"></svg>
+        <div class="an-graph-wrap"><svg class="an-graph" id="an-graph" viewBox="0 0 300 96" aria-label="Evaluation graph: click to jump to a move"></svg><span class="an-tip" id="an-tip"></span></div>
         <div class="an-progress" id="an-progress"><span></span></div>
       </div>
       <div class="an-moves" id="an-moves" aria-label="Moves"></div>
@@ -3204,41 +3437,62 @@ kbd {
         <button class="txt-btn act-draw"><span class="half">½</span><span>Draw</span></button>
         <button class="txt-btn act-resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
         <button class="txt-btn act-pause hidden"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
+        <button class="txt-btn act-newgame hidden"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>New game</span></button>
+        <button class="txt-btn act-rematch hidden"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg><span>Rematch</span></button>
         <button class="btn primary small act-analyse hidden"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8M7.5 12l2-2.5 2 1.5 2-3"/></svg>Analyse game</button>
         <button class="icon-btn flip-btn" id="btn-flip2" title="Flip board (F)" aria-label="Flip board"><svg viewBox="0 0 24 24"><path d="M7 4v13M3.5 13.5 7 17l3.5-3.5M17 20V7M13.5 10.5 17 7l3.5 3.5"/></svg></button>
       </div>
     </aside>
   </main>
 
-  <!-- Settings (⚙ next to the board) -->
-  <dialog id="dlg-settings" class="modal">
-    <div class="modal-head">
-      <h2>Settings</h2>
-      <button class="btn icon-only ghost" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-    </div>
-    <div class="set-grid">
-      <label class="switch"><input type="checkbox" id="set-autoflip" /><span class="track"></span><span>Turn the board for each player</span></label>
-      <label class="switch"><input type="checkbox" id="set-dests" /><span class="track"></span><span>Show legal moves</span></label>
-      <label class="switch"><input type="checkbox" id="set-coords" /><span class="track"></span><span>Coordinates</span></label>
-      <label class="switch"><input type="checkbox" id="set-sound" /><span class="track"></span><span>Capture sound</span></label>
-      <label class="switch"><input type="checkbox" id="set-winbar" /><span class="track"></span><span>Winning chances by the board</span></label>
-    </div>
-    <h3>Board</h3>
-    <div class="themes" role="radiogroup" aria-label="Board theme">
-      <button class="swatch" data-theme="ember" title="Ember" aria-label="Ember board (ivory and crimson)"></button>
-      <button class="swatch" data-theme="stone" title="Stone" aria-label="Stone board"></button>
-      <button class="swatch" data-theme="green" title="Green" aria-label="Green board"></button>
-    </div>
-    <h3>Game</h3>
-    <div class="tools">
-      <button class="btn small" id="btn-flip" title="Flip board (F)"><svg viewBox="0 0 24 24"><path d="M7 4v13M3.5 13.5 7 17l3.5-3.5M17 20V7M13.5 10.5 17 7l3.5 3.5"/></svg>Flip board</button>
-      <button class="btn small" id="btn-undo" title="Takeback (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Takeback</button>
-      <button class="btn small" id="btn-pgn-copy">Copy PGN</button>
-      <button class="btn small" id="btn-pgn-download">Download PGN</button>
-      <button class="btn small" id="btn-fen">Copy FEN</button>
-      <span class="tc-badge" id="tc-badge"></span>
-    </div>
-    <p class="side-foot muted">Games are stored only in this browser.</p>
+  <!-- Settings (⚙ by the board): changes apply on Save, Cancel throws them away -->
+  <dialog id="dlg-settings" class="modal settings">
+    <form method="dialog" id="form-settings">
+      <div class="set-tabs" role="tablist">
+        <button type="button" role="tab" data-tab="board" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 12h16M12 4v16M8 4v16M16 4v16M4 8h16M4 16h16"/></svg>Board</button>
+        <button type="button" role="tab" data-tab="play" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M9 20h6M10 16h4l1-5h-6zM9.5 11 8 6l4-2 4 2-1.5 5"/></svg>Play</button>
+        <button type="button" role="tab" data-tab="analysis" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8M7.5 12l2-2.5 2 1.5 2-3"/></svg>Analysis</button>
+      </div>
+      <section class="set-pane" data-pane="board">
+        <div class="set-row"><span>Board</span><div class="themes" role="radiogroup" aria-label="Board theme">
+          <button type="button" class="swatch" data-theme="ember" title="Ember" aria-label="Ember board (ivory and crimson)"></button>
+          <button type="button" class="swatch" data-theme="stone" title="Stone" aria-label="Stone board"></button>
+          <button type="button" class="swatch" data-theme="green" title="Green" aria-label="Green board"></button>
+        </div></div>
+        <label class="set-row"><span>Show board coordinates</span><select data-set="coords" data-kind="bool"><option value="true">Inside</option><option value="false">None</option></select></label>
+        <label class="set-row"><span>Piece notation</span><select data-set="notation"><option value="figurine">Figurine</option><option value="letter">Letter</option></select></label>
+        <label class="set-row"><span>Piece animations</span><select data-set="animation"><option value="none">None</option><option value="fast">Fast</option><option value="medium">Medium (default)</option><option value="slow">Slow</option></select></label>
+        <label class="set-row"><span>Win celebration</span><select data-set="celebration"><option value="confetti">Confetti</option><option value="none">None</option></select></label>
+        <label class="set-row"><span>Move method</span><select data-set="moveMethod"><option value="both">Drag or click</option><option value="drag">Drag only</option><option value="click">Click only</option></select></label>
+        <label class="set-row switch"><span>Highlight last move</span><input type="checkbox" data-set="highlightLast" /><span class="track"></span></label>
+        <label class="set-row switch"><span>Play sounds</span><input type="checkbox" data-set="sound" /><span class="track"></span></label>
+        <label class="set-row switch"><span>Show legal moves</span><input type="checkbox" data-set="showDests" /><span class="track"></span></label>
+        <label class="set-row switch"><span>White always on bottom</span><input type="checkbox" data-set="autoFlip" data-invert /><span class="track"></span></label>
+      </section>
+      <section class="set-pane hidden" data-pane="play">
+        <label class="set-row switch"><span>Always promote to queen</span><input type="checkbox" data-set="autoQueen" /><span class="track"></span></label>
+        <label class="set-row switch"><span>Winning chances by the board</span><input type="checkbox" data-set="winBar" /><span class="track"></span></label>
+        <label class="set-row switch"><span>Focus mode during games</span><input type="checkbox" data-set="focus" /><span class="track"></span></label>
+        <div class="tools">
+          <button type="button" class="btn small" id="btn-flip" title="Flip board (F)"><svg viewBox="0 0 24 24"><path d="M7 4v13M3.5 13.5 7 17l3.5-3.5M17 20V7M13.5 10.5 17 7l3.5 3.5"/></svg>Flip board</button>
+          <button type="button" class="btn small" id="btn-undo" title="Takeback (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Takeback</button>
+          <button type="button" class="btn small" id="btn-pgn-copy">Copy PGN</button>
+          <button type="button" class="btn small" id="btn-pgn-download">Download PGN</button>
+          <button type="button" class="btn small" id="btn-fen">Copy FEN</button>
+          <span class="tc-badge" id="tc-badge"></span>
+        </div>
+        <p class="side-foot muted">Games are stored only in this browser.</p>
+      </section>
+      <section class="set-pane hidden" data-pane="analysis">
+        <label class="set-row"><span>Engine depth</span><select data-set="anDepth"><option value="fast">Fast</option><option value="balanced">Balanced (default)</option><option value="deep">Deep</option></select></label>
+        <label class="set-row switch"><span>Show the best move as an arrow</span><input type="checkbox" data-set="bestArrow" /><span class="track"></span></label>
+        <label class="set-row switch"><span>Evaluation bar</span><input type="checkbox" data-set="evalBar" /><span class="track"></span></label>
+      </section>
+      <div class="set-actions">
+        <button type="button" class="btn big" id="set-cancel">Cancel</button>
+        <button type="submit" class="btn primary big" id="set-save">Save</button>
+      </div>
+    </form>
   </dialog>
 
   <!-- New game -->
@@ -7235,7 +7489,7 @@ var Board = class {
     this.onMove = opts.onMove;
     this.orientation = "w";
     this.state = { fen: "8/8/8/8/8/8/8/8", lastMove: null, check: null, dests: /* @__PURE__ */ new Map(), movable: null };
-    this.prefs = { showDests: true, coords: true };
+    this.prefs = { showDests: true, coords: true, highlightLast: true, moveMethod: "both" };
     this.pieces = /* @__PURE__ */ new Map();
     this.selected = null;
     this.drag = null;
@@ -7419,7 +7673,7 @@ var Board = class {
     const occupied = fenPieces(this.state.fen);
     for (const s of this.squareEls) {
       const sq = s.dataset.sq;
-      s.classList.toggle("last-move", !!lastMove && lastMove.includes(sq));
+      s.classList.toggle("last-move", this.prefs.highlightLast && !!lastMove && lastMove.includes(sq));
       s.classList.toggle("selected", sel === sq);
       s.classList.toggle("check", check === sq);
       const isDest = this.prefs.showDests && targets.includes(sq);
@@ -7465,14 +7719,18 @@ var Board = class {
       this._putBack(d, false);
     }
     const targets = this.selected ? this.state.dests.get(this.selected) || [] : [];
-    if (this.selected && targets.includes(sq)) {
+    if (this.selected && targets.includes(sq) && this.prefs.moveMethod !== "drag") {
       const from = this.selected;
       this.selected = null;
       this._highlight();
       this.onMove(from, sq);
       return;
     }
-    if (this._canMoveFrom(sq)) {
+    if (this._canMoveFrom(sq) && this.prefs.moveMethod === "click") {
+      e.preventDefault();
+      this.selected = this.selected === sq ? null : sq;
+      this._highlight();
+    } else if (this._canMoveFrom(sq)) {
       e.preventDefault();
       this._capture(e);
       const wasSelected = this.selected === sq;
@@ -7551,7 +7809,7 @@ var Board = class {
       this._putBack(d, true);
       return;
     }
-    if (d.retap || d.wasSelected) this._putBack(d, false);
+    if (d.retap || d.wasSelected || this.prefs.moveMethod === "drag") this._putBack(d, false);
     else if (e.pointerType === "mouse") {
       d.held = true;
       this._highlight();
@@ -7678,6 +7936,25 @@ var DEFAULT_SETTINGS = {
   // during a game: only the board, the players and the clocks
   winBar: true,
   // a slim bar by the board with each side's winning chances
+  notation: "figurine",
+  // moves as ♘f3, or Nf3 with 'letter'
+  animation: "medium",
+  // piece slides: 'none' | 'fast' | 'medium' | 'slow'
+  celebration: "confetti",
+  // or 'none'
+  moveMethod: "both",
+  // 'both' | 'drag' | 'click'
+  highlightLast: true,
+  autoQueen: false,
+  // promote without asking
+  anDepth: "balanced",
+  // analysis: 'fast' | 'balanced' | 'deep'
+  bestArrow: true,
+  // analysis: the engine's move as an arrow
+  evalBar: true,
+  // analysis: the bar beside the board
+  boardSize: 0,
+  // px the player dragged the board to with the corner handle; 0 = as large as fits
   white: "White",
   black: "Black",
   tc: "none",
@@ -8732,7 +9009,7 @@ function classify(before, after, color) {
 }
 var MARKS = { blunder: "??", mistake: "?", inaccuracy: "?!" };
 var moveAccuracy = (loss) => clamp(103.1668 * Math.exp(-0.04354 * loss) - 3.1669, 0, 100);
-function summarize(evals, plyCount) {
+function summarize(evals, plyCount, played = []) {
   const moves = [];
   const side = { w: { losses: [], blunder: 0, mistake: 0, inaccuracy: 0 }, b: { losses: [], blunder: 0, mistake: 0, inaccuracy: 0 } };
   for (let i = 1; i <= plyCount; i++) {
@@ -8742,6 +9019,10 @@ function summarize(evals, plyCount) {
     }
     const color = i % 2 === 1 ? "w" : "b";
     const c = classify(evals[i - 1], evals[i], color);
+    if (played[i - 1] && evals[i - 1].pv?.[0] === played[i - 1]) {
+      c.kind = null;
+      c.loss = Math.min(c.loss, 2);
+    }
     moves.push(c);
     side[color].losses.push(c.loss);
     if (c.kind) side[color][c.kind]++;
@@ -8919,7 +9200,7 @@ function renderMoves() {
   if (g.result) rl.innerHTML = `<strong>${g.result.replace(/1\/2/g, "½")}</strong><span>${g.termination} · ${g.winnerText()}</span>`;
 }
 var FIG = { K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘" };
-var san = (s) => s.replace(/[KQRBN]/g, (c) => `<span class="fig">${FIG[c]}</span>`);
+var san = (s) => settings.notation === "letter" ? s : s.replace(/[KQRBN]/g, (c) => `<span class="fig">${FIG[c]}</span>`);
 var tcText = (tc) => tc.base ? `${tc.label} · ${tc.kind}` : "Unlimited";
 function renderStatus() {
   const g = active();
@@ -8952,6 +9233,9 @@ function renderControls() {
   for (const b of $$(".act-draw, .act-resign")) b.classList.toggle("hidden", finished);
   for (const b of $$(".act-draw")) if (game.ai && !review) b.classList.add("hidden");
   for (const b of $$(".act-analyse")) b.classList.toggle("hidden", !finished || !!an);
+  for (const b of $$(".act-newgame")) b.classList.toggle("hidden", !finished);
+  for (const b of $$(".act-rematch")) b.classList.toggle("hidden", !finished || !!review);
+  $("#btn-sound").classList.toggle("off", !settings.sound);
   $(".game").classList.toggle("analysing", !!an);
   for (const b of $$(".act-pause")) {
     b.classList.toggle("hidden", !game.hasClock || !liveGame || !!game.remote);
@@ -8983,7 +9267,7 @@ async function onMove(from, to) {
   if (!isLive() || game.over || !myTurn()) return;
   let promotion;
   if (game.isPromotion(from, to)) {
-    promotion = await board.askPromotion(to, game.turn);
+    promotion = settings.autoQueen ? "q" : await board.askPromotion(to, game.turn);
     if (!promotion) {
       render();
       return;
@@ -9105,7 +9389,7 @@ function onGameOver() {
   setTimeout(() => {
     if (game !== g || !g.over) return;
     openDialog("#dlg-over");
-    if (g.result !== "1/2-1/2") confetti();
+    if (g.result !== "1/2-1/2" && settings.celebration !== "none") confetti();
   }, 650);
 }
 function persist() {
@@ -9439,7 +9723,11 @@ function joinFailed(msg) {
 $("#room-copy").addEventListener("click", () => copy(formatRoomCode(game.remote.room), "Code"));
 $("#room-copy-link").addEventListener("click", () => copy(shareLink(game.remote.room), "Link"));
 $("#btn-remote").addEventListener("click", () => game.remote && !game.over && !bothSeated() ? showInvite() : openRemote());
-var AN_LIMITS = { wasm: { depth: 16, movetime: 1e3 }, asm: { depth: 12, movetime: 700 } };
+var AN_LIMITS = {
+  fast: { wasm: { depth: 12, movetime: 400 }, asm: { depth: 9, movetime: 350 } },
+  balanced: { wasm: { depth: 16, movetime: 1e3 }, asm: { depth: 12, movetime: 700 } },
+  deep: { wasm: { depth: 20, movetime: 2500 }, asm: { depth: 14, movetime: 1500 } }
+};
 function terminalEval(fen) {
   const c = new Chess(fen);
   if (c.isCheckmate()) return { mate: 0, winner: c.turn() === "w" ? "b" : "w", pv: [] };
@@ -9477,7 +9765,7 @@ async function startAnalysis() {
   let limits;
   try {
     engine = engine || new Engine();
-    limits = AN_LIMITS[await engine.start()];
+    limits = (AN_LIMITS[settings.anDepth] || AN_LIMITS.balanced)[await engine.start()];
   } catch {
     if (an === run) {
       an = null;
@@ -9493,7 +9781,7 @@ async function startAnalysis() {
     const fen = g.fenAt(i);
     run.evals[i] = terminalEval(fen) || await engine.analyse(fen, limits) || { cp: 0, pv: [], depth: 0 };
     if (an !== run) return;
-    run.summary = summarize(run.evals, g.length);
+    run.summary = summarize(run.evals, g.length, g.plies.map((p) => p.from + p.to + (p.promotion || "")));
     renderMoves();
     renderAnalysis();
   }
@@ -9519,7 +9807,7 @@ function renderAnalysis() {
     renderWinBar();
     return;
   }
-  $("#evalbar").classList.remove("hidden");
+  $("#evalbar").classList.toggle("hidden", !settings.evalBar);
   const ev = an.evals[viewPly];
   const white = winPct(ev);
   const bar = $("#evalbar");
@@ -9534,7 +9822,7 @@ function renderAnalysis() {
   const evalsDone = an.evals.filter(Boolean).length;
   $("#an-line").textContent = !ev ? `Stockfish is thinking… ${evalsDone}/${g.length + 1}` : ev.pv?.length ? pvSan(fen, ev.pv) : g.result && viewPly === g.length ? g.termination : "";
   const best = ev?.pv?.[0];
-  board.setAutoShapes(best ? [{ from: best.slice(0, 2), to: best.slice(2, 4) }] : []);
+  board.setAutoShapes(best && settings.bestArrow ? [{ from: best.slice(0, 2), to: best.slice(2, 4) }] : []);
   const played = g.plies[viewPly - 1];
   const before = an.evals[viewPly - 1];
   const kind = an.summary?.moves[viewPly - 1]?.kind;
@@ -9554,15 +9842,10 @@ function renderAnalysis() {
     const sq = $(`#board .sq[data-sq="${played.to}"]`);
     sq?.insertAdjacentHTML("beforeend", `<span class="sq-glyph k-${kind}">${MARKS[kind]}</span>`);
   }
-  const n = g.length;
-  const pts = [];
-  for (let i = 0; i <= n; i++) if (an.evals[i]) pts.push([i / n * 100, 40 - winPct(an.evals[i]) / 100 * 40, i]);
-  const marks = an.summary?.moves || [];
-  const color = { blunder: "#ca3431", mistake: "#e58f2a", inaccuracy: "#f7c045" };
-  $("#an-graph").innerHTML = (pts.length > 1 ? `<path class="area" d="M0,40 ${pts.map(([x, y]) => `L${x.toFixed(2)},${y.toFixed(2)}`).join(" ")} L100,40 Z"/>` : "") + `<line class="mid" x1="0" y1="20" x2="100" y2="20"/><line class="cur" x1="${viewPly / n * 100}" y1="0" x2="${viewPly / n * 100}" y2="40"/>` + pts.filter(([, , i]) => marks[i - 1]?.kind).map(([x, y, i]) => `<ellipse class="dot" cx="${x}" cy="${y}" rx="0.9" ry="2" fill="${color[marks[i - 1].kind]}"/>`).join("");
+  renderGraph(g);
   const done = an.evals.filter(Boolean).length;
   $("#an-progress").classList.toggle("done", an.done);
-  $("#an-progress span").style.width = `${done / (n + 1) * 100}%`;
+  $("#an-progress span").style.width = `${done / (g.length + 1) * 100}%`;
   const sum = an.summary;
   const card = (c) => {
     const s = sum?.[c];
@@ -9607,9 +9890,41 @@ $("#an-acc").addEventListener("click", (e) => {
   if (j < 0) j = moves.findIndex((_, k) => mine(k));
   if (j >= 0) goto(j + 1);
 });
-$("#an-graph").addEventListener("click", (e) => {
+var GRAPH_H = 96;
+var MARK_COLOR = { blunder: "#ca3431", mistake: "#e58f2a", inaccuracy: "#f7c045" };
+function renderGraph(g) {
+  const svg = $("#an-graph");
+  const W = Math.max(120, Math.round(svg.clientWidth || 300)), H = GRAPH_H, n = Math.max(1, g.length);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const x = (i) => i / n * W;
+  const y = (ev) => H - winPct(ev) / 100 * (H - 4) - 2;
+  const pts = [];
+  for (let i = 0; i <= g.length; i++) if (an.evals[i]) pts.push([x(i), y(an.evals[i]), i]);
+  const marks = an.summary?.moves || [];
+  svg.innerHTML = (pts.length > 1 ? `<path class="area" d="M${pts[0][0]},${H} ${pts.map(([px, py]) => `L${px.toFixed(1)},${py.toFixed(1)}`).join(" ")} L${pts.at(-1)[0].toFixed(1)},${H} Z"/>` : "") + `<line class="mid" x1="0" y1="${H / 2}" x2="${W}" y2="${H / 2}"/><line class="cur" x1="${x(viewPly)}" y1="0" x2="${x(viewPly)}" y2="${H}"/>` + pts.filter(([, , i]) => marks[i - 1]?.kind).map(([px, py, i]) => `<circle class="dot" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4" fill="${MARK_COLOR[marks[i - 1].kind]}"/>`).join("") + '<line class="hov" x1="-9" y1="0" x2="-9" y2="' + H + '"/>';
+}
+var graphPly = (e) => {
   const r = e.currentTarget.getBoundingClientRect();
-  goto(Math.round((e.clientX - r.left) / r.width * active().length));
+  return Math.max(0, Math.min(active().length, Math.round((e.clientX - r.left) / r.width * active().length)));
+};
+$("#an-graph").addEventListener("click", (e) => goto(graphPly(e)));
+$("#an-graph").addEventListener("mousemove", (e) => {
+  if (!an) return;
+  const g = active(), i = graphPly(e), ev = an.evals[i];
+  const hov = $("#an-graph .hov");
+  const px = i / Math.max(1, g.length) * Math.max(120, Math.round($("#an-graph").clientWidth || 300));
+  hov?.setAttribute("x1", String(px));
+  hov?.setAttribute("x2", String(px));
+  const p = g.plies[i - 1], kind = an.summary?.moves[i - 1]?.kind;
+  $("#an-tip").textContent = i === 0 ? `Start · ${formatEval(ev)}` : `${Math.ceil(i / 2)}${i % 2 ? "." : "…"} ${p.san}${kind ? MARKS[kind] : ""} · ${ev ? formatEval(ev) : "…"}`;
+});
+$("#an-graph").addEventListener("mouseleave", () => {
+  $("#an-tip").textContent = "";
+  $("#an-graph .hov")?.setAttribute("x1", "-9");
+  $("#an-graph .hov")?.setAttribute("x2", "-9");
+});
+addEventListener("resize", () => {
+  if (an) renderAnalysis();
 });
 function openDialog(sel) {
   const d = $(sel);
@@ -9761,7 +10076,7 @@ $("#btn-archive").addEventListener("click", () => {
   openDialog("#dlg-archive");
 });
 $("#btn-help").addEventListener("click", () => openDialog("#dlg-help"));
-$("#btn-settings").addEventListener("click", () => openDialog("#dlg-settings"));
+$("#btn-settings").addEventListener("click", openSettings);
 $("#btn-analyse").addEventListener("click", () => startAnalysis());
 $$(".act-analyse").forEach((b) => b.addEventListener("click", () => startAnalysis()));
 $("#over-analyse").addEventListener("click", () => {
@@ -9772,6 +10087,52 @@ $('[data-nav="prev"]').addEventListener("click", () => goto(viewPly - 1));
 $('[data-nav="next"]').addEventListener("click", () => goto(viewPly + 1));
 $$(".act-pause").forEach((b) => b.addEventListener("click", togglePause));
 $("#btn-flip2").addEventListener("click", () => $("#btn-flip").click());
+$("#btn-flip3").addEventListener("click", () => $("#btn-flip").click());
+$("#btn-sound").addEventListener("click", () => {
+  settings.sound = !settings.sound;
+  storage.saveSettings(settings);
+  applyPrefs();
+  renderControls();
+  toast(settings.sound ? "Sound on" : "Sound off");
+});
+$("#focus-close").addEventListener("click", toggleFocus);
+$$(".act-newgame").forEach((b) => b.addEventListener("click", () => {
+  if (review) exitReview();
+  if (game.ai) openComputer();
+  else if (game.remote) openRemote("create");
+  else openNewGame();
+}));
+$$(".act-rematch").forEach((b) => b.addEventListener("click", () => $("#over-rematch").click()));
+{
+  const handle = $("#board-resize");
+  let start = null;
+  handle.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    start = { x: e.clientX, y: e.clientY, size: $(".board-frame").getBoundingClientRect().width };
+  });
+  handle.addEventListener("pointermove", (e) => {
+    if (!start) return;
+    const size = Math.round(Math.max(280, start.size + Math.max(e.clientX - start.x, e.clientY - start.y)));
+    settings.boardSize = size;
+    applyPrefs();
+  });
+  const end = () => {
+    if (!start) return;
+    start = null;
+    const fits = $(".board-frame").getBoundingClientRect().width;
+    if (settings.boardSize > fits) settings.boardSize = 0;
+    storage.saveSettings(settings);
+    applyPrefs();
+  };
+  handle.addEventListener("pointerup", end);
+  handle.addEventListener("pointercancel", end);
+  handle.addEventListener("dblclick", () => {
+    settings.boardSize = 0;
+    storage.saveSettings(settings);
+    applyPrefs();
+  });
+}
 $("#btn-flip").addEventListener("click", () => {
   clearTimeout(flipTimer);
   board.flip();
@@ -9880,30 +10241,58 @@ document.addEventListener("keydown", (e) => {
   else return;
   e.preventDefault();
 });
-var bindSwitch = (sel, key, after) => {
-  const input = $(sel);
-  input.checked = settings[key];
-  input.addEventListener("change", () => {
-    settings[key] = input.checked;
-    storage.saveSettings(settings);
-    after?.();
-  });
-};
-bindSwitch("#set-autoflip", "autoFlip", () => {
+var setInputs = () => $$("#form-settings [data-set]");
+var themeBefore = settings.theme;
+var settingsSaved = false;
+function openSettings() {
+  for (const el2 of setInputs()) {
+    const v = settings[el2.dataset.set];
+    if (el2 instanceof HTMLInputElement) el2.checked = el2.hasAttribute("data-invert") ? !v : !!v;
+    else el2.value = String(v);
+  }
+  themeBefore = settings.theme;
+  settingsSaved = false;
+  showSettingsTab("board");
+  openDialog("#dlg-settings");
+}
+function showSettingsTab(tab) {
+  $$("#dlg-settings [data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  $$("#dlg-settings [data-pane]").forEach((p) => p.classList.toggle("hidden", p.dataset.pane !== tab));
+}
+$$("#dlg-settings [data-tab]").forEach((b) => b.addEventListener("click", () => showSettingsTab(b.dataset.tab)));
+$("#form-settings").addEventListener("submit", () => {
+  settingsSaved = true;
+  for (const el2 of setInputs()) {
+    const key = el2.dataset.set;
+    settings[key] = el2 instanceof HTMLInputElement ? el2.hasAttribute("data-invert") ? !el2.checked : el2.checked : el2.dataset.kind === "bool" ? el2.value === "true" : el2.value;
+  }
+  storage.saveSettings(settings);
+  applyPrefs();
+  applyFocus();
   render();
   if (settings.autoFlip) scheduleFlip(0);
 });
-bindSwitch("#set-dests", "showDests", applyPrefs);
-bindSwitch("#set-coords", "coords", applyPrefs);
-bindSwitch("#set-sound", "sound", applyPrefs);
-bindSwitch("#set-winbar", "winBar", render);
+$("#set-cancel").addEventListener("click", () => $("#dlg-settings").close());
+$("#dlg-settings").addEventListener("close", () => {
+  if (!settingsSaved) {
+    settings.theme = themeBefore;
+    applyPrefs();
+  }
+});
 $$(".swatch").forEach((s) => s.addEventListener("click", () => {
   settings.theme = s.dataset.theme;
-  storage.saveSettings(settings);
   applyPrefs();
 }));
+var ANIM_MS = { none: 0, fast: 90, medium: 150, slow: 260 };
 function applyPrefs() {
-  board.setPrefs({ showDests: settings.showDests, coords: settings.coords });
+  board.setPrefs({
+    showDests: settings.showDests,
+    coords: settings.coords,
+    highlightLast: settings.highlightLast,
+    moveMethod: settings.moveMethod
+  });
+  $("#board").style.setProperty("--piece-ms", `${ANIM_MS[settings.animation] ?? 150}ms`);
+  $(".game").style.setProperty("--board-user", settings.boardSize ? `${settings.boardSize}px` : "");
   sound.setEnabled(settings.sound);
   $("#board").dataset.theme = settings.theme;
   $$(".swatch").forEach((s) => s.setAttribute("aria-checked", String(s.dataset.theme === settings.theme)));
