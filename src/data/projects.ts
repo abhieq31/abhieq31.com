@@ -1,4 +1,4 @@
-// Things I've built, newest first. Shown on the home page and on /projects.
+// Things I've built, newest first. Shown on /projects.
 export interface Project {
   name: string;
   tagline: string;
@@ -15,7 +15,7 @@ export const PROJECTS: Project[] = [
     why: "My company's Zscaler filter blocked chess.com and most other sites, and a few of us still wanted a game at lunch. So I wrote one that runs on any work laptop: a single HTML file, no sign-up, moves relayed peer to peer, Stockfish review after the game that even works when IT has switched WebAssembly off.",
     live: { href: "/deskmate", label: "Play" },
     code: "https://github.com/abhieq31/Deskmate",
-    stack: "Vanilla JS · no build · Nostr relays · Stockfish 11",
+    stack: "TypeScript · SCSS · Nostr relays · Stockfish 11",
   },
   {
     name: "Pragati",
