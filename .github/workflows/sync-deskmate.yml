@@ -1,0 +1,34 @@
+name: Sync Deskmate
+
+# Serves Deskmate (https://github.com/abhieq31/Deskmate) at abhieq31.com/deskmate.
+# Deskmate builds to one self-contained file, deskmate.html; this copies the latest
+# one into public/deskmate/index.html, and the push triggers the normal Vercel deploy.
+
+on:
+  schedule:
+    - cron: "17 3 * * *" # daily
+  workflow_dispatch: # Actions → Sync Deskmate → Run workflow, to update right away
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the latest build
+        run: curl -fsSL https://raw.githubusercontent.com/abhieq31/Deskmate/main/deskmate.html -o public/deskmate/index.html
+
+      - name: Check it is a Deskmate single-file build
+        run: grep -q 'data-single-file' public/deskmate/index.html
+
+      - name: Commit if it changed
+        run: |
+          if git diff --quiet; then echo "Already up to date"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Update Deskmate to the latest build"
+          git push
