@@ -30,9 +30,6 @@
   --gold: #e8b64c;
   --radius: 10px;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25);
-  /* everything but the board: 2 player rows + gaps + padding (height), rail + gap + padding (width) */
-  /* height: 2 player rows + gaps + padding; width: sidebar + eval bar + panel + gaps */
-  --board: min(calc(100vh - 128px), calc(100vw - 520px), 900px);
   --sb-w: 64px;
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', Ubuntu, sans-serif;
   --mono: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Menlo, Consolas, monospace;
@@ -92,33 +89,44 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .btn.small svg { width: 17px; height: 17px; }
 .half { font-size: 1.25rem; font-weight: 700; line-height: 1; }
 
-/* ---------- layout (chess.com desktop game view) ----------
-   [sidebar] [avatar name        clock ⚙]  [ ‹ 1. e4 e5 2. Nf3 … › ]
-             [eval][     board          ]  [ analysis (after a game) ]
-             [avatar name          clock]  [ ½ Draw      Resign      ]
-   Each clock sits in its player's row at the right edge of the board. */
+/* ---------- layout (desktop game view) ----------
+   [sidebar] [avatar name     ][eval][        ][ clock     ]   [⤢]
+             [  taken pieces  ]      [        ][ ‹ moves › ]   [⚙]
+             [                ]      [ board  ][ ½ Draw    ]
+             [ result/analysis]      [        ][ ⚑ Resign  ]
+             [avatar name     ]      [        ][ clock     ]
+   Players on the left, clocks on the right, each pair level with the board's top and bottom edge.
+   The board takes whatever is left: width = sidebar + both columns + gaps + padding + eval bar. */
 body { padding-left: var(--sb-w); }
 .game {
-  --card-h: 44px;
+  --card-h: 44px; --lw: 220px; --rw: 210px;
+  --board: min(calc(100vh - 48px), calc(100vw - var(--sb-w) - var(--lw) - var(--rw) - 160px), 1000px);
   display: grid;
-  grid-template-columns: var(--board) minmax(300px, 380px);
+  grid-template-columns: var(--lw) var(--board) var(--rw);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "ptop  panel"
-    "board panel"
-    "pbot  panel";
-  gap: 8px 20px;
+    "ptop  board ctop"
+    "panel board side"
+    "pbot  board cbot";
+  gap: 14px 22px;
   justify-content: center;
-  align-content: center;
-  min-height: 100vh; min-height: 100dvh;
-  padding: 12px 12px 12px 40px; /* room for the eval bar left of the board */
+  /* centred by padding, not min-height: a min-height would stretch the 1fr row past the board */
+  padding: max(24px, calc((100vh - var(--board)) / 2)) 64px 0 50px; /* left: eval bar; right: corner buttons */
 }
-.player.top, .clock-top { grid-area: ptop; }
-.player.bottom, .clock-bottom { grid-area: pbot; }
-.player { justify-self: start; max-width: calc(100% - 220px); }
-.clock-wrap { justify-self: end; display: flex; align-items: center; gap: 4px; }
+.game.analysing { --lw: 250px; }
+.player.top { grid-area: ptop; align-self: start; }
+.player.bottom { grid-area: pbot; align-self: end; }
+.clock-top { grid-area: ctop; align-self: start; }
+.clock-bottom { grid-area: cbot; align-self: end; }
 .board-area { grid-area: board; position: relative; }
 .panel { grid-area: panel; }
-.rail, .mobile-bar { display: none; }
+.side { grid-area: side; }
+.mobile-bar { display: none; }
+
+/* focus and settings, stacked in the top-right corner of the page */
+.corner-tools { position: fixed; top: 12px; right: 12px; z-index: 20; display: flex; flex-direction: column; gap: 4px; }
+.corner-tools .icon-btn { color: #9a958e; }
+body[data-view="home"] #btn-focus { display: none; }
 
 /* eval bar, left of the board (analysis only) */
 .evalbar {
@@ -132,11 +140,11 @@ body { padding-left: var(--sb-w); }
 .evalbar-num { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; font: 700 9px/1 var(--font); color: #333; }
 .evalbar.black-better .evalbar-num { bottom: auto; top: 4px; color: #ddd; }
 
-/* side panel */
-.panel {
-  align-self: start; display: flex; flex-direction: column; max-height: calc(var(--board) + 2 * var(--card-h) + 16px);
-  background: #262522; border-radius: 8px; overflow: hidden;
-}
+/* left column: result line, analysis after a game */
+.panel { align-self: center; display: flex; flex-direction: column; min-height: 0; max-height: 100%; }
+/* taken out of flow so it fills the space between the players without ever stretching the grid */
+.game { position: relative; }
+.game.analysing .panel { position: absolute; inset: 0; align-self: stretch; justify-self: stretch; background: #262522; border-radius: 8px; overflow: hidden; }
 .icon-btn {
   display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 6px; flex: none;
   background: transparent; color: var(--text); cursor: pointer; transition: background 0.15s, color 0.15s;
@@ -177,22 +185,25 @@ body { padding-left: var(--sb-w); }
 .result-line strong { font-size: 1.3rem; color: var(--text-strong); }
 .result-line span { font-size: 0.85rem; color: var(--muted); font-style: italic; }
 
-.panel-actions { display: flex; align-items: center; gap: 22px; padding: 8px 14px; border-top: 1px solid var(--line); background: #21201d; }
-.game.analysing .panel-actions { display: none; }
-.game.analysing .panel { height: 0; min-height: 100%; max-height: none; }
 .game.analysing .analysis { flex: 1 1 auto; overflow-y: auto; }
-/* chess.com: "½ Draw   ⚑ Resign" as quiet text buttons */
-.btn.action {
-  min-height: 34px; padding: 0 4px; gap: 7px; background: transparent; border: 0; box-shadow: none;
-  color: #bdbab5; font-weight: 600; font-size: 0.95rem;
+
+/* right column: moves under the top clock, then Draw / Resign centred between the clocks */
+.side { display: flex; flex-direction: column; min-height: 0; }
+.side .moveline { border-radius: 6px; }
+.side-acts { margin: auto 0; display: flex; flex-direction: column; gap: 8px; padding: 12px 0; }
+.act {
+  display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; background: #262522; color: #bdbab5;
+  font: 600 0.95rem var(--font); cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.btn.action:hover:not(:disabled) { background: transparent; color: #fff; }
-.btn.action.danger { color: #bdbab5; }
-.btn.action.danger:hover:not(:disabled) { color: #fff; }
-.btn.action.primary { flex: 1; min-height: 42px; border-radius: 8px; background: linear-gradient(180deg, #8cb85a, #6b9a3c); color: #fff; }
-.btn.action .half { font-size: 1.15rem; font-weight: 700; }
-.btn.action svg { width: 18px; height: 18px; }
-.btn.action.offer, .rb.offer { color: var(--gold); box-shadow: inset 0 0 0 1px rgba(232, 182, 76, 0.6); animation: offerPulse 1.4s ease-in-out infinite; }
+.act:hover:not(:disabled) { background: #312f2c; color: #fff; border-color: rgba(255, 255, 255, 0.16); }
+.act:disabled { opacity: 0.4; cursor: default; }
+.act svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.act .half { font-size: 1.1rem; }
+.act.act-resign:hover:not(:disabled) { color: #f08c8c; border-color: rgba(240, 140, 140, 0.4); }
+.act.primary { background: linear-gradient(180deg, #8cb85a, #6b9a3c); border-color: transparent; color: #fff; height: 44px; }
+.act.primary:hover:not(:disabled) { background: linear-gradient(180deg, #98c565, #75a744); }
+.act.offer { color: var(--gold); border-color: rgba(232, 182, 76, 0.6); animation: offerPulse 1.4s ease-in-out infinite; }
 
 /* analysis */
 .analysis { padding: 12px 12px 6px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; min-height: 0; }
@@ -229,16 +240,6 @@ body { padding-left: var(--sb-w); }
 .pn:hover:not(:disabled) { background: #4a4743; color: var(--text-strong); }
 .pn:disabled { opacity: 0.3; cursor: default; }
 
-/* phone action row */
-.rb {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: 44px; padding: 0 6px; border: 0; border-radius: 8px;
-  background: #3c3a37; color: var(--text-strong); cursor: pointer; font: 600 0.88rem var(--font);
-}
-.rb svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.rb .half { font-size: 1.15rem; font-weight: 700; }
-.rb:disabled { opacity: 0.35; }
-.rb.danger { color: #f08c8c; }
 
 /* ---------- left sidebar (chess.com-style) ---------- */
 .sidebar {
@@ -309,13 +310,8 @@ body[data-view="home"] .game, body[data-view="game"] .home { display: none; }
 /* ---------- focus mode: just the board, the players and the clocks ---------- */
 #btn-focus .ico-compress, body.focus #btn-focus .ico-expand { display: none; }
 body.focus #btn-focus .ico-compress { display: block; }
-.focus-acts { display: none; gap: 2px; }
-body.focus .focus-acts { display: inline-flex; }
-.focus-acts .icon-btn { color: #bdbab5; }
-.focus-acts .half { font-size: 1.15rem; font-weight: 700; }
-body.focus { --sb-w: 0px; --board: min(calc(100vh - 128px), calc(100vw - 96px), 1100px); }
-body.focus .sidebar, body.focus .panel, body.focus .mobile-bar, body.focus .rail { display: none; }
-body.focus .game { grid-template-columns: var(--board); grid-template-areas: "ptop" "board" "pbot"; }
+body.focus { --sb-w: 0px; }
+body.focus .sidebar, body.focus .mobile-bar, body.focus .side .moveline-slot { display: none; }
 
 
 .set-grid { display: grid; gap: 2px; }
@@ -486,7 +482,7 @@ body.focus .game { grid-template-columns: var(--board); grid-template-areas: "pt
 @keyframes fadeIn { from { opacity: 0; } }
 
 /* ---------- player cards ---------- */
-.player { display: flex; align-items: center; gap: 12px; min-width: 0; height: var(--card-h); }
+.player { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
 .avatar {
   width: var(--card-h); height: var(--card-h); flex: none; border-radius: 6px;
   background: #cfcac2 center / 78% no-repeat; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
@@ -495,14 +491,15 @@ body.focus .game { grid-template-columns: var(--board); grid-template-areas: "pt
 .player[data-color="w"] .avatar { background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHN0eWxlPSJjb2xvci1zY2hlbWU6bGlnaHQgb25seSIgd2lkdGg9IjQ1IiBoZWlnaHQ9IjQ1IiB2aWV3Qm94PSIwIDAgNDUgNDUiPjxwYXRoIGZpbGw9IiNmZmYiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2Utd2lkdGg9IjEuNSIgZD0iTTIyLjUgOWMtMi4yMSAwLTQgMS43OS00IDQgMCAuODkuMjkgMS43MS43OCAyLjM4QzE3LjMzIDE2LjUgMTYgMTguNTkgMTYgMjFjMCAyLjAzLjk0IDMuODQgMi40MSA1LjAzLTMgMS4wNi03LjQxIDUuNTUtNy40MSAxMy40N2gyM2MwLTcuOTItNC40MS0xMi40MS03LjQxLTEzLjQ3IDEuNDctMS4xOSAyLjQxLTMgMi40MS01LjAzIDAtMi40MS0xLjMzLTQuNS0zLjI4LTUuNjIuNDktLjY3Ljc4LTEuNDkuNzgtMi4zOCAwLTIuMjEtMS43OS00LTQtNHoiLz48L3N2Zz4="); background-color: #b9b4ab; }
 .player[data-color="b"] .avatar { background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHN0eWxlPSJjb2xvci1zY2hlbWU6bGlnaHQgb25seSIgd2lkdGg9IjQ1IiBoZWlnaHQ9IjQ1IiB2aWV3Qm94PSIwIDAgNDUgNDUiPjxwYXRoIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2Utd2lkdGg9IjEuNSIgZD0iTTIyLjUgOWE0IDQgMCAwIDAtMy4yMiA2LjM4IDYuNDggNi40OCAwIDAgMC0uODcgMTAuNjVjLTMgMS4wNi03LjQxIDUuNTUtNy40MSAxMy40N2gyM2MwLTcuOTItNC40MS0xMi40MS03LjQxLTEzLjQ3YTYuNDYgNi40NiAwIDAgMC0uODctMTAuNjVBNC4wMSA0LjAxIDAgMCAwIDIyLjUgOXoiLz48L3N2Zz4="); background-color: #d8d4cc; }
 .player.to-move .avatar { box-shadow: 0 0 0 2px var(--accent-2), 0 0 18px rgba(155, 199, 0, 0.45); }
-.pmeta { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; align-self: stretch; }
-.pline { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pmeta { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-height: var(--card-h); }
+.pline { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
 .pname { color: var(--text-strong); font-weight: 700; font-size: 1.08rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pstatus { font-size: 0.82rem; color: var(--muted); min-height: 1.2em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player.to-move .pstatus { color: var(--accent-2); }
 .player.winner .pstatus { color: var(--gold); font-weight: 600; }
 .player.offer .pstatus { color: var(--gold); }
-.material { display: flex; align-items: center; color: var(--muted); font-size: 0.85rem; flex: none; }
+.material { display: flex; flex-wrap: wrap; align-items: center; row-gap: 2px; color: var(--muted); font-size: 0.85rem; min-height: 1.45em; }
+.material:empty { display: none; }
 .material .cap { display: inline-flex; margin-right: 4px; }
 .material .pc { width: 1.45em; height: 1.45em; margin-right: -0.6em; }
 .material .cap .pc:last-child { margin-right: 0; }
@@ -511,7 +508,7 @@ body.focus .game { grid-template-columns: var(--board); grid-template-areas: "pt
 /* ---------- clocks ---------- */
 .clock {
   display: flex; align-items: center; justify-content: flex-end; gap: 10px;
-  height: var(--card-h); min-width: 160px; padding: 0 14px; border-radius: 6px;
+  height: 52px; width: 100%; padding: 0 16px; border-radius: 6px;
   font: 600 1.75rem/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
   background: #1b1a17; color: #9a958e; border: 1px solid var(--line);
   transition: background 0.25s, color 0.25s, box-shadow 0.25s;
@@ -668,22 +665,29 @@ kbd {
 
 /* ---------- responsive ---------- */
 @media (max-width: 760px) {
-  /* move strip + 2 player rows + action row + gaps + padding */
-  :root { --board: min(100vw, calc(100vh - 240px)); --board: min(100vw, calc(100dvh - 240px)); --sb-w: 0px; }
+  /* rows: move strip, 2 player rows, action row, gaps, padding */
+  :root { --sb-w: 0px; }
   body { font-size: 14px; }
   .game {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "mbar" "ptop" "board" "pbot" "rail";
+    --board: min(100vw, calc(100vh - 250px)); --board: min(100vw, calc(100dvh - 250px));
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: none;
+    grid-template-areas: "mbar mbar" "ptop ctop" "board board" "pbot cbot" "side side" "panel panel";
     gap: 8px;
     padding: 6px 0 calc(8px + env(safe-area-inset-bottom));
-    justify-content: stretch;
+    justify-content: stretch; align-content: start;
   }
-  .mobile-bar { grid-area: mbar; display: flex; align-items: center; gap: 4px; padding: 0 6px; min-width: 0; }
+  .game.analysing { --lw: 0px; }
+  .player.top, .player.bottom, .clock-top, .clock-bottom { align-self: center; }
+  .corner-tools { top: 6px; right: 6px; flex-direction: row; }
+  .mobile-bar { grid-area: mbar; display: flex; align-items: center; gap: 4px; padding: 0 84px 0 6px; min-width: 0; }
   .mobile-bar .moveline-slot { flex: 1; min-width: 0; }
   .moveline { border-radius: 8px; min-height: 40px; }
-  .player { padding-left: 10px; max-width: calc(100% - 170px); }
+  .player { padding-left: 10px; }
+  .pline { flex-direction: row; align-items: center; gap: 8px; }
+  .material:empty { display: flex; }
   .clock-wrap { margin-right: 6px; }
-  .clock { min-width: 108px; font-size: 1.45rem; padding: 0 10px; }
+  .clock { width: auto; min-width: 108px; height: 44px; font-size: 1.45rem; padding: 0 10px; }
   .clock-ico { width: 20px; height: 20px; }
   .board-area { justify-self: center; width: var(--board); }
   .board-frame { border-radius: 0; }
@@ -691,16 +695,15 @@ kbd {
   .evalbar-fill { top: 0; height: 100%; width: var(--w, 50%); }
   .evalbar.flip .evalbar-fill { left: auto; right: 0; }
   .evalbar-num { display: none; }
-  .panel { display: none; }
-  .game.analysing .panel { display: flex; grid-area: rail; max-height: none; margin: 0 10px; }
-  .game.analysing .rail { display: none; }
-  .game.analysing .panel .panel-actions { display: none; }
-  .rail { grid-area: rail; display: flex; gap: 8px; padding: 0 10px; }
+  .side .moveline-slot { display: none; }
+  .side-acts { margin: 0; flex-direction: row; padding: 0 10px; }
+  .side-acts .act { flex: 1; height: 44px; }
+  .panel { margin: 0 10px; }
+  .game.analysing .panel { position: static; }
   .sidebar { width: 0; padding: 10px 0; }
   .sidebar.open { width: 240px; padding: 10px 8px; }
   .sb-backdrop.open { display: block; position: fixed; inset: 0; z-index: 25; background: rgba(0, 0, 0, 0.5); }
-  body.focus { --board: min(100vw, calc(100dvh - 130px)); }
-  body.focus .game { grid-template-areas: "ptop" "board" "pbot"; }
+  body.focus .game { --board: min(100vw, calc(100dvh - 200px)); grid-template-areas: "ptop ctop" "board board" "pbot cbot" "side side" "panel panel"; padding-top: 52px; align-content: center; }
   .home { padding: 28px 16px; }
   .home-hero h1 { font-size: 1.9rem; }
   .home-games li { grid-template-columns: 54px 1fr; }
@@ -775,6 +778,12 @@ kbd {
     </div>
   </section>
 
+  <!-- top-right corner: focus and settings, one above the other -->
+  <div class="corner-tools">
+    <button class="icon-btn" id="btn-focus" title="Hide menu and moves (Z)" aria-label="Focus on the board"><svg viewBox="0 0 24 24" class="ico-expand"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><svg viewBox="0 0 24 24" class="ico-compress"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
+    <button class="icon-btn gear" id="btn-settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </div>
+
   <main class="game">
     <!-- phones: menu button + the one-line move strip -->
     <div class="mobile-bar">
@@ -791,8 +800,6 @@ kbd {
     </section>
     <div class="clock-wrap clock-top">
       <div class="clock" id="clock-top" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div>
-      <button class="icon-btn" id="btn-focus" title="Hide menu and moves (Z)" aria-label="Focus on the board"><svg viewBox="0 0 24 24" class="ico-expand"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><svg viewBox="0 0 24 24" class="ico-compress"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
-      <button class="icon-btn gear" id="btn-settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </div>
 
     <section class="board-area">
@@ -814,22 +821,28 @@ kbd {
       </div>
     </section>
     <div class="clock-wrap clock-bottom">
-      <span class="focus-acts">
-        <button class="icon-btn act-draw" aria-label="Draw"><span class="half">½</span></button>
-        <button class="icon-btn danger act-resign" aria-label="Resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></button>
-      </span>
       <div class="clock" id="clock-bottom" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div>
     </div>
 
-    <!-- desktop: one line of moves, analysis when there is one, Draw / Resign -->
-    <aside class="panel" id="panel" aria-label="Game">
-      <div class="moveline-slot" id="moveline-slot-panel">
+    <!-- right column, between the clocks: the one line of moves, then Draw / Resign -->
+    <div class="side">
+      <div class="moveline-slot" id="moveline-slot-side">
         <div class="moveline" id="moveline">
           <button class="ml-arrow" id="nav-prev" title="Back (←)" aria-label="Previous move"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
           <div class="ml-moves" id="moves" aria-label="Moves"></div>
           <button class="ml-arrow" id="nav-next" title="Forward (→)" aria-label="Next move"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
         </div>
       </div>
+      <div class="side-acts" aria-label="Game actions">
+        <button class="act act-draw"><span class="half">½</span><span>Draw</span></button>
+        <button class="act act-resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
+        <button class="act act-pause hidden"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
+        <button class="act primary act-analyse hidden"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8M7.5 12l2-2.5 2 1.5 2-3"/></svg><span>Analyse game</span></button>
+      </div>
+    </div>
+
+    <!-- left column, between the players: the result, and the analysis after a game -->
+    <aside class="panel" id="panel" aria-label="Game">
       <div class="analysis hidden" id="analysis">
         <p class="an-verdict" id="an-verdict"></p>
         <div class="an-head"><span class="an-eval" id="an-eval">0.0</span><span class="an-line" id="an-line"></span></div>
@@ -844,21 +857,8 @@ kbd {
         </div>
       </div>
       <div class="result-line hidden" id="result-line"></div>
-      <div class="panel-actions">
-        <button class="btn action act-draw"><span class="half">½</span><span>Draw</span></button>
-        <button class="btn action danger act-resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
-        <button class="btn action act-pause hidden"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
-        <button class="btn action primary act-analyse hidden"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8M7.5 12l2-2.5 2 1.5 2-3"/></svg><span>Analyse game</span></button>
-      </div>
     </aside>
 
-    <!-- phones: actions under the board -->
-    <nav class="rail" aria-label="Game actions">
-      <button class="rb act-draw"><span class="half">½</span><span>Draw</span></button>
-      <button class="rb danger act-resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
-      <button class="rb act-pause hidden"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
-      <button class="rb act-analyse hidden"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8M7.5 12l2-2.5 2 1.5 2-3"/></svg><span>Analyse</span></button>
-    </nav>
   </main>
 
   <!-- Settings (⚙ next to the board) -->
@@ -1021,7 +1021,7 @@ kbd {
     </div>
     <ul class="help">
       <li>Click or drag a piece. Dots show where it can go; rings show captures.</li>
-      <li>On one laptop, the board turns to the side of whoever is to move (toggle <em>Auto-flip</em>).</li>
+      <li>On one laptop, the board turns to the side of whoever is to move (setting: <em>Turn the board for each player</em>).</li>
       <li>Right-click and drag to draw arrows; right-click a square to circle it.</li>
       <li><em>Play a colleague</em>: create a game and share its 6-character code once. Moves then appear on both laptops as they are played.</li>
       <li>Your current game survives a page reload. Finished games go to <em>Saved games</em>.</li>
@@ -8062,9 +8062,9 @@ function applyPrefs() {
   $$('.swatch').forEach((s) => s.setAttribute('aria-checked', String(s.dataset.theme === settings.theme)));
 }
 
-// The one-line move strip sits at the top of the side panel on wide screens and above the board on phones.
+// The one-line move strip sits under the top clock on wide screens and above the board on phones.
 const phoneLayout = matchMedia('(max-width: 760px)');
-const placeMoves = () => $(phoneLayout.matches ? '#moveline-slot-mobile' : '#moveline-slot-panel').appendChild($('#moveline'));
+const placeMoves = () => $(phoneLayout.matches ? '#moveline-slot-mobile' : '#moveline-slot-side').appendChild($('#moveline'));
 phoneLayout.addEventListener('change', placeMoves);
 
 /* ---------------- sidebar ---------------- */
