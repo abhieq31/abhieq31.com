@@ -115,7 +115,9 @@ body { padding-left: var(--sb-w); }
 }
 /* analysing: the review takes the right column, between the clocks */
 .game.analysing { --lw: 200px; --rw: 320px; }
-.game.analysing .side { display: none; }
+.game.analysing .side, .game.analysing .clock-wrap { display: none; }
+.pclock { display: none; font: 600 0.95rem var(--mono); color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.game.analysing .pclock:not(.hidden) { display: block; }
 .player.top { grid-area: ptop; align-self: start; }
 .player.bottom { grid-area: pbot; align-self: end; }
 .clock-top { grid-area: ctop; align-self: start; }
@@ -146,7 +148,7 @@ body[data-view="home"] #btn-focus { display: none; }
 .panel { align-self: center; display: flex; flex-direction: column; min-height: 0; max-height: 100%; }
 /* taken out of flow so it fills the space between the players without ever stretching the grid */
 .game { position: relative; }
-.game.analysing .panel { grid-area: side; position: absolute; inset: 0; align-self: stretch; justify-self: stretch; background: #161617; border-radius: 8px; overflow: hidden; }
+.game.analysing .panel { grid-area: 1 / 3 / 4 / 4; position: absolute; inset: 0; align-self: stretch; justify-self: stretch; background: #161617; border-radius: 8px; overflow: hidden; }
 .icon-btn {
   display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 6px; flex: none;
   background: transparent; color: var(--text); cursor: pointer; transition: background 0.15s, color 0.15s;
@@ -219,7 +221,7 @@ body[data-view="home"] #btn-focus { display: none; }
   font: 700 0.95rem var(--mono); background: #f2f2f2; color: #222;
 }
 .an-eval.black { background: #2a2a2c; color: #eee; }
-.an-line { color: var(--text); font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-line { color: var(--text); font-size: 0.88rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .an-graph { width: 100%; height: 76px; border-radius: 4px; background: #2a2a2c; cursor: pointer; display: block; }
 .an-graph .area { fill: #f2f2f2; }
 .an-graph .mid { stroke: rgba(128, 128, 128, 0.6); stroke-width: 0.15; }
@@ -229,7 +231,7 @@ body[data-view="home"] #btn-focus { display: none; }
 .an-progress span { display: block; height: 100%; width: 0; background: var(--accent-2); transition: width 0.2s; }
 .an-progress.done { visibility: hidden; }
 .an-moves {
-  flex: 1 1 120px; min-height: 90px; overflow-y: auto; display: grid; grid-template-columns: 30px 1fr 1fr;
+  flex: 1 1 200px; min-height: 140px; overflow-y: auto; display: grid; grid-template-columns: 30px 1fr 1fr;
   align-content: start; gap: 1px 2px; padding: 4px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
   scrollbar-width: thin;
 }
@@ -288,7 +290,7 @@ body[data-view="home"] .game, body[data-view="game"] .home { display: none; }
 .home-hero h1 { margin: 0; font-size: 2.4rem; color: var(--text-strong); letter-spacing: 0.01em; }
 .home-hero h1 b { color: var(--accent-2); }
 .home-hero p { margin: 4px 0 0; color: var(--muted); font-size: 1.05rem; }
-.home-play { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.home-play { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
 .home-tile {
   display: flex; align-items: center; gap: 16px; padding: 18px 20px; border: 0; border-radius: 10px; text-align: left;
   background: #161617; color: var(--text-strong); cursor: pointer; font: inherit;
@@ -367,6 +369,7 @@ body.focus .sidebar, body.focus .mobile-bar, body.focus .side .moveline-slot { d
 .swatch[data-theme="blue"], [data-theme="blue"] { --l: #dee3e6; --d: #8ca2ad; }
 /* ember: ivory and crimson, dark marks; the default */
 .swatch[data-theme="ember"], [data-theme="ember"] { --l: #f2ede6; --d: #9c3440; --hl: rgba(12, 12, 12, 0.24); --sel: rgba(12, 12, 12, 0.4); --dot: rgba(12, 12, 12, 0.34); }
+.swatch[data-theme="green"], [data-theme="green"] { --l: #ebecd0; --d: #739552; --hl: rgba(255, 255, 51, 0.42); --sel: rgba(20, 85, 30, 0.5); --dot: rgba(20, 85, 30, 0.5); }
 .swatch[data-theme="stone"], [data-theme="stone"] { --l: #c8c6c2; --d: #8b8985; --hl: rgba(229, 56, 59, 0.36); --sel: rgba(229, 56, 59, 0.52); --dot: rgba(20, 20, 20, 0.36); }
 /* stone: a fine grain over the squares, drawn with SVG noise (no image files) */
 .board[data-theme="stone"] .squares::after {
@@ -524,6 +527,7 @@ body.focus .sidebar, body.focus .mobile-bar, body.focus .side .moveline-slot { d
 .material .cap { display: inline-flex; margin-right: 4px; }
 .material .pc { width: 1.45em; height: 1.45em; margin-right: -0.6em; }
 .material .cap .pc:last-child { margin-right: 0; }
+.material .pc[class*=" b"] { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.6)); }
 .material b { margin-left: 0.6em; font-weight: 600; }
 
 /* ---------- clocks ---------- */
@@ -740,6 +744,27 @@ kbd {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 
+/* the analysis mark on the square the move landed on, like an annotation in the margin */
+.sq-glyph {
+  position: absolute; top: 3%; right: 3%; z-index: 6; min-width: 30%; height: 30%; padding: 0 3%;
+  display: grid; place-items: center; border-radius: 99px; pointer-events: none;
+  font: 800 clamp(9px, calc(var(--board) / 48), 15px)/1 var(--font); color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+.sq-glyph.k-blunder { background: #ca3431; }
+.sq-glyph.k-mistake { background: #e58f2a; }
+.sq-glyph.k-inaccuracy { background: #d9a714; }
+
+/* play the computer: three levels */
+.levels { display: grid; gap: 6px; }
+.levels label { display: block; cursor: pointer; }
+.levels input { position: absolute; opacity: 0; pointer-events: none; }
+.levels span { display: flex; align-items: baseline; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); }
+.levels b { color: var(--text-strong); min-width: 4.5em; }
+.levels small { color: var(--muted); }
+.levels input:checked + span { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.levels input:focus-visible + span { outline: 2px solid var(--blue); }
+
 </style>
 </head>
 <body>
@@ -778,6 +803,10 @@ kbd {
         <button class="home-tile" id="home-local">
           <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
           <span><strong>Play on this laptop</strong><small>Pass and play; the board turns for each player</small></span>
+        </button>
+        <button class="home-tile" id="home-ai">
+          <svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="3"/><path d="M12 7V4M9 12h.01M15 12h.01M9.5 16h5"/></svg>
+          <span><strong>Play the computer</strong><small>Alone at your desk? Easy, medium or hard</small></span>
         </button>
         <button class="home-tile hidden" id="home-resume">
           <svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>
@@ -821,6 +850,7 @@ kbd {
       <div class="pmeta">
         <div class="pline"><span class="pname" data-name></span><span class="material" data-material></span></div>
         <div class="pstatus" data-status></div>
+        <span class="pclock hidden" data-pclock></span>
       </div>
     </section>
     <div class="clock-wrap clock-top">
@@ -843,6 +873,7 @@ kbd {
       <div class="pmeta">
         <div class="pline"><span class="pname" data-name></span><span class="material" data-material></span></div>
         <div class="pstatus" data-status></div>
+        <span class="pclock hidden" data-pclock></span>
       </div>
     </section>
     <div class="clock-wrap clock-bottom">
@@ -903,6 +934,7 @@ kbd {
     <div class="themes" role="radiogroup" aria-label="Board theme">
       <button class="swatch" data-theme="ember" title="Ember" aria-label="Ember board (ivory and crimson)"></button>
       <button class="swatch" data-theme="stone" title="Stone" aria-label="Stone board"></button>
+      <button class="swatch" data-theme="green" title="Green" aria-label="Green board"></button>
     </div>
     <h3>Game</h3>
     <div class="tools">
@@ -930,6 +962,34 @@ kbd {
       <div class="modal-actions">
         <button type="button" class="btn" value="cancel" data-close>Cancel</button>
         <button type="submit" class="btn primary">Start game</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Play the computer -->
+  <dialog id="dlg-ai" class="modal">
+    <form method="dialog" id="form-ai">
+      <div class="modal-head">
+        <h2>Play the computer</h2>
+        <button type="button" class="btn icon-only ghost" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <label class="field"><span>Your name</span><input id="ai-name" maxlength="24" autocomplete="off" placeholder="Your name" /></label>
+      <h3>Level</h3>
+      <div class="levels" role="radiogroup">
+        <label><input type="radio" name="ai-level" value="easy" /><span><b>Easy</b><small>Makes mistakes. Good for a first game.</small></span></label>
+        <label><input type="radio" name="ai-level" value="medium" checked /><span><b>Medium</b><small>Punishes loose pieces.</small></span></label>
+        <label><input type="radio" name="ai-level" value="hard" /><span><b>Hard</b><small>Strong club player. Good luck.</small></span></label>
+      </div>
+      <h3>You play</h3>
+      <div class="color-pick">
+        <label><input type="radio" name="ai-color" value="w" checked /><span><i class="pc wK"></i>White</span></label>
+        <label><input type="radio" name="ai-color" value="random" /><span><b class="duo"><i class="pc wK"></i><i class="pc bK"></i></b>Random</span></label>
+        <label><input type="radio" name="ai-color" value="b" /><span><i class="pc bK"></i>Black</span></label>
+      </div>
+      <h3>Clock</h3>
+      <div class="chips" id="ai-tc"></div>
+      <div class="modal-actions">
+        <button type="submit" class="btn primary wide-btn">Play</button>
       </div>
     </form>
   </dialog>
@@ -5903,6 +5963,8 @@ class Game {
     // live remote games: room code, the colour this browser plays, the player id in each
     // colour's seat (empty until someone sits there) and a pending draw offer
     this.remote = data.remote ? { offer: null, ...data.remote } : null;
+    // games against the computer: the colour it plays and how strong ('easy' | 'medium' | 'hard')
+    this.ai = data.ai ? { color: data.ai.color, level: data.ai.level } : null;
     this.chess = new Chess();
     this.plies = [];
     for (const san of data.moves || []) this._push(this.chess.move(san));
@@ -6021,6 +6083,7 @@ class Game {
       termination: this.termination, clocks: this.clocks, moves: this.plies.map((p) => p.san),
       clk: this.plies.some((p) => p.clock != null) ? this.plies.map((p) => (p.clock == null ? null : Math.round(p.clock))) : undefined,
       remote: this.remote,
+      ai: this.ai || undefined,
     };
   }
 
@@ -6031,7 +6094,7 @@ class Game {
     // chess.js's PGN parser does not accept escaped quotes, so swap them for apostrophes
     const esc = (s) => String(s).replace(/[\\"]/g, "'");
     const headers = [
-      ['Event', this.remote ? 'Casual remote game' : 'Casual over-the-board game'], ['Site', 'Deskmate'], ['Date', date],
+      ['Event', this.remote ? 'Casual remote game' : this.ai ? 'Casual game against Stockfish' : 'Casual over-the-board game'], ['Site', 'Deskmate'], ['Date', date],
       ['White', this.white], ['Black', this.black], ['Result', this.result || '*'],
       ['TimeControl', tc.base ? `${tc.base * 60}+${tc.inc}` : '-'],
     ];
@@ -6409,6 +6472,38 @@ class Engine {
           setTimeout(() => { if (this.listeners.delete(l)) resolve(best); }, 3000);
         }, movetime + 4000);
       });
+      this._send(`position fen ${fen}`);
+      this._send(`go depth ${depth} movetime ${movetime}`);
+      return done;
+    };
+    const result = this.busy.then(run, run);
+    this.busy = result.catch(() => {});
+    return result;
+  }
+
+  /**
+   * Choose a move to play, for games against the computer. `skill` is Stockfish's Skill Level
+   * (0–20): below 20 it deliberately picks weaker moves now and then, which is what makes the
+   * easy levels beatable. Resolves to a UCI move ("e2e4", "e7e8q") or null.
+   */
+  play(fen, { skill, depth, movetime }) {
+    const run = async () => {
+      await this.start();
+      const done = new Promise((resolve) => {
+        const l = (line) => {
+          if (!line.startsWith('bestmove')) return;
+          this.listeners.delete(l);
+          clearTimeout(watchdog);
+          const m = /^bestmove ([a-h][1-8][a-h][1-8][qrbn]?)/.exec(line);
+          resolve(m ? m[1] : null);
+        };
+        this.listeners.add(l);
+        const watchdog = setTimeout(() => {
+          this._send('stop');
+          setTimeout(() => { if (this.listeners.delete(l)) resolve(null); }, 3000);
+        }, movetime + 4000);
+      });
+      this._send(`setoption name Skill Level value ${skill}`);
       this._send(`position fen ${fen}`);
       this._send(`go depth ${depth} movetime ${movetime}`);
       return done;
@@ -7105,7 +7200,7 @@ const other = (c) => (c === 'w' ? 'b' : 'w');
 const colorName = (c) => (c === 'w' ? 'White' : 'Black');
 
 const settings = storage.loadSettings();
-if (!['ember', 'stone'].includes(settings.theme)) settings.theme = 'ember'; // the only two boards now
+if (!['ember', 'stone', 'green'].includes(settings.theme)) settings.theme = 'ember';
 if (!settings.pid) {
   settings.pid = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(36).padStart(2, '0')).join('');
   storage.saveSettings(settings);
@@ -7124,6 +7219,8 @@ let joining = null; // { code, name, timer } while waiting for a room's first sn
 let an = null; // post-game analysis: { game, evals[], summary, done }
 let view = 'game'; // 'home' | 'game'
 let engine = null;
+let aiEngine = null; // Stockfish as an opponent; a separate worker from the analysis one
+let aiTurn = 0; // bumped whenever a pending computer move must be thrown away
 
 const board = new Board($('#board'), { onMove });
 
@@ -7141,8 +7238,8 @@ const clockRunning = () => !review && game.hasClock && !game.over && game.length
 const seated = (color) => !game.remote || !!(color === 'w' ? game.remote.pw : game.remote.pb);
 // a live game starts once both seats are taken; this browser moves only its own colour
 const bothSeated = () => seated('w') && seated('b');
-const myTurn = () => !game.remote || (game.turn === game.remote.me && bothSeated());
-const homeOrientation = () => (game.remote ? game.remote.me || 'w' : settings.autoFlip ? game.turn : 'w');
+const myTurn = () => (game.ai ? game.turn !== game.ai.color : !game.remote || (game.turn === game.remote.me && bothSeated()));
+const homeOrientation = () => (game.ai ? other(game.ai.color) : game.remote ? game.remote.me || 'w' : settings.autoFlip ? game.turn : 'w');
 
 /* ---------------- rendering ---------------- */
 
@@ -7200,13 +7297,14 @@ function renderPlayers() {
 
 /** One short line under a player's name. */
 function playerStatus(g, color, { here, toMove, won, offers, inCheck }) {
-  if (g.result) return won ? `♛ Won · ${g.termination}` : g.result === '1/2-1/2' ? `½ Draw · ${g.termination}` : '';
+  if (g.result) return won ? '♛ Won' : g.result === '1/2-1/2' ? '½ Draw' : '';
   const r = !review && g.remote;
   if (r && !here) return `Waiting to join · code ${formatRoomCode(r.room)}`;
   if (r && color !== r.me && relaysUp === 0) return 'Reconnecting…';
   if (offers) return 'Offers a draw';
   if (inCheck && toMove) return 'Check!';
   if (!toMove) return '';
+  if (!review && g.ai) return color === g.ai.color ? 'Thinking…' : 'Your move';
   if (!r) return 'To move';
   return color === r.me ? 'Your move' : 'Thinking…';
 }
@@ -7222,8 +7320,11 @@ function fmtClock(ms) {
 function renderClocks() {
   const g = active();
   const bottom = board.orientation;
-  for (const [sel, color] of [['#clock-top', other(bottom)], ['#clock-bottom', bottom]]) {
+  for (const [sel, color, card] of [['#clock-top', other(bottom), '#player-top'], ['#clock-bottom', bottom, '#player-bottom']]) {
     const clock = $(sel);
+    clock.parentElement.classList.toggle('hidden', !g.hasClock);
+    const pclock = $(`${card} [data-pclock]`);
+    pclock.classList.toggle('hidden', !g.hasClock);
     const time = clock.querySelector('[data-time]');
     clock.classList.toggle('active', !g.over && !review && viewPly === g.length && g.turn === color && bothSeated());
     clock.classList.toggle('unlimited', !g.hasClock);
@@ -7237,6 +7338,7 @@ function renderClocks() {
     const past = review || viewPly < g.length;
     const ms = past ? g.clocksAt(viewPly)[color] : g.clocks[color];
     time.textContent = fmtClock(ms);
+    pclock.textContent = fmtClock(ms);
     clock.classList.toggle('running', !past && clockRunning() && game.turn === color);
     clock.classList.toggle('low', ms < 20000 && !past);
     clock.classList.toggle('paused', !review && paused && game.turn === color && game.length > 0 && !game.over);
@@ -7309,6 +7411,7 @@ function renderControls() {
   // while a game is on: Draw / Resign. Once it is over: Analyse.
   const finished = !!g.result || (!!review && g.length > 0);
   for (const b of $$('.act-draw, .act-resign')) b.classList.toggle('hidden', finished);
+  for (const b of $$('.act-draw')) if (game.ai && !review) b.classList.add('hidden'); // the computer plays on
   for (const b of $$('.act-analyse')) b.classList.toggle('hidden', !finished || !!an);
   $('.game').classList.toggle('analysing', !!an);
   for (const b of $$('.act-pause')) {
@@ -7328,10 +7431,15 @@ async function onMove(from, to) {
     promotion = await board.askPromotion(to, game.turn);
     if (!promotion) { render(); return; }
   }
+  if (!applyMove(from, to, promotion)) render();
+}
+
+/** Plays a move on the live game (from either player or the computer): clocks, sound, save, sync. */
+function applyMove(from, to, promotion) {
   const mover = game.turn;
   const now = Date.now();
   const ply = game.move(from, to, promotion);
-  if (!ply) { render(); return; }
+  if (!ply) return null;
 
   if (game.remote) game.remote.offer = null; // moving declines a pending offer
   if (game.hasClock) {
@@ -7348,13 +7456,47 @@ async function onMove(from, to) {
   publish();
   render();
   if (game.over) onGameOver();
-  else scheduleFlip();
+  else { scheduleFlip(); computerMove(); }
+  return ply;
+}
+
+/* ---------------- playing the computer ---------------- */
+
+// Stockfish 11 Skill Level 0–20 plus a search limit per level; lower skill makes it pick
+// weaker moves on purpose. Roughly: Easy loses to a beginner who is careful, Hard is club strength+.
+const AI_LEVELS = {
+  easy: { label: 'Easy', skill: 0, depth: 2, movetime: 150 },
+  medium: { label: 'Medium', skill: 7, depth: 7, movetime: 400 },
+  hard: { label: 'Hard', skill: 16, depth: 14, movetime: 1200 },
+};
+const aiName = (level) => `Stockfish · ${AI_LEVELS[level]?.label || 'Medium'}`;
+
+/** If it's the computer's turn in the live game, think and play. */
+async function computerMove() {
+  if (!game.ai || game.over || review || game.turn !== game.ai.color) return;
+  const g = game, turn = ++aiTurn, fen = game.fenAt(game.length);
+  const started = Date.now();
+  let uci = null;
+  try {
+    aiEngine = aiEngine || new Engine();
+    uci = await aiEngine.play(fen, AI_LEVELS[g.ai.level] || AI_LEVELS.medium);
+  } catch {
+    if (turn === aiTurn) toast('Stockfish could not start in this browser. Try reloading the page.');
+    return;
+  }
+  // never instant: a short beat makes the reply readable
+  const wait = 350 - (Date.now() - started);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  if (turn !== aiTurn || game !== g || g.over || review || g.fenAt(g.length) !== fen || !uci) return;
+  if (paused) { paused = false; lastTick = Date.now(); }
+  viewPly = g.length;
+  applyMove(uci.slice(0, 2), uci.slice(2, 4), uci[4]);
 }
 
 /** Same-laptop games: after a move, show the board from the side of whoever moves next. */
 function scheduleFlip(delay = 300) {
   clearTimeout(flipTimer);
-  if (!settings.autoFlip || review || game.remote) return;
+  if (!settings.autoFlip || review || game.remote || game.ai) return;
   flipTimer = setTimeout(() => {
     if (review || game.remote || !settings.autoFlip || !isLive() || board.orientation === game.turn) return;
     board.flip();
@@ -7416,29 +7558,34 @@ function togglePause() {
 
 /* ---------------- game lifecycle ---------------- */
 
-function startGame({ white, black, tc, remote = null, id, startedAt }) {
+function startGame({ white, black, tc, remote = null, ai = null, id, startedAt }) {
   if (game.length && !game.over) storage.archive(game.toJSON()); // keep unfinished games too
   clearTimeout(flipTimer);
   if (!remote || remote.room !== room?.code) leaveRoom();
   stopAnalysis();
-  game = new Game({ white, black, tc, remote, id, startedAt });
+  aiTurn++;
+  game = new Game({ white, black, tc, remote, ai, id, startedAt });
   if (remote) { game.white = white; game.black = black; } // an empty seat keeps an empty name
   review = null;
   viewPly = 0;
   paused = false;
   lastTick = Date.now();
-  if (!remote) Object.assign(settings, { white, black, tc });
+  if (!remote && !ai) Object.assign(settings, { white, black, tc });
   storage.saveSettings(settings);
   persist();
   board.setOrientation(homeOrientation());
   setView('game');
   requestWakeLock();
+  computerMove();
 }
 
 function takeback() {
   if (review || !game.length || game.remote) return;
   clearTimeout(flipTimer);
+  aiTurn++;
   game.undo();
+  // against the computer, take back its reply too, so it's your move again
+  if (game.ai && game.length && game.turn === game.ai.color) game.undo();
   viewPly = game.length;
   lastTick = Date.now();
   persist();
@@ -7463,6 +7610,7 @@ function exitReview() {
   viewPly = game.length;
   board.setOrientation(homeOrientation());
   render();
+  computerMove();
 }
 
 function goto(ply) {
@@ -7791,6 +7939,7 @@ function renderAnalysis() {
   const on = !!an && an.game === g;
   $('#analysis').classList.toggle('hidden', !on);
   $('#evalbar').classList.toggle('hidden', !on);
+  $$('#board .sq-glyph').forEach((e) => e.remove());
   if (!on) { board.setAutoShapes([]); return; }
   const ev = an.evals[viewPly];
   const white = winPct(ev);
@@ -7827,6 +7976,10 @@ function renderAnalysis() {
     else verdict = `<b>${name}</b> is a good move.${bestSan ? ` The engine prefers <b>${esc(bestSan)}</b>.` : ''}`;
   }
   $('#an-verdict').innerHTML = verdict;
+  if (played && kind) {
+    const sq = $(`#board .sq[data-sq="${played.to}"]`);
+    sq?.insertAdjacentHTML('beforeend', `<span class="sq-glyph k-${kind}">${MARKS[kind]}</span>`);
+  }
 
   // graph: White's winning chances over the game
   const n = g.length;
@@ -8116,9 +8269,10 @@ $('#draw-confirm').addEventListener('click', () => {
 $$('.act-resign').forEach((b) => b.addEventListener('click', () => {
   $('#resign-w span').textContent = `${game.white || 'White'} resigns`;
   $('#resign-b span').textContent = `${game.black || 'Black'} resigns`;
-  // in a remote game you can only resign for yourself
-  $('#resign-w').classList.toggle('hidden', game.remote?.me === 'b');
-  $('#resign-b').classList.toggle('hidden', game.remote?.me === 'w');
+  // in a remote game, or against the computer, you can only resign for yourself
+  const me = game.remote?.me || (game.ai && other(game.ai.color));
+  $('#resign-w').classList.toggle('hidden', me === 'b');
+  $('#resign-b').classList.toggle('hidden', me === 'w');
   openDialog('#dlg-resign');
 }));
 for (const c of ['w', 'b']) {
@@ -8141,10 +8295,11 @@ $('#over-rematch').addEventListener('click', () => {
     toast(`Rematch: you play ${colorName(game.remote.me).toLowerCase()}`);
     return;
   }
-  startGame({ white: game.black, black: game.white, tc: game.tc });
+  const ai = game.ai && { color: other(game.ai.color), level: game.ai.level };
+  startGame({ white: game.black, black: game.white, tc: game.tc, ai });
   toast('Colours swapped. Good luck!');
 });
-$('#over-new').addEventListener('click', () => { $('#dlg-over').close(); openNewGame(); });
+$('#over-new').addEventListener('click', () => { $('#dlg-over').close(); game.ai ? openComputer() : openNewGame(); });
 $('#over-review').addEventListener('click', () => { $('#dlg-over').close(); goto(0); toast('Use ← → to step through the game'); });
 $('#over-pgn').addEventListener('click', () => download(game));
 
@@ -8296,6 +8451,30 @@ $('#home-colleague').addEventListener('click', () => openRemote('create'));
 $('#home-join').addEventListener('click', () => openRemote('join'));
 $('#home-local').addEventListener('click', () => openNewGame());
 $('#home-resume').addEventListener('click', () => setView('game'));
+$('#home-ai').addEventListener('click', openComputer);
+
+const AI_TCS = ['none', '5+0', '10+5', '15+10'];
+function openComputer() {
+  $('#ai-name').value = settings.myName || '';
+  const tc = settings.aiTc || 'none';
+  $('#ai-tc').innerHTML = AI_TCS.map((id) => {
+    const t = timeControl(id);
+    return `<label class="chip"><input type="radio" name="ai-tc" value="${id}"${id === tc ? ' checked' : ''} /><span>${t.base ? t.label : 'No clock'}</span></label>`;
+  }).join('');
+  const lv = $(`input[name="ai-level"][value="${settings.aiLevel || 'medium'}"]`);
+  if (lv) lv.checked = true;
+  openDialog('#dlg-ai');
+}
+$('#form-ai').addEventListener('submit', () => {
+  const name = $('#ai-name').value.trim() || 'You';
+  const level = (document.querySelector('input[name="ai-level"]:checked') || {}).value || 'medium';
+  const tc = (document.querySelector('input[name="ai-tc"]:checked') || {}).value || 'none';
+  let me = (document.querySelector('input[name="ai-color"]:checked') || {}).value || 'w';
+  if (me === 'random') me = Math.random() < 0.5 ? 'w' : 'b';
+  Object.assign(settings, { aiLevel: level, aiTc: tc, ...(name !== 'You' ? { myName: name } : {}) });
+  const bot = aiName(level);
+  startGame({ white: me === 'w' ? name : bot, black: me === 'b' ? name : bot, tc, ai: { color: other(me), level } });
+});
 $('#home-all').addEventListener('click', () => { renderArchive(); openDialog('#dlg-archive'); });
 $('#home-import').addEventListener('click', () => { $('#import-error').classList.add('hidden'); openDialog('#dlg-import'); });
 $('#sb-home').addEventListener('click', (e) => { e.preventDefault(); setSidebar(false); setView('home'); });
@@ -8310,6 +8489,7 @@ if (!/^https?:$/.test(location.protocol)) $('.offline-dl')?.remove();
 board.setOrientation(homeOrientation());
 setView(inProgress() ? 'game' : 'home');
 if (game.remote) connectRoom(game.remote.room);
+computerMove(); // a restored game against the computer, with the computer to move
 
 // a shared link (…/deskmate#K7QM2X) opens "Join with a code" with the code filled in
 const linkCode = parseRoomCode(location.hash);
