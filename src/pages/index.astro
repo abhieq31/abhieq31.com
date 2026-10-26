@@ -2,7 +2,6 @@
 import { getCollection } from "astro:content";
 import Card from "@/components/Card.astro";
 import Header from "@/components/Header.astro";
-import ProjectList from "@/components/ProjectList.astro";
 import StructuredData from "@/components/StructuredData.astro";
 import { SITE } from "@/config";
 import Layout from "@/layouts/Layout.astro";
@@ -20,12 +19,6 @@ const hasMore = sortedPosts.length > SITE.postPerIndex;
   <Header />
 
   <main id="main-content" data-layout="index" class="site-shell main-home">
-    <section class="home-projects" aria-label="Projects">
-      <h2 class="home-projects-title">Things I've built</h2>
-      <ProjectList />
-      <p class="home-projects-more"><a href="/projects" class="red-link">Why I built them</a></p>
-    </section>
-
     {
       homePosts.length > 0 ? (
         <section class="post-list" aria-label="Recent posts">
@@ -59,23 +52,6 @@ const hasMore = sortedPosts.length > SITE.postPerIndex;
 </Layout>
 
 <style is:global>
-  .home-projects {
-    margin-bottom: 40px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-  }
-  .home-projects-title {
-    margin: 0 0 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .home-projects-more {
-    margin: 4px 0 0;
-    font-size: 0.95rem;
-  }
   .empty-state {
     padding: 48px 0;
     color: var(--muted);

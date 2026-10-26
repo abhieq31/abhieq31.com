@@ -102,7 +102,8 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 body { padding-left: var(--sb-w); }
 .game {
   --bar-h: 42px; --pw: clamp(300px, 26vw, 400px); --tools: 40px;
-  --board: min(calc(100vh - 2 * var(--bar-h) - 48px), calc(100vw - var(--sb-w) - var(--pw) - var(--tools) - 116px), 1000px);
+  /* the same size in focus mode (which inherits it): hiding the menu never resizes or moves the board */
+  --board: min(calc(100vh - 2 * var(--bar-h) - 48px), calc(100vw - 64px - var(--pw) - var(--tools) - 116px), 1000px);
   display: grid;
   grid-template-columns: var(--board) var(--tools) var(--pw);
   grid-template-rows: var(--bar-h) var(--board) var(--bar-h);
@@ -140,6 +141,14 @@ body[data-view="home"] #btn-focus { display: none; }
 .evalbar.flip.black-better .evalbar-num { top: auto; bottom: 4px; }
 .evalbar-num { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; font: 700 9px/1 var(--font); color: #333; }
 .evalbar.black-better .evalbar-num { bottom: auto; top: 4px; color: #ddd; }
+/* during play: a slim, quiet version with each side's chances at its ends */
+.evalbar { overflow: visible; }
+.evalbar-fill { border-radius: inherit; }
+.evalbar.quiet { width: 6px; opacity: 0.75; right: calc(100% + 10px); }
+.evalbar.quiet .evalbar-num { display: none; }
+.wb-pct { display: none; position: absolute; right: calc(100% + 5px); top: 0; font: 600 10px/1 var(--font); color: var(--muted); font-variant-numeric: tabular-nums; }
+.wb-pct.bot { top: auto; bottom: 0; }
+.evalbar.quiet .wb-pct { display: block; }
 
 /* the right panel: opening, analysis, the moves, navigation, actions */
 .panel {
@@ -166,6 +175,8 @@ body[data-view="home"] #btn-focus { display: none; }
 .txt-btn.act-resign:hover:not(:disabled) { color: #f08c8c; }
 .txt-btn.offer, .sq-btn.offer { color: var(--gold); animation: offerPulse 1.4s ease-in-out infinite; }
 .panel-actions .act-analyse { flex: 1; }
+.panel-actions .txt-btn { padding: 0 8px; gap: 6px; font-size: 0.9rem; }
+.panel-actions .flip-btn { width: 32px; }
 .icon-btn {
   display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 6px; flex: none;
   background: transparent; color: var(--text); cursor: pointer; transition: background 0.15s, color 0.15s;
@@ -345,7 +356,6 @@ body.focus { --sb-w: 0px; }
 body.focus .sidebar, body.focus .mobile-bar, body.focus .panel { display: none; }
 body.focus .game {
   --lw: 200px; --rw: 120px;
-  --board: min(calc(100vh - 48px), calc(100vw - var(--lw) - var(--rw) - 444px), 1100px); /* gaps 48 + padding 76 */
   grid-template-columns: var(--lw) var(--board) var(--rw);
   grid-template-rows: auto minmax(0, 1fr) auto auto minmax(0, 1fr) auto;
   grid-template-areas:
@@ -494,10 +504,6 @@ body.focus .focus-acts { grid-area: acts; display: flex; flex-direction: column;
   filter: drop-shadow(0 14px 14px rgba(0, 0, 0, 0.45)); /* lifted: a bit bigger, a deeper shadow */
 }
 .piece.fade { opacity: 0; z-index: 1; }
-/* carried after a click: the piece rides under the mouse, its square keeps a faint copy */
-.piece.ghost { transition: none; z-index: 10; pointer-events: none; filter: drop-shadow(0 14px 14px rgba(0, 0, 0, 0.45)); }
-.piece.carried { opacity: 0.35; }
-.board.carrying, .board.carrying .sq { cursor: grabbing !important; }
 .piece.appear { animation: appear 0.24s ease-out; }
 @keyframes appear { from { opacity: 0; } }
 .board.movable { cursor: default; }
@@ -765,7 +771,8 @@ kbd {
   .evalbar { right: auto; left: 0; top: auto; bottom: calc(100% + 2px); width: 100%; height: 6px; }
   .evalbar-fill { top: 0; height: 100%; width: var(--w, 50%); }
   .evalbar.flip .evalbar-fill { left: auto; right: 0; }
-  .evalbar-num { display: none; }
+  .evalbar-num, .wb-pct, .evalbar.quiet .wb-pct { display: none; }
+  .evalbar.quiet { right: auto; width: 100%; height: 4px; }
   /* the panel shrinks to its action row; after a game it also holds the review */
   .panel, body.focus .panel { display: flex; margin: 0 10px; border: 0; background: transparent; }
   .panel-head, .panel-nav { display: none; }
@@ -902,7 +909,7 @@ kbd {
     <div class="clock-wrap clock-top"><div class="clock" id="clock-top" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div></div>
 
     <section class="board-area">
-      <div class="evalbar hidden" id="evalbar" aria-label="Evaluation"><div class="evalbar-fill" id="evalbar-fill"></div><span class="evalbar-num" id="evalbar-num"></span></div>
+      <div class="evalbar hidden" id="evalbar" aria-label="Evaluation"><div class="evalbar-fill" id="evalbar-fill"></div><span class="evalbar-num" id="evalbar-num"></span><span class="wb-pct" id="wb-top"></span><span class="wb-pct bot" id="wb-bot"></span></div>
       <div class="board-frame">
         <div id="board" aria-label="Chess board"></div>
       </div>
@@ -972,6 +979,7 @@ kbd {
       <label class="switch"><input type="checkbox" id="set-dests" /><span class="track"></span><span>Show legal moves</span></label>
       <label class="switch"><input type="checkbox" id="set-coords" /><span class="track"></span><span>Coordinates</span></label>
       <label class="switch"><input type="checkbox" id="set-sound" /><span class="track"></span><span>Capture sound</span></label>
+      <label class="switch"><input type="checkbox" id="set-winbar" /><span class="track"></span><span>Winning chances by the board</span></label>
     </div>
     <h3>Board</h3>
     <div class="themes" role="radiogroup" aria-label="Board theme">
@@ -1135,7 +1143,7 @@ kbd {
       <button class="btn icon-only ghost" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <ul class="help">
-      <li>Drag a piece, or click it once to pick it up and click the square to put it on. Dots show where it can go; rings show captures.</li>
+      <li>Drag a piece, or click it and then click where it goes. Dots show where it can go; rings show captures.</li>
       <li>On one laptop, the board turns to the side of whoever is to move (setting: <em>Turn the board for each player</em>).</li>
       <li>Right-click and drag to draw arrows; right-click a square to circle it.</li>
       <li><em>Play a colleague</em>: create a game and share its 6-character code once. Moves then appear on both laptops as they are played.</li>
@@ -6717,8 +6725,6 @@ class Board {
     this.shapes = []; // { from, to } arrows drawn by the player, from === to is a circle
     this.autoShapes = []; // arrows the app draws (engine's best move)
     this.drawing = null;
-    this.carry = null; // a piece picked up by a click, following the mouse until it's put down
-    this.pointer = null; // last mouse position, for the carried piece
 
     root.classList.add('board');
     this.inner = el('div', 'board-inner', root);
@@ -6740,6 +6746,9 @@ class Board {
     window.addEventListener('pointermove', (e) => this._move(e));
     window.addEventListener('pointerup', (e) => this._up(e));
     window.addEventListener('pointercancel', () => this._cancelDrag());
+    // if the browser takes the pointer away mid-drag (window switch, gesture), drop where it was
+    root.addEventListener('lostpointercapture', (e) => { if (this.drag) this._up({ ...e, clientX: this.drag.px ?? e.clientX, clientY: this.drag.py ?? e.clientY }); });
+    window.addEventListener('blur', () => this._cancelDrag());
     root.addEventListener('contextmenu', (e) => e.preventDefault());
 
     this._layoutSquares();
@@ -6910,7 +6919,6 @@ class Board {
       s.classList.toggle('hover', !!this.drag?.moved && this.drag.over === sq);
       s.classList.toggle('can-move', !!movable && dests.has(sq));
     }
-    this._syncCarry();
     this.root.classList.toggle('movable', !!movable);
     this.root.classList.toggle('dragging-piece', !!this.drag);
   }
@@ -6924,7 +6932,6 @@ class Board {
   }
 
   _down(e) {
-    this.pointerType = e.pointerType;
     const sq = this._eventSquare(e);
     if (!sq) return;
     if (e.button === 2) {
@@ -6937,17 +6944,6 @@ class Board {
     const targets = this.selected ? this.state.dests.get(this.selected) || [] : [];
     if (this.selected && targets.includes(sq)) {
       const from = this.selected;
-      // a carried piece is put down right there, without sliding over from its square
-      if (this.carry) {
-        const p = this.pieces.get(from);
-        this.root.classList.add('no-anim');
-        this.pieces.get(sq)?.el.remove();
-        this.pieces.delete(from);
-        this.pieces.set(sq, p);
-        this._place(p.el, sq);
-        reflow(p.el);
-        this.root.classList.remove('no-anim');
-      }
       this.selected = null;
       this._highlight();
       this.onMove(from, sq);
@@ -6986,12 +6982,11 @@ class Board {
   }
 
   _move(e) {
-    if (e.pointerType === 'mouse') this.pointer = { x: e.clientX, y: e.clientY };
     const d = this.drag;
-    if (!d) {
-      if (this.carry) this._carryFollow();
-      return;
-    }
+    if (!d) return;
+    // the button is already up but no pointerup reached us (seen with trackpad tap-to-drag):
+    // treat this as the drop, so the piece never stays stuck to the pointer
+    if (e.pointerType === 'mouse' && e.buttons === 0) { this._up(e); return; }
     if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 3) d.moved = true;
     this._follow(e.clientX, e.clientY);
     const over = this._eventSquare(e);
@@ -7044,47 +7039,6 @@ class Board {
     this.drag = null;
     this.selected = null;
     this._highlight();
-  }
-
-  /* ---------- carrying: click a piece, it follows the mouse, click a square to put it down ---------- */
-
-  _syncCarry() {
-    const want = this.selected && !this.drag && this.pointerType === 'mouse' && this.pointer ? this.selected : null;
-    if (this.carry && this.carry.from === want && this.carry.el === this.pieces.get(want)?.el) return;
-    if (this.carry) {
-      this.carry.ghost.remove();
-      this.carry.el.classList.remove('carried');
-      this._sqByName.get(this.carry.over)?.classList.remove('hover');
-      this.root.classList.remove('carrying');
-      this.carry = null;
-    }
-    const p = want && this.pieces.get(want);
-    if (!p) return;
-    const ghost = el('div', `piece piece-img ${p.code} ghost`, this.piecesEl);
-    p.el.classList.add('carried');
-    this.root.classList.add('carrying');
-    this.carry = { from: want, el: p.el, ghost, over: null };
-    this._carryFollow();
-  }
-
-  _carryFollow() {
-    const c = this.carry;
-    if (!c || !this.pointer) return;
-    if (c.raf) return;
-    c.raf = requestAnimationFrame(() => {
-      c.raf = 0;
-      if (this.carry !== c) return;
-      const rect = this.inner.getBoundingClientRect();
-      const size = rect.width / 8;
-      c.ghost.style.transform = `translate3d(${this.pointer.x - rect.left - size / 2}px, ${this.pointer.y - rect.top - size / 2}px, 0) scale(1.14)`;
-      const over = this._eventSquare({ clientX: this.pointer.x, clientY: this.pointer.y });
-      if (over !== c.over) {
-        this._sqByName.get(c.over)?.classList.remove('hover');
-        c.over = over;
-        const targets = this.state.dests.get(c.from) || [];
-        if (targets.includes(over)) this._sqByName.get(over)?.classList.add('hover');
-      }
-    });
   }
 
   /* ---------- arrows & circles ---------- */
@@ -7171,6 +7125,7 @@ const DEFAULT_SETTINGS = {
   coords: true,
   theme: 'ember',
   focus: true, // during a game: only the board, the players and the clocks
+  winBar: true, // a slim bar by the board with each side's winning chances
   white: 'White',
   black: 'Black',
   tc: 'none',
@@ -7380,6 +7335,7 @@ function render() {
   renderControls();
   renderAnalysis();
   applyFocus();
+  scheduleWinBar();
 }
 
 function renderPlayers() {
@@ -7423,10 +7379,9 @@ function playerStatus(g, color, { here, toMove, won, offers, inCheck }) {
   if (r && color !== r.me && relaysUp === 0) return 'Reconnecting…';
   if (offers) return 'Offers a draw';
   if (inCheck && toMove) return 'Check!';
-  if (!toMove) return '';
-  if (!review && g.ai) return color === g.ai.color ? 'Thinking…' : 'Your move';
-  if (!r) return 'To move';
-  return color === r.me ? 'Your move' : 'Thinking…';
+  // whose turn it is only needs saying when two people share one laptop
+  if (!toMove || r || g.ai) return '';
+  return 'To move';
 }
 
 function fmtClock(ms) {
@@ -7594,6 +7549,51 @@ function applyMove(from, to, promotion) {
   if (game.over) onGameOver();
   else { scheduleFlip(); computerMove(); }
   return ply;
+}
+
+/* ---------------- win chances during the game ---------------- */
+
+// A slim bar by the board with each side's chances (lichess's win% from a short Stockfish search),
+// refreshed after every move. Quiet on purpose: no numbers in the move list, no best move, no arrows.
+const WIN_LIMITS = { wasm: { depth: 12, movetime: 350 }, asm: { depth: 8, movetime: 300 } };
+let liveEngine = null;
+let liveTurn = 0;
+const liveEvals = new Map(); // fen → evaluation, so stepping back and forth costs nothing
+
+function winBarWanted() {
+  return settings.winBar && view === 'game' && !an && !review && game.length > 0;
+}
+
+async function scheduleWinBar() {
+  if (!winBarWanted()) return renderWinBar();
+  const fen = game.fenAt(viewPly);
+  if (liveEvals.has(fen)) return renderWinBar();
+  const turn = ++liveTurn;
+  try {
+    liveEngine = liveEngine || new Engine();
+    const flavor = await liveEngine.start();
+    if (turn !== liveTurn) return;
+    const ev = terminalEval(fen) || await liveEngine.analyse(fen, WIN_LIMITS[flavor]);
+    if (ev) liveEvals.set(fen, ev);
+  } catch { return; } // no engine in this browser: no bar, nothing else changes
+  if (turn === liveTurn) renderWinBar();
+}
+
+function renderWinBar() {
+  const bar = $('#evalbar');
+  const ev = winBarWanted() && liveEvals.get(game.fenAt(viewPly));
+  if (an && an.game === active()) return; // the analysis owns the bar
+  bar.classList.toggle('hidden', !ev);
+  if (!ev) return;
+  const white = winPct(ev);
+  bar.style.setProperty('--w', `${white}%`);
+  bar.classList.toggle('flip', board.orientation === 'b');
+  bar.classList.toggle('black-better', white < 50);
+  const top = other(board.orientation);
+  const pct = (c) => `${Math.round(c === 'w' ? white : 100 - white)}%`;
+  $('#wb-top').textContent = pct(top);
+  $('#wb-bot').textContent = pct(board.orientation);
+  bar.title = `Winning chances: White ${Math.round(white)}%, Black ${Math.round(100 - white)}%`;
 }
 
 /* ---------------- playing the computer ---------------- */
@@ -8074,10 +8074,11 @@ function renderAnalysis() {
   const g = active();
   const on = !!an && an.game === g;
   $('#analysis').classList.toggle('hidden', !on);
-  $('#evalbar').classList.toggle('hidden', !on);
+  $('#evalbar').classList.toggle('quiet', !on);
   $$('#board .sq-glyph').forEach((e) => e.remove());
   $('#an-acc').classList.toggle('hidden', !on);
-  if (!on) { board.setAutoShapes([]); return; }
+  if (!on) { board.setAutoShapes([]); renderWinBar(); return; }
+  $('#evalbar').classList.remove('hidden');
   const ev = an.evals[viewPly];
   const white = winPct(ev);
 
@@ -8467,6 +8468,7 @@ bindSwitch('#set-autoflip', 'autoFlip', () => { render(); if (settings.autoFlip)
 bindSwitch('#set-dests', 'showDests', applyPrefs);
 bindSwitch('#set-coords', 'coords', applyPrefs);
 bindSwitch('#set-sound', 'sound', applyPrefs);
+bindSwitch('#set-winbar', 'winBar', render);
 
 $$('.swatch').forEach((s) => s.addEventListener('click', () => {
   settings.theme = s.dataset.theme;
