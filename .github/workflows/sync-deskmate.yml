@@ -20,15 +20,23 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download the latest build
-        run: curl -fsSL https://raw.githubusercontent.com/abhieq31/Deskmate/main/deskmate.html -o public/deskmate/index.html
+        run: |
+          base=https://raw.githubusercontent.com/abhieq31/Deskmate/main
+          curl -fsSL "$base/deskmate.html" -o public/deskmate/index.html
+          # Stockfish (GPLv3) for post-game analysis, loaded from /deskmate/vendor/stockfish/
+          mkdir -p public/deskmate/vendor/stockfish
+          for f in stockfish.js stockfish.wasm COPYING.txt README.md; do
+            curl -fsSL "$base/vendor/stockfish/$f" -o "public/deskmate/vendor/stockfish/$f"
+          done
 
       - name: Check it is a Deskmate single-file build
         run: grep -q 'data-single-file' public/deskmate/index.html
 
       - name: Commit if it changed
         run: |
-          if git diff --quiet; then echo "Already up to date"; exit 0; fi
+          git add -A public/deskmate
+          if git diff --cached --quiet; then echo "Already up to date"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "Update Deskmate to the latest build"
+          git commit -m "Update Deskmate to the latest build"
           git push

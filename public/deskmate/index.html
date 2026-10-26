@@ -31,7 +31,9 @@
   --radius: 10px;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25);
   /* everything but the board: 2 player rows + gaps + padding (height), rail + gap + padding (width) */
-  --board: min(calc(100vh - 136px), calc(100vw - 440px), 900px);
+  /* height: 2 player rows + gaps + padding; width: sidebar + eval bar + panel + gaps */
+  --board: min(calc(100vh - 128px), calc(100vw - 520px), 900px);
+  --sb-w: 64px;
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', Ubuntu, sans-serif;
   --mono: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Menlo, Consolas, monospace;
   color-scheme: dark;
@@ -91,61 +93,130 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .half { font-size: 1.25rem; font-weight: 700; line-height: 1; }
 
 /* ---------- layout (chess.com desktop game view) ----------
-   desktop:  [avatar name        clock]  [ Moves        ☰ ]      phone:  [avatar name   clock]
-             [                        ]  [ 1. e4  e5      ]              [       board       ]
-             [         board          ]  [ …              ]              [avatar name   clock]
-             [                        ]  [ ½ Draw  Resign ]              [ Draw Resign Menu  ]
-             [avatar name        clock]
-   Each clock shares its player's grid cell, at the right edge of the board. */
+   [sidebar] [avatar name        clock ⚙]  [ ‹ 1. e4 e5 2. Nf3 … › ]
+             [eval][     board          ]  [ analysis (after a game) ]
+             [avatar name          clock]  [ ½ Draw      Resign      ]
+   Each clock sits in its player's row at the right edge of the board. */
+body { padding-left: var(--sb-w); }
 .game {
   --card-h: 44px;
   display: grid;
-  grid-template-columns: var(--board) minmax(280px, 340px);
+  grid-template-columns: var(--board) minmax(300px, 380px);
   grid-template-areas:
     "ptop  panel"
     "board panel"
     "pbot  panel";
-  gap: 8px 18px;
+  gap: 8px 20px;
   justify-content: center;
   align-content: center;
   min-height: 100vh; min-height: 100dvh;
-  padding: 12px;
+  padding: 12px 12px 12px 40px; /* room for the eval bar left of the board */
 }
 .player.top, .clock-top { grid-area: ptop; }
 .player.bottom, .clock-bottom { grid-area: pbot; }
-.player { justify-self: start; max-width: calc(100% - 180px); }
-.clock { justify-self: end; }
+.player { justify-self: start; max-width: calc(100% - 220px); }
+.clock-wrap { justify-self: end; display: flex; align-items: center; gap: 4px; }
 .board-area { grid-area: board; position: relative; }
 .panel { grid-area: panel; }
-.rail { grid-area: rail; display: none; }
+.rail, .mobile-bar { display: none; }
+
+/* eval bar, left of the board (analysis only) */
+.evalbar {
+  position: absolute; right: calc(100% + 8px); top: 0; bottom: 0; width: 18px; border-radius: 4px; overflow: hidden;
+  background: #403d39;
+}
+.evalbar-fill { position: absolute; left: 0; right: 0; bottom: 0; height: var(--w, 50%); background: #f2f2f2; transition: height 0.35s ease, width 0.35s ease; }
+.evalbar.flip .evalbar-fill { bottom: auto; top: 0; }
+.evalbar.flip .evalbar-num { bottom: auto; top: 4px; }
+.evalbar.flip.black-better .evalbar-num { top: auto; bottom: 4px; }
+.evalbar-num { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; font: 700 9px/1 var(--font); color: #333; }
+.evalbar.black-better .evalbar-num { bottom: auto; top: 4px; color: #ddd; }
 
 /* side panel */
 .panel {
-  display: flex; flex-direction: column;
-  height: 0; min-height: 100%; /* follow the board column's height instead of setting it */
+  align-self: start; display: flex; flex-direction: column; max-height: calc(var(--board) + 2 * var(--card-h) + 16px);
   background: #262522; border-radius: 8px; overflow: hidden;
 }
-.panel-head { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 14px; border-bottom: 1px solid var(--line); }
-.panel-title { font-weight: 700; color: var(--text-strong); }
-.panel-head .tc-badge { margin-left: auto; }
 .icon-btn {
-  display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 6px;
+  display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 6px; flex: none;
   background: transparent; color: var(--text); cursor: pointer; transition: background 0.15s, color 0.15s;
 }
-.icon-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.icon-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .icon-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-strong); }
-.panel .moves-slot { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
-.panel #moves-block { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; padding: 0; border: 0; }
-.panel #moves-block .sec-head { display: none; }
-.panel .moves { flex: 1 1 0; max-height: none; margin: 0; border: 0; border-radius: 0; background: transparent; }
-.panel .result-line { padding: 10px; border-top: 1px solid var(--line); }
+.gear svg { width: 20px; height: 20px; }
+
+/* the single line of moves */
+.moveline { display: flex; align-items: center; min-height: 48px; background: #1f1e1c; }
+.ml-arrow {
+  flex: none; width: 34px; align-self: stretch; display: grid; place-items: center; border: 0; background: transparent;
+  color: var(--muted); cursor: pointer;
+}
+.ml-arrow svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.ml-arrow:hover:not(:disabled) { color: var(--text-strong); }
+.ml-arrow:disabled { opacity: 0.25; cursor: default; }
+.ml-moves {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 2px; overflow-x: auto; white-space: nowrap;
+  scrollbar-width: none; scroll-behavior: smooth; padding: 6px 0;
+}
+.ml-moves::-webkit-scrollbar { display: none; }
+.ml-num { color: var(--muted); font-weight: 600; font-size: 0.92rem; margin: 0 2px 0 6px; }
+.ml-moves .empty { color: var(--muted); font-size: 0.9rem; padding: 0 4px; }
+.mv {
+  border: 0; background: transparent; color: var(--text-strong); cursor: pointer; flex: none;
+  padding: 4px 6px; border-radius: 4px; font: 600 0.98rem/1.2 var(--font); transition: background 0.12s;
+}
+.mv:hover { background: rgba(255, 255, 255, 0.08); }
+.mv.active { background: rgba(255, 255, 255, 0.16); }
+.mv .fig { font-size: 1.1em; line-height: 1; margin-right: 1px; }
+.mv .mark { font-weight: 800; margin-left: 1px; }
+.mv.blunder .mark { color: #ca3431; }
+.mv.mistake .mark { color: #e58f2a; }
+.mv.inaccuracy .mark { color: #f7c045; }
+
+.result-line { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px; border-top: 1px solid var(--line); }
+.result-line strong { font-size: 1.3rem; color: var(--text-strong); }
+.result-line span { font-size: 0.85rem; color: var(--muted); font-style: italic; }
+
 .panel-actions { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--line); }
+.game.analysing .panel-actions { display: none; }
 .panel-actions .btn { flex: 1; }
 .btn.action { min-height: 42px; gap: 10px; background: #3c3a37; border-color: transparent; }
 .btn.action:hover:not(:disabled) { background: #4a4743; }
+.btn.action.primary { background: linear-gradient(180deg, #8cb85a, #6b9a3c); color: #fff; }
 .btn.action .half { font-size: 1.15rem; font-weight: 700; }
 .btn.action svg { width: 18px; height: 18px; }
 .btn.action.offer, .rb.offer { color: var(--gold); box-shadow: inset 0 0 0 1px rgba(232, 182, 76, 0.6); animation: offerPulse 1.4s ease-in-out infinite; }
+
+/* analysis */
+.analysis { padding: 12px 12px 6px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.an-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.an-eval {
+  flex: none; min-width: 58px; text-align: center; padding: 4px 8px; border-radius: 4px;
+  font: 700 0.95rem var(--mono); background: #f2f2f2; color: #222;
+}
+.an-eval.black { background: #403d39; color: #eee; }
+.an-line { color: var(--text); font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-graph { width: 100%; height: 76px; border-radius: 4px; background: #403d39; cursor: pointer; display: block; }
+.an-graph .area { fill: #f2f2f2; }
+.an-graph .mid { stroke: rgba(128, 128, 128, 0.6); stroke-width: 0.15; }
+.an-graph .cur { stroke: var(--blue); stroke-width: 0.5; }
+.an-graph .dot { stroke: none; }
+.an-progress { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.an-progress span { display: block; height: 100%; width: 0; background: var(--accent-2); transition: width 0.2s; }
+.an-progress.done { visibility: hidden; }
+.an-acc { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; }
+.an-acc div { display: flex; flex-direction: column; align-items: center; padding: 8px; border-radius: 6px; background: #1f1e1c; }
+.an-acc b { font-size: 1.35rem; color: var(--text-strong); }
+.an-acc small { color: var(--muted); }
+.an-acc .tally { font-size: 0.78rem; color: var(--muted); }
+.an-nav { display: flex; justify-content: space-between; gap: 6px; }
+.pn {
+  flex: 1; display: grid; place-items: center; height: 40px; border: 0; border-radius: 6px;
+  background: #3c3a37; color: var(--text); cursor: pointer; transition: background 0.15s;
+}
+.pn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.pn:hover:not(:disabled) { background: #4a4743; color: var(--text-strong); }
+.pn:disabled { opacity: 0.3; cursor: default; }
 
 /* phone action row */
 .rb {
@@ -158,43 +229,38 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .rb:disabled { opacity: 0.35; }
 .rb.danger, .btn.action.danger { color: #f08c8c; }
 
-.card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 16px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+/* ---------- left sidebar (chess.com-style) ---------- */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; z-index: 30; width: var(--sb-w);
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 8px; overflow: hidden;
+  background: #262522; transition: width 0.18s ease, box-shadow 0.18s;
 }
+.sidebar.open { width: 220px; box-shadow: 12px 0 40px rgba(0, 0, 0, 0.45); }
+.sb-brand, .sb-item {
+  display: flex; align-items: center; gap: 14px; min-height: 44px; padding: 0 12px; border-radius: 8px;
+  color: var(--text); white-space: nowrap; border: 0; background: transparent; cursor: pointer;
+  font: 600 0.95rem var(--font); text-align: left; text-decoration: none;
+}
+.sb-brand { margin-bottom: 10px; padding: 0 9px; color: var(--text-strong); font-size: 1.15rem; }
+.sb-brand img { flex: none; }
+.sb-brand b { color: var(--accent-2); }
+.sb-item svg { flex: none; width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sb-item svg.fill { fill: currentColor; stroke: none; }
+.sb-item:hover, .sb-brand:hover { background: rgba(255, 255, 255, 0.07); color: var(--text-strong); text-decoration: none; }
+.sb-item span, .sb-brand span { opacity: 0; transition: opacity 0.12s; }
+.sidebar.open .sb-item span, .sidebar.open .sb-brand span { opacity: 1; }
+.sb-gap { flex: 1; }
+.sb-toggle svg { transition: transform 0.18s; }
+.sidebar.open .sb-toggle svg { transform: rotate(180deg); }
+.sb-backdrop { display: none; }
 
-/* ---------- menu drawer ---------- */
-.menu-main { display: grid; gap: 8px; }
-.menu-main .btn { justify-content: flex-start; min-height: 42px; }
-.menu-foot { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 12px; }
-.menu-foot .btn svg { width: 17px; height: 17px; }
-.drawer {
-  margin: 0 0 0 auto; height: 100vh; max-height: 100vh; width: min(400px, 100vw);
-  padding: 18px 20px 28px; border: 0; border-left: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(30, 29, 26, 0.97); color: var(--text); overflow-y: auto;
-  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.5);
-}
-.drawer[open] { animation: drawerIn 0.3s cubic-bezier(.2, .9, .3, 1); }
-.drawer::backdrop { background: rgba(10, 9, 8, 0.45); backdrop-filter: blur(2px); }
-@keyframes drawerIn { from { transform: translateX(100%); } }
-.drawer .modal-head { margin-bottom: 8px; }
-.opt-sec { padding: 14px 0; border-bottom: 1px solid var(--line); }
-.opt-sec:last-of-type { border-bottom: 0; }
-.sec-head { display: flex; justify-content: space-between; align-items: center; }
-.sec-head h3 { margin: 0; }
-.nav-mini { display: flex; gap: 2px; }
-.status-title { font-size: 1.15rem; text-transform: none; letter-spacing: 0; color: var(--text-strong); margin: 10px 0 4px; }
-.status-card p { margin: 0; font-size: 0.9rem; }
-.status-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.82rem; }
+/* ---------- settings ---------- */
+.set-grid { display: grid; gap: 2px; }
 .tc-badge {
   padding: 3px 10px; border-radius: 99px; background: rgba(127, 166, 80, 0.16);
-  color: var(--accent-2); font-weight: 600; font-size: 0.78rem; white-space: nowrap;
+  color: var(--accent-2); font-weight: 600; font-size: 0.78rem; white-space: nowrap; align-self: center; justify-self: start;
 }
+.tc-badge:empty { display: none; }
 .switch { display: flex; align-items: center; gap: 12px; padding: 7px 0; cursor: pointer; user-select: none; font-size: 0.93rem; }
 .switch input { position: absolute; opacity: 0; pointer-events: none; }
 .switch .track {
@@ -225,7 +291,6 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .swatch[data-theme="slate"], [data-theme="slate"] { --l: #c9cfd6; --d: #5f6e7d; }
 
 .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.tools h3 { grid-column: 1 / -1; margin-bottom: 2px; }
 .tools .btn svg { width: 17px; height: 17px; }
 .side-foot { font-size: 0.8rem; padding: 14px 0 0; margin: 0; }
 
@@ -269,7 +334,9 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .board.movable .sq.move-dest, .board.movable .sq.capture-dest { cursor: pointer; }
 .board.movable .sq.move-dest:hover::after { background: rgba(20, 85, 30, 0.3); }
 .board.movable .sq.capture-dest:hover::after { background: rgba(20, 85, 30, 0.3); }
-.sq.hover::after { background: rgba(20, 85, 30, 0.3) !important; }
+.sq.hover::after { box-shadow: inset 0 0 0 calc(var(--board) / 160 + 1px) rgba(255, 255, 255, 0.75); }
+.board.movable .sq.can-move { cursor: grab; }
+.board.dragging-piece, .board.dragging-piece .sq { cursor: grabbing !important; }
 @keyframes pop { from { transform: scale(0.4); opacity: 0; } }
 
 .coord {
@@ -287,13 +354,13 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .piece {
   position: absolute; top: 0; left: 0; width: 12.5%; height: 12.5%;
   will-change: transform; z-index: 2;
-  transition: transform 0.22s cubic-bezier(.25, .8, .35, 1), opacity 0.2s;
+  transition: transform 0.15s cubic-bezier(.25, .8, .35, 1), opacity 0.15s;
 }
 .board.no-anim .piece, .board.no-anim .board-inner { transition: none !important; }
 .piece.moving { z-index: 4; }
 .piece.dragging {
-  transition: none; z-index: 10; cursor: grabbing;
-  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.45));
+  transition: none; z-index: 10;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.4));
 }
 .piece.fade { opacity: 0; z-index: 1; }
 .piece.appear { animation: appear 0.24s ease-out; }
@@ -318,6 +385,7 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 /* arrows */
 .arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; color: #15781b; }
 .shape-arrow { stroke: #15781b; stroke-width: 0.16; stroke-linecap: round; opacity: 0.8; }
+.shape-arrow.auto { stroke: #3692e7; opacity: 0.75; }
 .shape-circle { fill: none; stroke: #15781b; stroke-width: 0.07; opacity: 0.8; }
 
 /* promotion picker */
@@ -386,30 +454,6 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .clock.low:not(.active) { color: #e57373; }
 .clock.paused { outline: 2px dashed rgba(255, 255, 255, 0.3); outline-offset: 2px; }
 @keyframes lowPulse { 50% { box-shadow: 0 0 26px rgba(220, 75, 75, 0.7); } }
-
-/* ---------- moves list (inside Options) ---------- */
-.moves {
-  list-style: none; margin: 10px 0 0; padding: 0; max-height: 34vh; overflow-y: auto;
-  border-radius: 8px; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.12);
-  scrollbar-width: thin; scrollbar-color: #4a4742 transparent;
-}
-.moves li { display: grid; grid-template-columns: 3.2em 1fr 1fr; align-items: stretch; }
-.moves li:nth-child(even) { background: rgba(255, 255, 255, 0.025); }
-.moves .idx {
-  display: flex; align-items: center; justify-content: center; color: var(--muted);
-  background: rgba(0, 0, 0, 0.18); font-size: 0.85rem; border-right: 1px solid var(--line);
-}
-.mv {
-  border: 0; background: transparent; color: var(--text-strong); text-align: left; cursor: pointer;
-  padding: 6px 12px; font: 500 1rem/1.4 var(--font); border-radius: 0; transition: background 0.12s;
-}
-.mv:hover { background: rgba(54, 146, 231, 0.25); }
-.mv.active { background: rgba(54, 146, 231, 0.42); color: #fff; font-weight: 700; }
-.mv .fig { font-size: 1.12em; line-height: 1; margin-right: 1px; }
-.moves .empty { display: block; padding: 14px; color: var(--muted); font-style: italic; }
-.result-line { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 0 0; }
-.result-line strong { font-size: 1.3rem; color: var(--text-strong); }
-.result-line span { font-size: 0.85rem; color: var(--muted); font-style: italic; }
 
 /* ---------- modals ---------- */
 .modal {
@@ -552,28 +596,37 @@ kbd {
 
 /* ---------- responsive ---------- */
 @media (max-width: 760px) {
-  /* 2 player rows + action row + gaps + padding */
-  :root { --board: min(100vw, calc(100vh - 190px)); --board: min(100vw, calc(100dvh - 190px)); }
+  /* move strip + 2 player rows + action row + gaps + padding */
+  :root { --board: min(100vw, calc(100vh - 240px)); --board: min(100vw, calc(100dvh - 240px)); --sb-w: 0px; }
   body { font-size: 14px; }
   .game {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "ptop" "board" "pbot" "rail";
+    grid-template-areas: "mbar" "ptop" "board" "pbot" "rail";
     gap: 8px;
-    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+    padding: 6px 0 calc(8px + env(safe-area-inset-bottom));
     justify-content: stretch;
   }
-  .player { padding-left: 10px; max-width: calc(100% - 140px); }
-  .clock { margin-right: 10px; min-width: 116px; font-size: 1.5rem; padding: 0 12px; }
+  .mobile-bar { grid-area: mbar; display: flex; align-items: center; gap: 4px; padding: 0 6px; min-width: 0; }
+  .mobile-bar .moveline-slot { flex: 1; min-width: 0; }
+  .moveline { border-radius: 8px; min-height: 40px; }
+  .player { padding-left: 10px; max-width: calc(100% - 170px); }
+  .clock-wrap { margin-right: 6px; }
+  .clock { min-width: 108px; font-size: 1.45rem; padding: 0 10px; }
   .clock-ico { width: 20px; height: 20px; }
   .board-area { justify-self: center; width: var(--board); }
   .board-frame { border-radius: 0; }
+  .evalbar { right: auto; left: 0; top: auto; bottom: calc(100% + 2px); width: 100%; height: 6px; }
+  .evalbar-fill { top: 0; height: 100%; width: var(--w, 50%); }
+  .evalbar.flip .evalbar-fill { left: auto; right: 0; }
+  .evalbar-num { display: none; }
   .panel { display: none; }
-  .rail { display: flex; gap: 8px; padding: 0 10px; }
-  .drawer {
-    margin: auto 0 0; width: 100vw; max-width: 100vw; height: auto; max-height: 88vh;
-    border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px 16px 0 0;
-  }
-  @keyframes drawerIn { from { transform: translateY(100%); } }
+  .game.analysing .panel { display: flex; grid-area: rail; max-height: none; margin: 0 10px; }
+  .game.analysing .rail { display: none; }
+  .game.analysing .panel .panel-actions { display: none; }
+  .rail { grid-area: rail; display: flex; gap: 8px; padding: 0 10px; }
+  .sidebar { width: 0; padding: 10px 0; }
+  .sidebar.open { width: 240px; padding: 10px 8px; }
+  .sb-backdrop.open { display: block; position: fixed; inset: 0; z-index: 25; background: rgba(0, 0, 0, 0.5); }
   .tc-grid { grid-template-columns: repeat(3, 1fr); }
   .names, .names.two { grid-template-columns: 1fr; }
   .names #new-swap { justify-self: center; transform: rotate(90deg); }
@@ -588,7 +641,28 @@ kbd {
 </style>
 </head>
 <body>
+  <!-- left sidebar (chess.com-style): icons only, labels when expanded -->
+  <aside class="sidebar" id="sidebar" aria-label="Main menu">
+    <a class="sb-brand" href="#" aria-label="Deskmate home"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjYzllMjY1Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNjI5OTI0Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNCIgZmlsbD0iIzI2MjQyMSIvPgogIDxwYXRoIGQ9Ik04IDhoMTJ2MTJIOHpNMzIgOGgxMnYxMkgzMnpNMjAgMjBoMTJ2MTJIMjB6TTQ0IDIwaDEydjEySDQ0ek04IDMyaDEydjEySDh6TTMyIDMyaDEydjEySDMyek0yMCA0NGgxMnYxMkgyMHpNNDQgNDRoMTJ2MTJINDR6IiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIuMDYiLz4KICA8cGF0aCBmaWxsPSJ1cmwoI2cpIiBkPSJNMjcgMTNjOSAuOCAxNSA3IDE1IDE5LjVWNTFIMTljMC04LjIgOC45LTcuNCA3LjItMTguNi0zIDIuMy00LjYgMi44LTcuNCA0LjYtMS41IDEtMi45LS40LTIuNS0yIDEuOC0zLjIgMi40LTMuNiAzLjQtNy40LjktMy4zIDMuOC02LjUgNS42LTguNEwyNyAxM3oiLz4KICA8Y2lyY2xlIGN4PSIyNSIgY3k9IjIzLjUiIHI9IjEuOCIgZmlsbD0iIzI2MjQyMSIvPgogIDxyZWN0IHg9IjE3IiB5PSI0OSIgd2lkdGg9IjI3IiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZykiLz4KPC9zdmc+Cg==" alt="" width="30" height="30" /><span>Desk<b>mate</b></span></a>
+      <button class="sb-item" id="btn-new" title="New game"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>New game</span></button>
+      <button class="sb-item" id="btn-remote" title="Play a colleague"><svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span>Play a colleague</span></button>
+      <button class="sb-item" id="btn-archive" title="Saved games"><svg viewBox="0 0 24 24"><path d="M3 5h18v4H3zM5 9h14v10H5zM9 13h6"/></svg><span>Saved games</span></button>
+      <button class="sb-item" id="btn-analyse" title="Analysis"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8M7.5 12l2-2.5 2 1.5 2-3"/></svg><span>Analysis</span></button>
+      <button class="sb-item" id="btn-import" title="Import PGN"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M5 14v6h14v-6"/></svg><span>Import PGN</span></button>
+    <span class="sb-gap"></span>
+      <button class="sb-item" id="btn-help" title="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17.2v.3"/></svg><span>How to play</span></button>
+      <a class="sb-item" href="https://github.com/abhieq31/Deskmate" target="_blank" rel="noopener" title="Source code"><svg viewBox="0 0 24 24" class="fill"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .8.1-.7.4-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5a3.9 3.9 0 0 1 1-2.7 3.6 3.6 0 0 1 .1-2.7s.8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .6 1.4.2 2.4.1 2.7a3.9 3.9 0 0 1 1 2.7c0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg><span>Source code</span></a>
+      <button class="sb-item sb-toggle" id="sb-toggle" title="Expand menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="m13 6 6 6-6 6M5 6l6 6-6 6"/></svg><span>Collapse</span></button>
+  </aside>
+  <div class="sb-backdrop" id="sb-backdrop"></div>
+
   <main class="game">
+    <!-- phones: menu button + the one-line move strip -->
+    <div class="mobile-bar">
+      <button class="icon-btn" id="btn-sidebar" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <div class="moveline-slot" id="moveline-slot-mobile"></div>
+    </div>
+
     <section class="player top" id="player-top">
       <span class="avatar" aria-hidden="true"></span>
       <div class="pmeta">
@@ -596,9 +670,13 @@ kbd {
         <div class="pstatus" data-status></div>
       </div>
     </section>
-    <div class="clock clock-top" id="clock-top" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div>
+    <div class="clock-wrap clock-top">
+      <div class="clock" id="clock-top" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div>
+      <button class="icon-btn gear" id="btn-settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    </div>
 
     <section class="board-area">
+      <div class="evalbar hidden" id="evalbar" aria-label="Evaluation"><div class="evalbar-fill" id="evalbar-fill"></div><span class="evalbar-num" id="evalbar-num"></span></div>
       <div class="board-frame">
         <div id="board" aria-label="Chess board"></div>
       </div>
@@ -615,99 +693,79 @@ kbd {
         <div class="pstatus" data-status></div>
       </div>
     </section>
-    <div class="clock clock-bottom" id="clock-bottom" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div>
+    <div class="clock-wrap clock-bottom">
+      <div class="clock" id="clock-bottom" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div>
+    </div>
 
-    <!-- desktop: chess.com-style side panel with the moves, Draw and Resign -->
-    <aside class="panel" aria-label="Moves">
-      <div class="panel-head">
-        <span class="panel-title">Moves</span>
-        <span class="tc-badge" id="panel-tc"></span>
-        <button class="icon-btn act-menu" title="Menu (O)" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <!-- desktop: one line of moves, analysis when there is one, Draw / Resign -->
+    <aside class="panel" id="panel" aria-label="Game">
+      <div class="moveline-slot" id="moveline-slot-panel">
+        <div class="moveline" id="moveline">
+          <button class="ml-arrow" id="nav-prev" title="Back (←)" aria-label="Previous move"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <div class="ml-moves" id="moves" aria-label="Moves"></div>
+          <button class="ml-arrow" id="nav-next" title="Forward (→)" aria-label="Next move"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+        </div>
       </div>
-      <div class="moves-slot" id="moves-slot-panel"></div>
+      <div class="analysis hidden" id="analysis">
+        <div class="an-head"><span class="an-eval" id="an-eval">0.0</span><span class="an-line" id="an-line"></span></div>
+        <svg class="an-graph" id="an-graph" viewBox="0 0 100 40" preserveAspectRatio="none" aria-label="Evaluation graph"></svg>
+        <div class="an-progress" id="an-progress"><span></span></div>
+        <div class="an-acc" id="an-acc"></div>
+        <div class="an-nav">
+          <button class="pn" id="nav-first" title="First move (↑)" aria-label="First move"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-8 6 8 6z"/></svg></button>
+          <button class="pn" data-nav="prev" aria-label="Previous move"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <button class="pn" data-nav="next" aria-label="Next move"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+          <button class="pn" id="nav-last" title="Last move (↓)" aria-label="Last move"><svg viewBox="0 0 24 24"><path d="M18 5v14M6 6l8 6-8 6z"/></svg></button>
+        </div>
+      </div>
+      <div class="result-line hidden" id="result-line"></div>
       <div class="panel-actions">
         <button class="btn action act-draw"><span class="half">½</span><span>Draw</span></button>
         <button class="btn action danger act-resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
         <button class="btn action act-pause hidden"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
+        <button class="btn action primary act-analyse hidden"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8M7.5 12l2-2.5 2 1.5 2-3"/></svg><span>Analyse game</span></button>
       </div>
     </aside>
 
-    <!-- phones: the same actions in one row under the board -->
+    <!-- phones: actions under the board -->
     <nav class="rail" aria-label="Game actions">
       <button class="rb act-draw"><span class="half">½</span><span>Draw</span></button>
       <button class="rb danger act-resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
       <button class="rb act-pause hidden"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
-      <button class="rb act-menu" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Menu</span></button>
+      <button class="rb act-analyse hidden"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8M7.5 12l2-2.5 2 1.5 2-3"/></svg><span>Analyse</span></button>
     </nav>
   </main>
 
-  <!-- Options drawer: game info, moves, settings, tools -->
-  <dialog id="dlg-options" class="drawer">
+  <!-- Settings (⚙ next to the board) -->
+  <dialog id="dlg-settings" class="modal">
     <div class="modal-head">
-      <a class="brand" href="#" aria-label="Deskmate home"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjYzllMjY1Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNjI5OTI0Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNCIgZmlsbD0iIzI2MjQyMSIvPgogIDxwYXRoIGQ9Ik04IDhoMTJ2MTJIOHpNMzIgOGgxMnYxMkgzMnpNMjAgMjBoMTJ2MTJIMjB6TTQ0IDIwaDEydjEySDQ0ek04IDMyaDEydjEySDh6TTMyIDMyaDEydjEySDMyek0yMCA0NGgxMnYxMkgyMHpNNDQgNDRoMTJ2MTJINDR6IiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIuMDYiLz4KICA8cGF0aCBmaWxsPSJ1cmwoI2cpIiBkPSJNMjcgMTNjOSAuOCAxNSA3IDE1IDE5LjVWNTFIMTljMC04LjIgOC45LTcuNCA3LjItMTguNi0zIDIuMy00LjYgMi44LTcuNCA0LjYtMS41IDEtMi45LS40LTIuNS0yIDEuOC0zLjIgMi40LTMuNiAzLjQtNy40LjktMy4zIDMuOC02LjUgNS42LTguNEwyNyAxM3oiLz4KICA8Y2lyY2xlIGN4PSIyNSIgY3k9IjIzLjUiIHI9IjEuOCIgZmlsbD0iIzI2MjQyMSIvPgogIDxyZWN0IHg9IjE3IiB5PSI0OSIgd2lkdGg9IjI3IiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZykiLz4KPC9zdmc+Cg==" alt="" width="28" height="28" /><span>Desk<b>mate</b></span></a>
+      <h2>Settings</h2>
       <button class="btn icon-only ghost" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
-
-    <section class="opt-sec menu-main">
-      <button class="btn primary" id="btn-new"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New game</button>
-      <button class="btn" id="btn-remote"><svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>Play a colleague</button>
-      <button class="btn" id="btn-archive"><svg viewBox="0 0 24 24"><path d="M3 5h18v4H3zM5 9h14v10H5zM9 13h6"/></svg>Saved games</button>
-    </section>
-
-    <section class="opt-sec status-card">
-      <div class="status-head">
-        <span class="tc-badge" id="tc-badge">Unlimited</span>
-        <span class="muted" id="game-date"></span>
-      </div>
-      <h3 class="status-title" id="status-text">White to move</h3>
-      <p class="muted" id="status-sub"></p>
-    </section>
-
-    <div class="moves-slot" id="moves-slot-menu"></div>
-    <section class="opt-sec" id="moves-block">
-      <div class="sec-head">
-        <h3>Moves</h3>
-        <span class="nav-mini">
-          <button class="btn small icon-only ghost" id="nav-first" title="First move (↑)" aria-label="First move"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-8 6 8 6z"/></svg></button>
-          <button class="btn small icon-only ghost" id="nav-prev" title="Back (←)" aria-label="Previous move"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
-          <button class="btn small icon-only ghost" id="nav-next" title="Forward (→)" aria-label="Next move"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-          <button class="btn small icon-only ghost" id="nav-last" title="Last move (↓)" aria-label="Last move"><svg viewBox="0 0 24 24"><path d="M18 5v14M6 6l8 6-8 6z"/></svg></button>
-        </span>
-      </div>
-      <ol class="moves" id="moves" aria-label="Moves"></ol>
-      <div class="result-line hidden" id="result-line"></div>
-    </section>
-
-    <section class="opt-sec tools">
-      <h3>Game</h3>
+    <div class="set-grid">
+      <label class="switch"><input type="checkbox" id="set-autoflip" /><span class="track"></span><span>Turn the board for each player</span></label>
+      <label class="switch"><input type="checkbox" id="set-dests" /><span class="track"></span><span>Show legal moves</span></label>
+      <label class="switch"><input type="checkbox" id="set-coords" /><span class="track"></span><span>Coordinates</span></label>
+      <label class="switch"><input type="checkbox" id="set-sound" /><span class="track"></span><span>Capture sound</span></label>
+    </div>
+    <h3>Board</h3>
+    <div class="themes" role="radiogroup" aria-label="Board theme">
+      <button class="swatch" data-theme="green" title="Green" aria-label="Green theme"></button>
+      <button class="swatch" data-theme="brown" title="Brown" aria-label="Brown theme"></button>
+      <button class="swatch" data-theme="blue" title="Blue" aria-label="Blue theme"></button>
+      <button class="swatch" data-theme="purple" title="Purple" aria-label="Purple theme"></button>
+      <button class="swatch" data-theme="slate" title="Slate" aria-label="Slate theme"></button>
+    </div>
+    <h3>Game</h3>
+    <div class="tools">
       <button class="btn small" id="btn-flip" title="Flip board (F)"><svg viewBox="0 0 24 24"><path d="M7 4v13M3.5 13.5 7 17l3.5-3.5M17 20V7M13.5 10.5 17 7l3.5 3.5"/></svg>Flip board</button>
       <button class="btn small" id="btn-undo" title="Takeback (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Takeback</button>
       <button class="btn small" id="btn-pgn-copy">Copy PGN</button>
       <button class="btn small" id="btn-pgn-download">Download PGN</button>
       <button class="btn small" id="btn-fen">Copy FEN</button>
-      <button class="btn small" id="btn-import">Import PGN</button>
-    </section>
-
-    <section class="opt-sec">
-      <h3>Board</h3>
-      <label class="switch"><input type="checkbox" id="set-autoflip" /><span class="track"></span><span>Auto-flip after each move</span></label>
-      <label class="switch"><input type="checkbox" id="set-dests" /><span class="track"></span><span>Show legal moves</span></label>
-      <label class="switch"><input type="checkbox" id="set-coords" /><span class="track"></span><span>Coordinates</span></label>
-      <label class="switch"><input type="checkbox" id="set-sound" /><span class="track"></span><span>Sound</span></label>
-      <div class="themes" role="radiogroup" aria-label="Board theme">
-        <button class="swatch" data-theme="brown" title="Brown" aria-label="Brown theme"></button>
-        <button class="swatch" data-theme="blue" title="Blue" aria-label="Blue theme"></button>
-        <button class="swatch" data-theme="green" title="Green" aria-label="Green theme"></button>
-        <button class="swatch" data-theme="purple" title="Purple" aria-label="Purple theme"></button>
-        <button class="swatch" data-theme="slate" title="Slate" aria-label="Slate theme"></button>
-      </div>
-    </section>
-
-    <div class="menu-foot">
-      <button class="btn small ghost" id="btn-help"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17.2v.3"/></svg>How to play</button>
-      <a class="btn small ghost" href="https://github.com/abhieq31/Deskmate" target="_blank" rel="noopener" title="Source code on GitHub" aria-label="GitHub"><svg viewBox="0 0 24 24" class="fill"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .8.1-.7.4-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5a3.9 3.9 0 0 1 1-2.7 3.6 3.6 0 0 1 .1-2.7s.8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .6 1.4.2 2.4.1 2.7a3.9 3.9 0 0 1 1 2.7c0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg>Source code</a>
+      <span class="tc-badge" id="tc-badge"></span>
     </div>
-    <p class="side-foot muted">Games are stored only in this browser. <a href="https://github.com/abhieq31/Deskmate" target="_blank" rel="noopener">Open source</a> — contributions welcome.<span class="offline-dl"> · <a href="" download="deskmate.html">Download the offline version</a> (one HTML file, no internet needed).</span></p>
+    <p class="side-foot muted">Games are stored only in this browser.<span class="offline-dl"> <a href="" download="deskmate.html">Download the offline version</a>.</span></p>
   </dialog>
 
   <!-- New game -->
@@ -736,6 +794,7 @@ kbd {
     <div class="modal-actions wrap">
       <button class="btn" id="over-review">Review game</button>
       <button class="btn" id="over-pgn">Download PGN</button>
+      <button class="btn" id="over-analyse">Analyse</button>
       <button class="btn" id="over-new">New game</button>
       <button class="btn primary" id="over-rematch">Rematch</button>
     </div>
@@ -853,7 +912,7 @@ kbd {
       <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Takeback</td></tr>
       <tr><td><kbd>N</kbd></td><td>New game</td></tr>
       <tr><td><kbd>H</kbd></td><td>Saved games</td></tr>
-      <tr><td><kbd>O</kbd></td><td>Menu (new game, moves, settings)</td></tr>
+      <tr><td><kbd>M</kbd></td><td>Expand or collapse the menu</td></tr>
     </table>
   </dialog>
 
@@ -6027,6 +6086,172 @@ class Room {
 return { RELAYS, CODE_LENGTH, newRoomCode, parseRoomCode, formatRoomCode, Room };
 })();
 
+__mods["js/engine.js"] = (() => {
+// Stockfish in a Web Worker, spoken to over UCI. Loaded only when someone asks for an analysis.
+
+/** Where the app lives, so the engine is found next to it on any host (…/deskmate, …/Deskmate/, file). */
+function appBase() {
+  const p = location.pathname;
+  if (p.endsWith('/')) return p;
+  const last = p.slice(p.lastIndexOf('/') + 1);
+  return last.includes('.') ? p.slice(0, p.lastIndexOf('/') + 1) : `${p}/`;
+}
+const engineUrl = () => new URL(`${appBase()}vendor/stockfish/stockfish.js`, location.href).href;
+
+class Engine {
+  constructor(url = engineUrl()) {
+    this.url = url;
+    this.listeners = new Set();
+    this.busy = Promise.resolve();
+  }
+
+  _send(cmd) { this.worker.postMessage(cmd); }
+
+  _waitFor(prefix) {
+    return new Promise((resolve) => {
+      const l = (line) => { if (line.startsWith(prefix)) { this.listeners.delete(l); resolve(line); } };
+      this.listeners.add(l);
+    });
+  }
+
+  /** Starts the worker once; rejects if the browser can't run it (e.g. opened from a file). */
+  start() {
+    if (!this.ready) {
+      this.ready = new Promise((resolve, reject) => {
+        try { this.worker = new Worker(this.url); } catch (e) { reject(e); return; }
+        this.worker.onmessage = (e) => { for (const l of [...this.listeners]) l(String(e.data)); };
+        this.worker.onerror = (e) => reject(new Error(e.message || 'engine failed to load'));
+        const ok = this._waitFor('uciok').then(() => {
+          this._send('setoption name Hash value 32');
+          // Stockfish 11 "contempt" makes it rate positions in favour of the side it analyses for
+          // (to avoid draws when it plays); for an even-handed analysis it must be off
+          this._send('setoption name Contempt value 0');
+          this._send('setoption name Analysis Contempt value Off');
+          this._send('isready');
+          return this._waitFor('readyok');
+        });
+        this._send('uci');
+        ok.then(resolve, reject);
+      });
+    }
+    return this.ready;
+  }
+
+  /**
+   * Evaluate a position. Resolves to { cp | mate, pv: ['e2e4', …], depth }, scored from White's
+   * side. Calls are queued, one search at a time.
+   */
+  analyse(fen, depth, onInfo) {
+    const run = async () => {
+      await this.start();
+      const whiteToMove = fen.split(' ')[1] === 'w';
+      let best = null;
+      const done = new Promise((resolve) => {
+        const l = (line) => {
+          if (line.startsWith('info') && line.includes(' pv ') && !/ (upper|lower)bound /.test(line)) {
+            const m = / depth (\d+) .*score (cp|mate) (-?\d+) .* pv (.+)$/.exec(line);
+            if (m && !/ multipv [2-9]/.test(line)) {
+              const v = +m[3] * (whiteToMove ? 1 : -1);
+              // the line is UCI moves; this build appends extra tokens ("bmc 0.0003") after it
+              const pv = [];
+              for (const t of m[4].trim().split(/\s+/)) { if (!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(t)) break; pv.push(t); }
+              best = { depth: +m[1], pv, ...(m[2] === 'cp' ? { cp: v } : { mate: v }) };
+              onInfo?.(best);
+            }
+          } else if (line.startsWith('bestmove')) {
+            this.listeners.delete(l);
+            resolve(best);
+          }
+        };
+        this.listeners.add(l);
+      });
+      this._send(`position fen ${fen}`);
+      this._send(`go depth ${depth}`);
+      return done;
+    };
+    const result = this.busy.then(run, run);
+    this.busy = result.catch(() => {});
+    return result;
+  }
+
+  stop() { this.worker?.postMessage('stop'); }
+
+  terminate() {
+    this.worker?.terminate();
+    this.worker = null;
+    this.ready = null;
+    this.listeners.clear();
+  }
+}
+
+return { engineUrl, Engine };
+})();
+
+__mods["js/analysis.js"] = (() => {
+// Post-game analysis maths: win chances, move classification and accuracy.
+// Formulas follow lichess (https://lichess.org/page/accuracy), so numbers feel familiar.
+
+const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+
+/** Winning chances for White, 0–100, from an engine score { cp } or { mate } (White's side). */
+function winPct(ev) {
+  if (!ev) return 50;
+  if (ev.mate != null) return ev.mate > 0 || Object.is(ev.mate, 0) && ev.winner === 'w' ? 100 : ev.mate < 0 || ev.winner === 'b' ? 0 : 50;
+  const cp = clamp(ev.cp, -1000, 1000);
+  return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
+}
+
+/** Win% the mover lost with a move; marks: ?? ≥15 points, ? ≥10, ?! ≥5 (lichess thresholds). */
+function classify(before, after, color) {
+  const b = color === 'w' ? winPct(before) : 100 - winPct(before);
+  const a = color === 'w' ? winPct(after) : 100 - winPct(after);
+  const loss = Math.max(0, b - a);
+  const kind = loss >= 15 ? 'blunder' : loss >= 10 ? 'mistake' : loss >= 5 ? 'inaccuracy' : null;
+  return { loss, kind };
+}
+
+const MARKS = { blunder: '??', mistake: '?', inaccuracy: '?!' };
+
+/** Accuracy of a single move from the win% it lost. */
+const moveAccuracy = (loss) => clamp(103.1668 * Math.exp(-0.04354 * loss) - 3.1669, 0, 100);
+
+/**
+ * Summarise an analysed game. evals[i] is the evaluation after ply i (evals[0] = start).
+ * Returns per-ply classifications and, per colour, accuracy and counts.
+ */
+function summarize(evals, plyCount) {
+  const moves = [];
+  const side = { w: { losses: [], blunder: 0, mistake: 0, inaccuracy: 0 }, b: { losses: [], blunder: 0, mistake: 0, inaccuracy: 0 } };
+  for (let i = 1; i <= plyCount; i++) {
+    if (!evals[i - 1] || !evals[i]) { moves.push(null); continue; }
+    const color = i % 2 === 1 ? 'w' : 'b';
+    const c = classify(evals[i - 1], evals[i], color);
+    moves.push(c);
+    side[color].losses.push(c.loss);
+    if (c.kind) side[color][c.kind]++;
+  }
+  const acc = (losses) => (losses.length ? losses.reduce((s, l) => s + moveAccuracy(l), 0) / losses.length : null);
+  return {
+    moves,
+    w: { ...side.w, accuracy: acc(side.w.losses) },
+    b: { ...side.b, accuracy: acc(side.b.losses) },
+  };
+}
+
+/** "+1.3", "-0.4", "M3", "-M2", "1-0"… for display. */
+function formatEval(ev) {
+  if (!ev) return '…';
+  if (ev.mate != null) {
+    if (ev.mate === 0) return ev.winner === 'w' ? '1-0' : ev.winner === 'b' ? '0-1' : '½-½';
+    return `${ev.mate < 0 ? '-' : ''}M${Math.abs(ev.mate)}`;
+  }
+  const v = ev.cp / 100;
+  return `${v > 0 ? '+' : ''}${v.toFixed(Math.abs(v) >= 10 ? 0 : 1)}`;
+}
+
+return { winPct, classify, MARKS, moveAccuracy, summarize, formatEval };
+})();
+
 __mods["js/board.js"] = (() => {
 // Interactive chessboard: rendering, click & drag moves, legal-move hints,
 // last-move/check highlights, right-click arrows and an animated board flip.
@@ -6057,7 +6282,8 @@ class Board {
     this.pieces = new Map(); // square -> { el, code }
     this.selected = null;
     this.drag = null;
-    this.shapes = []; // { from, to } arrows, from === to is a circle
+    this.shapes = []; // { from, to } arrows drawn by the player, from === to is a circle
+    this.autoShapes = []; // arrows the app draws (engine's best move)
     this.drawing = null;
 
     root.classList.add('board');
@@ -6070,7 +6296,9 @@ class Board {
     this.svg.setAttribute('class', 'arrows');
     this.svg.setAttribute('viewBox', '0 0 8 8');
     this.svg.innerHTML = `<defs><marker id="ah" orient="auto" markerWidth="4" markerHeight="8" refX="2.05" refY="2.01">
-      <path d="M0,0 V4 L3,2 Z" fill="currentColor"/></marker></defs><g></g>`;
+      <path d="M0,0 V4 L3,2 Z" fill="currentColor"/></marker>
+      <marker id="ah-auto" orient="auto" markerWidth="4" markerHeight="8" refX="2.05" refY="2.01">
+      <path d="M0,0 V4 L3,2 Z" fill="#3692e7"/></marker></defs><g></g>`;
     this.inner.appendChild(this.svg);
     this.promoEl = el('div', 'promo hidden', root);
 
@@ -6245,9 +6473,11 @@ class Board {
       const isDest = this.prefs.showDests && targets.includes(sq);
       s.classList.toggle('move-dest', isDest && !occupied.has(sq));
       s.classList.toggle('capture-dest', isDest && occupied.has(sq));
-      s.classList.toggle('hover', !!this.drag?.started && this.drag.over === sq && targets.includes(sq));
+      s.classList.toggle('hover', !!this.drag?.moved && this.drag.over === sq);
+      s.classList.toggle('can-move', !!movable && dests.has(sq));
     }
     this.root.classList.toggle('movable', !!movable);
+    this.root.classList.toggle('dragging-piece', !!this.drag);
   }
 
   /* ---------- input ---------- */
@@ -6278,10 +6508,15 @@ class Board {
     }
     if (this._canMoveFrom(sq)) {
       e.preventDefault();
+      // keep getting pointer events even if the pointer leaves the board mid-drag
+      try { this.root.setPointerCapture(e.pointerId); } catch { /* not supported: window listeners still work */ }
       const wasSelected = this.selected === sq;
       this.selected = sq;
-      const rect = this.inner.getBoundingClientRect();
-      this.drag = { from: sq, el: this.pieces.get(sq).el, x: e.clientX, y: e.clientY, rect, started: false, wasSelected, over: sq };
+      const el = this.pieces.get(sq).el;
+      // lift the piece at once and centre it under the pointer, like chess.com and lichess
+      this.drag = { from: sq, el, x: e.clientX, y: e.clientY, rect: this.inner.getBoundingClientRect(), moved: false, wasSelected, over: sq };
+      el.classList.add('dragging');
+      this._follow(e.clientX, e.clientY);
       this._highlight();
     } else if (this.selected) {
       this.selected = null;
@@ -6289,17 +6524,25 @@ class Board {
     }
   }
 
+  /** Put the dragged piece's centre at the pointer; batched to one update per frame. */
+  _follow(x, y) {
+    const d = this.drag;
+    d.px = x;
+    d.py = y;
+    if (d.raf) return;
+    d.raf = requestAnimationFrame(() => {
+      d.raf = 0;
+      if (this.drag !== d) return;
+      const size = d.rect.width / 8;
+      d.el.style.transform = `translate3d(${d.px - d.rect.left - size / 2}px, ${d.py - d.rect.top - size / 2}px, 0)`;
+    });
+  }
+
   _move(e) {
     const d = this.drag;
     if (!d) return;
-    if (!d.started && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 4) return;
-    if (!d.started) {
-      d.started = true;
-      d.el.classList.add('dragging');
-    }
-    const size = d.rect.width / 8;
-    const x = e.clientX - d.rect.left - size / 2, y = e.clientY - d.rect.top - size / 2;
-    d.el.style.transform = `translate(${x}px, ${y}px) scale(1.12)`;
+    if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 3) d.moved = true;
+    this._follow(e.clientX, e.clientY);
     const over = this._eventSquare(e);
     if (over !== d.over) { d.over = over; this._highlight(); }
   }
@@ -6314,35 +6557,37 @@ class Board {
     const d = this.drag;
     if (!d) return;
     this.drag = null;
+    if (d.raf) cancelAnimationFrame(d.raf);
     const to = this._eventSquare(e);
     const targets = this.state.dests.get(d.from) || [];
-    if (d.started) {
-      d.el.classList.remove('dragging');
-      if (to && to !== d.from && targets.includes(to)) {
-        // drop the piece instantly on its target, then let the app play the move
-        this.root.classList.add('no-anim');
-        const { code } = this.pieces.get(d.from);
-        const captured = this.pieces.get(to);
-        if (captured) captured.el.remove();
-        this.pieces.delete(d.from);
-        this.pieces.set(to, { el: d.el, code });
-        this._place(d.el, to);
-        reflow(d.el);
-        this.root.classList.remove('no-anim');
-        this.selected = null;
-        this._highlight();
-        this.onMove(d.from, to);
-        return;
-      }
-      this._place(d.el, d.from);
-    } else if (d.wasSelected) {
+    // drop: no slide, the piece is already where the player let go of it
+    this.root.classList.add('no-anim');
+    d.el.classList.remove('dragging');
+    if (to && to !== d.from && targets.includes(to)) {
+      const { code } = this.pieces.get(d.from);
+      const captured = this.pieces.get(to);
+      if (captured) captured.el.remove();
+      this.pieces.delete(d.from);
+      this.pieces.set(to, { el: d.el, code });
+      this._place(d.el, to);
+      reflow(d.el);
+      this.root.classList.remove('no-anim');
       this.selected = null;
+      this._highlight();
+      this.onMove(d.from, to);
+      return;
     }
+    this._place(d.el, d.from);
+    reflow(d.el);
+    this.root.classList.remove('no-anim');
+    // a plain click on an already selected piece deselects it; otherwise it stays selected
+    if (!d.moved && d.wasSelected) this.selected = null;
     this._highlight();
   }
 
   _cancelDrag() {
     if (!this.drag) return;
+    if (this.drag.raf) cancelAnimationFrame(this.drag.raf);
     this.drag.el.classList.remove('dragging');
     this._place(this.drag.el, this.drag.from);
     this.drag = null;
@@ -6351,6 +6596,11 @@ class Board {
   }
 
   /* ---------- arrows & circles ---------- */
+
+  setAutoShapes(shapes) {
+    this.autoShapes = shapes;
+    this._renderShapes();
+  }
 
   _toggleShape(from, to) {
     const i = this.shapes.findIndex((s) => s.from === from && s.to === to);
@@ -6363,7 +6613,7 @@ class Board {
     const g = this.svg.querySelector('g');
     g.innerHTML = '';
     const ns = 'http://www.w3.org/2000/svg';
-    for (const { from, to } of this.shapes) {
+    for (const { from, to, auto } of [...this.autoShapes.map((x) => ({ ...x, auto: true })), ...this.shapes]) {
       const [c1, r1] = this._pos(from), [c2, r2] = this._pos(to);
       if (from === to) {
         const c = document.createElementNS(ns, 'circle');
@@ -6379,8 +6629,8 @@ class Board {
       line.setAttribute('x1', x1); line.setAttribute('y1', y1);
       line.setAttribute('x2', x2 - ((x2 - x1) / len) * shorten);
       line.setAttribute('y2', y2 - ((y2 - y1) / len) * shorten);
-      line.setAttribute('class', 'shape-arrow');
-      line.setAttribute('marker-end', 'url(#ah)');
+      line.setAttribute('class', auto ? 'shape-arrow auto' : 'shape-arrow');
+      line.setAttribute('marker-end', auto ? 'url(#ah-auto)' : 'url(#ah)');
       g.appendChild(line);
     }
   }
@@ -6566,6 +6816,9 @@ const { sound } = __mods["js/sound.js"];
 const { confetti } = __mods["js/confetti.js"];
 const { packMoves, unpackMoves } = __mods["js/remote.js"];
 const { Room, newRoomCode, parseRoomCode, formatRoomCode } = __mods["js/live.js"];
+const { Engine } = __mods["js/engine.js"];
+const { summarize, winPct, formatEval, MARKS } = __mods["js/analysis.js"];
+const { Chess } = __mods["vendor/chess.js"];
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 const other = (c) => (c === 'w' ? 'b' : 'w');
@@ -6587,6 +6840,8 @@ let flipTimer = null;
 let room = null; // live connection for game.remote.room
 let relaysUp = 0; // relays the room is connected to right now
 let joining = null; // { code, name, timer } while waiting for a room's first snapshot
+let an = null; // post-game analysis: { game, evals[], summary, done }
+let engine = null;
 
 const board = new Board($('#board'), { onMove });
 
@@ -6624,6 +6879,7 @@ function render() {
   renderMoves();
   renderStatus();
   renderControls();
+  renderAnalysis();
 }
 
 function renderPlayers() {
@@ -6699,21 +6955,27 @@ function renderClocks() {
   }
 }
 
+/** One line of moves (top right), like chess.com's analysis strip; marks come from the analysis. */
 function renderMoves() {
   const g = active();
-  const list = $('#moves');
+  const marks = an && an.game === g ? an.summary?.moves || [] : [];
   const parts = [];
-  for (let i = 0; i < g.plies.length; i += 2) {
-    const w = g.plies[i], b = g.plies[i + 1];
-    parts.push(`<li><span class="idx">${i / 2 + 1}</span>` +
-      `<button class="mv${viewPly === i + 1 ? ' active' : ''}" data-ply="${i + 1}">${san(w.san)}</button>` +
-      (b ? `<button class="mv${viewPly === i + 2 ? ' active' : ''}" data-ply="${i + 2}">${san(b.san)}</button>` : '<span></span>') +
-      '</li>');
-  }
+  g.plies.forEach((p, i) => {
+    if (i % 2 === 0) parts.push(`<span class="ml-num">${i / 2 + 1}.</span>`);
+    const m = marks[i]?.kind;
+    parts.push(`<button class="mv${viewPly === i + 1 ? ' active' : ''}${m ? ` ${m}` : ''}" data-ply="${i + 1}">${san(p.san)}${m ? `<span class="mark">${MARKS[m]}</span>` : ''}</button>`);
+  });
+  if (!g.plies.length) parts.push('<span class="empty">No moves yet</span>');
+  const list = $('#moves');
   list.innerHTML = parts.join('');
+  // keep the current move in view by scrolling the strip itself (never the page)
   const act = list.querySelector('.active');
-  if (act) act.scrollIntoView({ block: 'nearest' });
-  else if (viewPly === 0) list.scrollTop = 0;
+  if (act) {
+    const l = act.offsetLeft - list.offsetLeft, r = l + act.offsetWidth;
+    if (l < list.scrollLeft + 20) list.scrollLeft = l - 40;
+    else if (r > list.scrollLeft + list.clientWidth - 20) list.scrollLeft = r - list.clientWidth + 40;
+  } else if (viewPly === 0) list.scrollLeft = 0;
+  else list.scrollLeft = list.scrollWidth;
 
   const rl = $('#result-line');
   rl.classList.toggle('hidden', !g.result);
@@ -6728,29 +6990,11 @@ const tcText = (tc) => (tc.base ? `${tc.label} · ${tc.kind}` : 'Unlimited');
 
 function renderStatus() {
   const g = active();
-  $('#tc-badge').textContent = $('#panel-tc').textContent = tcText(g.tcInfo);
-  $('#game-date').textContent = new Date(g.startedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-  let title, sub;
-  if (g.result) {
-    title = g.winnerText();
-    sub = g.termination;
-  } else if (review) {
-    title = 'Reviewing game';
-    sub = `${g.white} vs ${g.black}`;
-  } else if (game.remote) {
-    const r = game.remote;
-    title = bothSeated() ? `${game.white} vs ${game.black}` : 'Waiting for your colleague';
-    sub = `Live game · code ${formatRoomCode(r.room)}${relaysUp ? '' : ' · reconnecting…'}`;
-  } else {
-    title = `${game.nameOf(game.turn)} to move`;
-    sub = paused && game.length > 0 && game.hasClock ? 'Clocks paused.' : 'Same-laptop game.';
-  }
-  $('#status-text').textContent = title;
-  $('#status-sub').textContent = sub;
+  $('#tc-badge').textContent = tcText(g.tcInfo);
   document.title = g.result ? `${g.winnerText()} · Deskmate` : review ? 'Review · Deskmate' : `${colorName(game.turn)} to move · Deskmate`;
 
   const banner = $('#review-banner');
-  const showBanner = !!review || viewPly !== game.length;
+  const showBanner = !an && (!!review || viewPly !== game.length);
   banner.classList.toggle('hidden', !showBanner);
   if (review) $('#review-text').textContent = `Reviewing ${review.white} vs ${review.black}${review.result ? ` · ${review.result}` : ''}`;
   else if (showBanner) $('#review-text').textContent = `Viewing move ${Math.ceil(viewPly / 2) || 0}${viewPly % 2 ? '' : viewPly ? '…' : ''}`;
@@ -6762,8 +7006,8 @@ const ICON_RESUME = '<svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg><
 
 function renderControls() {
   const g = active();
-  $('#nav-first').disabled = $('#nav-prev').disabled = viewPly === 0;
-  $('#nav-next').disabled = $('#nav-last').disabled = viewPly === g.length;
+  for (const b of [$('#nav-first'), $('#nav-prev'), $('[data-nav="prev"]')]) b.disabled = viewPly === 0;
+  for (const b of [$('#nav-last'), $('#nav-next'), $('[data-nav="next"]')]) b.disabled = viewPly === g.length;
   const liveGame = !review;
   $('#btn-undo').disabled = !liveGame || game.length === 0 || !!game.remote;
   const noActions = !liveGame || game.over || (game.remote ? !bothSeated() : game.length === 0);
@@ -6774,6 +7018,11 @@ function renderControls() {
     b.title = game.remote ? (theyOffer ? 'Accept the draw offer' : 'Offer a draw') : 'Agree to a draw';
   }
   for (const b of $$('.act-resign')) b.disabled = noActions;
+  // while a game is on: Draw / Resign. Once it is over: Analyse.
+  const finished = !!g.result || (!!review && g.length > 0);
+  for (const b of $$('.act-draw, .act-resign')) b.classList.toggle('hidden', finished);
+  for (const b of $$('.act-analyse')) b.classList.toggle('hidden', !finished || !!an);
+  $('.game').classList.toggle('analysing', !!an);
   for (const b of $$('.act-pause')) {
     b.classList.toggle('hidden', !game.hasClock || !liveGame || !!game.remote);
     b.disabled = game.over || game.length === 0;
@@ -6821,6 +7070,7 @@ function scheduleFlip(delay = 300) {
     if (review || game.remote || !settings.autoFlip || !isLive() || board.orientation === game.turn) return;
     board.flip();
     renderPlayers();
+    renderAnalysis();
   }, delay);
 }
 
@@ -6881,6 +7131,7 @@ function startGame({ white, black, tc, remote = null, id, startedAt }) {
   if (game.length && !game.over) storage.archive(game.toJSON()); // keep unfinished games too
   clearTimeout(flipTimer);
   if (!remote || remote.room !== room?.code) leaveRoom();
+  stopAnalysis();
   game = new Game({ white, black, tc, remote, id, startedAt });
   if (remote) { game.white = white; game.black = black; } // an empty seat keeps an empty name
   review = null;
@@ -6908,6 +7159,7 @@ function takeback() {
 }
 
 function openReview(data) {
+  stopAnalysis();
   review = data instanceof Game ? data : new Game(data);
   viewPly = review.length;
   clearTimeout(flipTimer);
@@ -6917,6 +7169,7 @@ function openReview(data) {
 }
 
 function exitReview() {
+  stopAnalysis();
   review = null;
   viewPly = game.length;
   board.setOrientation(homeOrientation());
@@ -7154,12 +7407,135 @@ $('#room-copy').addEventListener('click', () => copy(formatRoomCode(game.remote.
 $('#room-copy-link').addEventListener('click', () => copy(shareLink(game.remote.room), 'Link'));
 $('#btn-remote').addEventListener('click', () => (game.remote && !game.over && !bothSeated() ? showInvite() : openRemote()));
 
+/* ---------------- post-game analysis (Stockfish) ---------------- */
+
+const AN_DEPTH = 16;
+
+/** A finished position needs no engine: mate or draw on the board. */
+function terminalEval(fen) {
+  const c = new Chess(fen);
+  if (c.isCheckmate()) return { mate: 0, winner: c.turn() === 'w' ? 'b' : 'w', pv: [] };
+  if (c.isStalemate() || c.isInsufficientMaterial()) return { cp: 0, pv: [], draw: true };
+  return null;
+}
+
+/** Engine line in readable notation: "14. Nf3 Nc6 15. Bb5 …". */
+function pvSan(fen, pv, max = 8) {
+  const c = new Chess(fen);
+  let n = +fen.split(' ')[5];
+  let white = fen.split(' ')[1] === 'w';
+  const out = [];
+  for (const u of pv.slice(0, max)) {
+    let m;
+    try { m = c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] }); } catch { break; }
+    out.push(white ? `${n}. ${m.san}` : out.length ? m.san : `${n}… ${m.san}`);
+    if (!white) n++;
+    white = !white;
+  }
+  return out.join(' ');
+}
+
+async function startAnalysis() {
+  const g = active();
+  if (!g.length) return toast('Play some moves first');
+  // no engine help while a game is still being played
+  if (!g.result && !review) return toast('Analysis opens once the game is over');
+  if (an?.game === g) return;
+  stopAnalysis();
+  const run = { game: g, evals: [], summary: null, done: false };
+  an = run;
+  render();
+  try {
+    engine = engine || new Engine();
+    await engine.start();
+  } catch {
+    if (an === run) { an = null; render(); }
+    return toast('Analysis needs the hosted page (e.g. abhieq31.com/deskmate), not a downloaded file.');
+  }
+  // the position on screen first, then the whole game from the start
+  const order = [viewPly, ...Array.from({ length: g.length + 1 }, (_, i) => i).filter((i) => i !== viewPly)];
+  for (const i of order) {
+    if (an !== run) return;
+    const fen = g.fenAt(i);
+    run.evals[i] = terminalEval(fen) || await engine.analyse(fen, AN_DEPTH);
+    if (an !== run) return;
+    run.summary = summarize(run.evals, g.length);
+    renderMoves();
+    renderAnalysis();
+  }
+  run.done = true;
+  renderAnalysis();
+}
+
+function stopAnalysis() {
+  if (!an) return;
+  an = null;
+  engine?.terminate(); // quickest way to drop a search in progress
+  engine = null;
+  board.setAutoShapes([]);
+}
+
+function renderAnalysis() {
+  const g = active();
+  const on = !!an && an.game === g;
+  $('#analysis').classList.toggle('hidden', !on);
+  $('#evalbar').classList.toggle('hidden', !on);
+  if (!on) { board.setAutoShapes([]); return; }
+  const ev = an.evals[viewPly];
+  const white = winPct(ev);
+
+  // eval bar: White's share, White's end at White's side of the board
+  const bar = $('#evalbar');
+  bar.style.setProperty('--w', `${ev ? white : 50}%`);
+  bar.classList.toggle('flip', board.orientation === 'b');
+  bar.classList.toggle('black-better', white < 50);
+  $('#evalbar-num').textContent = ev ? formatEval(ev).replace(/^\+/, '') : '';
+
+  const evEl = $('#an-eval');
+  evEl.textContent = formatEval(ev);
+  evEl.classList.toggle('black', !!ev && white < 50);
+  const fen = g.fenAt(viewPly);
+  $('#an-line').textContent = !ev ? 'Stockfish is thinking…' : ev.pv?.length ? pvSan(fen, ev.pv) : g.result && viewPly === g.length ? g.termination : '';
+  const best = ev?.pv?.[0];
+  board.setAutoShapes(best ? [{ from: best.slice(0, 2), to: best.slice(2, 4) }] : []);
+
+  // graph: White's winning chances over the game
+  const n = g.length;
+  const pts = [];
+  for (let i = 0; i <= n; i++) if (an.evals[i]) pts.push([(i / n) * 100, 40 - (winPct(an.evals[i]) / 100) * 40, i]);
+  const marks = an.summary?.moves || [];
+  const color = { blunder: '#ca3431', mistake: '#e58f2a', inaccuracy: '#f7c045' };
+  $('#an-graph').innerHTML =
+    (pts.length > 1 ? `<path class="area" d="M0,40 ${pts.map(([x, y]) => `L${x.toFixed(2)},${y.toFixed(2)}`).join(' ')} L100,40 Z"/>` : '') +
+    '<line class="mid" x1="0" y1="20" x2="100" y2="20"/>' +
+    `<line class="cur" x1="${(viewPly / n) * 100}" y1="0" x2="${(viewPly / n) * 100}" y2="40"/>` +
+    pts.filter(([, , i]) => marks[i - 1]?.kind).map(([x, y, i]) =>
+      `<ellipse class="dot" cx="${x}" cy="${y}" rx="0.9" ry="2" fill="${color[marks[i - 1].kind]}"/>`).join('');
+
+  const done = an.evals.filter(Boolean).length;
+  $('#an-progress').classList.toggle('done', an.done);
+  $('#an-progress span').style.width = `${(done / (n + 1)) * 100}%`;
+
+  const sum = an.summary;
+  const card = (c) => {
+    const s = sum?.[c];
+    const acc = s?.accuracy == null ? '…' : `${s.accuracy.toFixed(1)}%`;
+    const tally = s ? [['blunder', '??'], ['mistake', '?'], ['inaccuracy', '?!']].map(([k, m]) => `${s[k]}${m}`).join(' · ') : '';
+    return `<div><small>${esc(g.nameOf(c) || colorName(c))}</small><b>${acc}</b><span class="tally">${tally}</span></div>`;
+  };
+  $('#an-acc').innerHTML = card('w') + card('b');
+}
+
+$('#an-graph').addEventListener('click', (e) => {
+  const r = e.currentTarget.getBoundingClientRect();
+  goto(Math.round(((e.clientX - r.left) / r.width) * active().length));
+});
+
 /* ---------------- dialogs ---------------- */
 
 function openDialog(sel) {
   const d = $(sel);
-  // anything opened from the menu replaces it, so the two never stack
-  if (sel !== '#dlg-options' && $('#dlg-options').open) $('#dlg-options').close();
+  setSidebar(false);
   if (!d.open) d.showModal();
 }
 function closeDialogs() { $$('dialog[open]').forEach((d) => d.close()); }
@@ -7332,10 +7708,14 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) requ
 $('#btn-new').addEventListener('click', () => openNewGame());
 $('#btn-archive').addEventListener('click', () => { renderArchive(); openDialog('#dlg-archive'); });
 $('#btn-help').addEventListener('click', () => openDialog('#dlg-help'));
-const openMenu = () => { openDialog('#dlg-options'); $('#moves .active')?.scrollIntoView({ block: 'nearest' }); };
-$$('.act-menu').forEach((b) => b.addEventListener('click', openMenu));
+$('#btn-settings').addEventListener('click', () => openDialog('#dlg-settings'));
+$('#btn-analyse').addEventListener('click', () => startAnalysis());
+$$('.act-analyse').forEach((b) => b.addEventListener('click', () => startAnalysis()));
+$('#over-analyse').addEventListener('click', () => { $('#dlg-over').close(); startAnalysis(); });
+$('[data-nav="prev"]').addEventListener('click', () => goto(viewPly - 1));
+$('[data-nav="next"]').addEventListener('click', () => goto(viewPly + 1));
 $$('.act-pause').forEach((b) => b.addEventListener('click', togglePause));
-$('#btn-flip').addEventListener('click', () => { clearTimeout(flipTimer); board.flip(); renderPlayers(); });
+$('#btn-flip').addEventListener('click', () => { clearTimeout(flipTimer); board.flip(); renderPlayers(); renderAnalysis(); });
 $('#btn-undo').addEventListener('click', takeback);
 
 $$('.act-draw').forEach((b) => b.addEventListener('click', () => {
@@ -7416,6 +7796,7 @@ $('#btn-import').addEventListener('click', () => { $('#import-error').classList.
 
 document.addEventListener('keydown', (e) => {
   if (e.target.closest('input, textarea') || $$('dialog[open]').length) return;
+  if (e.key === 'Escape') return setSidebar(false);
   const k = e.key;
   if (k === 'ArrowLeft') goto(viewPly - 1);
   else if (k === 'ArrowRight') goto(viewPly + 1);
@@ -7426,7 +7807,7 @@ document.addEventListener('keydown', (e) => {
   else if ((e.ctrlKey || e.metaKey) && k === 'z') takeback();
   else if (k === 'n' || k === 'N') openNewGame();
   else if (k === 'h' || k === 'H') $('#btn-archive').click();
-  else if (k === 'o' || k === 'O') openMenu();
+  else if (k === 'm' || k === 'M') setSidebar(!$('#sidebar').classList.contains('open'));
   else if (k === '?') openDialog('#dlg-help');
   else return;
   e.preventDefault();
@@ -7461,10 +7842,25 @@ function applyPrefs() {
   $$('.swatch').forEach((s) => s.setAttribute('aria-checked', String(s.dataset.theme === settings.theme)));
 }
 
-// The move list sits in the side panel on wide screens and inside the menu on phones.
+// The one-line move strip sits at the top of the side panel on wide screens and above the board on phones.
 const phoneLayout = matchMedia('(max-width: 760px)');
-const placeMoves = () => $(phoneLayout.matches ? '#moves-slot-menu' : '#moves-slot-panel').appendChild($('#moves-block'));
+const placeMoves = () => $(phoneLayout.matches ? '#moveline-slot-mobile' : '#moveline-slot-panel').appendChild($('#moveline'));
 phoneLayout.addEventListener('change', placeMoves);
+
+/* ---------------- sidebar ---------------- */
+
+function setSidebar(open) {
+  $('#sidebar').classList.toggle('open', open);
+  $('#sb-backdrop').classList.toggle('open', open);
+  $('#sb-toggle').setAttribute('aria-expanded', String(open));
+  $('#sb-toggle').title = open ? 'Collapse menu' : 'Expand menu';
+  $('#sb-toggle span').textContent = open ? 'Collapse' : 'Expand';
+}
+$('#sb-toggle').addEventListener('click', () => setSidebar(!$('#sidebar').classList.contains('open')));
+$('#btn-sidebar').addEventListener('click', () => setSidebar(true));
+$('#sb-backdrop').addEventListener('click', () => setSidebar(false));
+// after picking something from the menu, fold it away again
+$$('#sidebar .sb-item:not(.sb-toggle)').forEach((b) => b.addEventListener('click', () => setSidebar(false)));
 
 /* ---------------- boot ---------------- */
 
