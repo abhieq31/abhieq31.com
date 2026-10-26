@@ -177,18 +177,29 @@ body { padding-left: var(--sb-w); }
 .result-line strong { font-size: 1.3rem; color: var(--text-strong); }
 .result-line span { font-size: 0.85rem; color: var(--muted); font-style: italic; }
 
-.panel-actions { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--line); }
+.panel-actions { display: flex; align-items: center; gap: 22px; padding: 8px 14px; border-top: 1px solid var(--line); background: #21201d; }
 .game.analysing .panel-actions { display: none; }
-.panel-actions .btn { flex: 1; }
-.btn.action { min-height: 42px; gap: 10px; background: #3c3a37; border-color: transparent; }
-.btn.action:hover:not(:disabled) { background: #4a4743; }
-.btn.action.primary { background: linear-gradient(180deg, #8cb85a, #6b9a3c); color: #fff; }
+.game.analysing .panel { height: 0; min-height: 100%; max-height: none; }
+.game.analysing .analysis { flex: 1 1 auto; overflow-y: auto; }
+/* chess.com: "½ Draw   ⚑ Resign" as quiet text buttons */
+.btn.action {
+  min-height: 34px; padding: 0 4px; gap: 7px; background: transparent; border: 0; box-shadow: none;
+  color: #bdbab5; font-weight: 600; font-size: 0.95rem;
+}
+.btn.action:hover:not(:disabled) { background: transparent; color: #fff; }
+.btn.action.danger { color: #bdbab5; }
+.btn.action.danger:hover:not(:disabled) { color: #fff; }
+.btn.action.primary { flex: 1; min-height: 42px; border-radius: 8px; background: linear-gradient(180deg, #8cb85a, #6b9a3c); color: #fff; }
 .btn.action .half { font-size: 1.15rem; font-weight: 700; }
 .btn.action svg { width: 18px; height: 18px; }
 .btn.action.offer, .rb.offer { color: var(--gold); box-shadow: inset 0 0 0 1px rgba(232, 182, 76, 0.6); animation: offerPulse 1.4s ease-in-out infinite; }
 
 /* analysis */
 .analysis { padding: 12px 12px 6px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.an-verdict { margin: 0; padding: 10px 12px; border-radius: 8px; background: #f2f2f2; color: #2a2926; font-size: 0.95rem; min-height: 42px; }
+.an-verdict:empty { display: none; }
+.an-verdict b { font-weight: 800; }
+.an-verdict .k-blunder { color: #ca3431; } .an-verdict .k-mistake { color: #d97f12; } .an-verdict .k-inaccuracy { color: #b88a00; } .an-verdict .k-best { color: #5c8a2d; }
 .an-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .an-eval {
   flex: none; min-width: 58px; text-align: center; padding: 4px 8px; border-radius: 4px;
@@ -227,7 +238,7 @@ body { padding-left: var(--sb-w); }
 .rb svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .rb .half { font-size: 1.15rem; font-weight: 700; }
 .rb:disabled { opacity: 0.35; }
-.rb.danger, .btn.action.danger { color: #f08c8c; }
+.rb.danger { color: #f08c8c; }
 
 /* ---------- left sidebar (chess.com-style) ---------- */
 .sidebar {
@@ -254,7 +265,59 @@ body { padding-left: var(--sb-w); }
 .sidebar.open .sb-toggle svg { transform: rotate(180deg); }
 .sb-backdrop { display: none; }
 
-/* ---------- settings ---------- */
+/* ---------- views: home page / game ---------- */
+body[data-view="home"] .game, body[data-view="game"] .home { display: none; }
+
+.home { min-height: 100vh; min-height: 100dvh; display: flex; justify-content: center; padding: 48px 24px; }
+.home-inner { width: min(860px, 100%); display: flex; flex-direction: column; gap: 32px; }
+.home-hero { display: flex; align-items: center; gap: 18px; }
+.home-hero h1 { margin: 0; font-size: 2.4rem; color: var(--text-strong); letter-spacing: 0.01em; }
+.home-hero h1 b { color: var(--accent-2); }
+.home-hero p { margin: 4px 0 0; color: var(--muted); font-size: 1.05rem; }
+.home-play { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.home-tile {
+  display: flex; align-items: center; gap: 16px; padding: 18px 20px; border: 0; border-radius: 10px; text-align: left;
+  background: #262522; color: var(--text-strong); cursor: pointer; font: inherit;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.25); transition: background 0.15s, transform 0.12s;
+}
+.home-tile:hover { background: #2f2e2b; }
+.home-tile:active { transform: translateY(1px); }
+.home-tile svg { flex: none; width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; color: var(--accent-2); }
+.home-tile strong { display: block; font-size: 1.15rem; }
+.home-tile small { display: block; color: var(--muted); font-size: 0.88rem; margin-top: 2px; }
+.home-tile.primary { background: linear-gradient(180deg, #8cb85a, #6b9a3c); box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.2); }
+.home-tile.primary svg, .home-tile.primary small { color: rgba(255, 255, 255, 0.9); }
+.home-tile.primary:hover { background: linear-gradient(180deg, #98c565, #75a744); }
+.home-recent { background: #262522; border-radius: 10px; padding: 16px 18px; }
+.home-recent-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.home-recent-head h2 { font-size: 1.05rem; }
+.home-games { list-style: none; margin: 0; padding: 0; }
+.home-games li { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+.home-games li:first-child { border-top: 0; }
+.home-games .who { min-width: 0; color: var(--text-strong); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-games .who small { display: block; color: var(--muted); font-weight: 400; }
+.home-games .acts { display: flex; gap: 6px; }
+.home-games .empty { display: block; color: var(--muted); padding: 10px 0; font-style: italic; }
+.home-foot { display: flex; flex-wrap: wrap; gap: 18px; color: var(--muted); }
+.link-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--muted); font: inherit; font-size: 0.9rem; text-decoration: none;
+}
+.link-btn:hover { color: var(--text-strong); text-decoration: none; }
+.link-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+/* ---------- focus mode: just the board, the players and the clocks ---------- */
+#btn-focus .ico-compress, body.focus #btn-focus .ico-expand { display: none; }
+body.focus #btn-focus .ico-compress { display: block; }
+.focus-acts { display: none; gap: 2px; }
+body.focus .focus-acts { display: inline-flex; }
+.focus-acts .icon-btn { color: #bdbab5; }
+.focus-acts .half { font-size: 1.15rem; font-weight: 700; }
+body.focus { --sb-w: 0px; --board: min(calc(100vh - 128px), calc(100vw - 96px), 1100px); }
+body.focus .sidebar, body.focus .panel, body.focus .mobile-bar, body.focus .rail { display: none; }
+body.focus .game { grid-template-columns: var(--board); grid-template-areas: "ptop" "board" "pbot"; }
+
+
 .set-grid { display: grid; gap: 2px; }
 .tc-badge {
   padding: 3px 10px; border-radius: 99px; background: rgba(127, 166, 80, 0.16);
@@ -287,6 +350,13 @@ body { padding-left: var(--sb-w); }
 .swatch[data-theme="brown"], [data-theme="brown"] { --l: #f0d9b5; --d: #b58863; }
 .swatch[data-theme="blue"], [data-theme="blue"] { --l: #dee3e6; --d: #8ca2ad; }
 .swatch[data-theme="green"], [data-theme="green"] { --l: #ebecd0; --d: #739552; }
+.swatch[data-theme="stone"], [data-theme="stone"] { --l: #c8c6c2; --d: #8b8985; }
+/* stone: a fine grain over the squares, drawn with SVG noise (no image files) */
+.board[data-theme="stone"] .squares::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: 0.32;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9 .35' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1.4 -.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.board[data-theme="stone"] .squares { position: absolute; }
 .swatch[data-theme="purple"], [data-theme="purple"] { --l: #e8e0f0; --d: #9479b6; }
 .swatch[data-theme="slate"], [data-theme="slate"] { --l: #c9cfd6; --d: #5f6e7d; }
 
@@ -433,7 +503,9 @@ body { padding-left: var(--sb-w); }
 .player.winner .pstatus { color: var(--gold); font-weight: 600; }
 .player.offer .pstatus { color: var(--gold); }
 .material { display: flex; align-items: center; color: var(--muted); font-size: 0.85rem; flex: none; }
-.material .pc { width: 1.15em; height: 1.15em; margin-right: -0.35em; opacity: 0.85; }
+.material .cap { display: inline-flex; margin-right: 4px; }
+.material .pc { width: 1.45em; height: 1.45em; margin-right: -0.6em; }
+.material .cap .pc:last-child { margin-right: 0; }
 .material b { margin-left: 0.6em; font-weight: 600; }
 
 /* ---------- clocks ---------- */
@@ -627,6 +699,12 @@ kbd {
   .sidebar { width: 0; padding: 10px 0; }
   .sidebar.open { width: 240px; padding: 10px 8px; }
   .sb-backdrop.open { display: block; position: fixed; inset: 0; z-index: 25; background: rgba(0, 0, 0, 0.5); }
+  body.focus { --board: min(100vw, calc(100dvh - 130px)); }
+  body.focus .game { grid-template-areas: "ptop" "board" "pbot"; }
+  .home { padding: 28px 16px; }
+  .home-hero h1 { font-size: 1.9rem; }
+  .home-games li { grid-template-columns: 54px 1fr; }
+  .home-games .acts { grid-column: 1 / -1; }
   .tc-grid { grid-template-columns: repeat(3, 1fr); }
   .names, .names.two { grid-template-columns: 1fr; }
   .names #new-swap { justify-self: center; transform: rotate(90deg); }
@@ -643,18 +721,59 @@ kbd {
 <body>
   <!-- left sidebar (chess.com-style): icons only, labels when expanded -->
   <aside class="sidebar" id="sidebar" aria-label="Main menu">
-    <a class="sb-brand" href="#" aria-label="Deskmate home"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjYzllMjY1Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNjI5OTI0Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNCIgZmlsbD0iIzI2MjQyMSIvPgogIDxwYXRoIGQ9Ik04IDhoMTJ2MTJIOHpNMzIgOGgxMnYxMkgzMnpNMjAgMjBoMTJ2MTJIMjB6TTQ0IDIwaDEydjEySDQ0ek04IDMyaDEydjEySDh6TTMyIDMyaDEydjEySDMyek0yMCA0NGgxMnYxMkgyMHpNNDQgNDRoMTJ2MTJINDR6IiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIuMDYiLz4KICA8cGF0aCBmaWxsPSJ1cmwoI2cpIiBkPSJNMjcgMTNjOSAuOCAxNSA3IDE1IDE5LjVWNTFIMTljMC04LjIgOC45LTcuNCA3LjItMTguNi0zIDIuMy00LjYgMi44LTcuNCA0LjYtMS41IDEtMi45LS40LTIuNS0yIDEuOC0zLjIgMi40LTMuNiAzLjQtNy40LjktMy4zIDMuOC02LjUgNS42LTguNEwyNyAxM3oiLz4KICA8Y2lyY2xlIGN4PSIyNSIgY3k9IjIzLjUiIHI9IjEuOCIgZmlsbD0iIzI2MjQyMSIvPgogIDxyZWN0IHg9IjE3IiB5PSI0OSIgd2lkdGg9IjI3IiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZykiLz4KPC9zdmc+Cg==" alt="" width="30" height="30" /><span>Desk<b>mate</b></span></a>
+    <a class="sb-brand" href="#" id="sb-home" title="Home" aria-label="Deskmate home"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjYzllMjY1Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNjI5OTI0Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNCIgZmlsbD0iIzI2MjQyMSIvPgogIDxwYXRoIGQ9Ik04IDhoMTJ2MTJIOHpNMzIgOGgxMnYxMkgzMnpNMjAgMjBoMTJ2MTJIMjB6TTQ0IDIwaDEydjEySDQ0ek04IDMyaDEydjEySDh6TTMyIDMyaDEydjEySDMyek0yMCA0NGgxMnYxMkgyMHpNNDQgNDRoMTJ2MTJINDR6IiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIuMDYiLz4KICA8cGF0aCBmaWxsPSJ1cmwoI2cpIiBkPSJNMjcgMTNjOSAuOCAxNSA3IDE1IDE5LjVWNTFIMTljMC04LjIgOC45LTcuNCA3LjItMTguNi0zIDIuMy00LjYgMi44LTcuNCA0LjYtMS41IDEtMi45LS40LTIuNS0yIDEuOC0zLjIgMi40LTMuNiAzLjQtNy40LjktMy4zIDMuOC02LjUgNS42LTguNEwyNyAxM3oiLz4KICA8Y2lyY2xlIGN4PSIyNSIgY3k9IjIzLjUiIHI9IjEuOCIgZmlsbD0iIzI2MjQyMSIvPgogIDxyZWN0IHg9IjE3IiB5PSI0OSIgd2lkdGg9IjI3IiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZykiLz4KPC9zdmc+Cg==" alt="" width="30" height="30" /><span>Desk<b>mate</b></span></a>
       <button class="sb-item" id="btn-new" title="New game"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>New game</span></button>
       <button class="sb-item" id="btn-remote" title="Play a colleague"><svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span>Play a colleague</span></button>
       <button class="sb-item" id="btn-archive" title="Saved games"><svg viewBox="0 0 24 24"><path d="M3 5h18v4H3zM5 9h14v10H5zM9 13h6"/></svg><span>Saved games</span></button>
       <button class="sb-item" id="btn-analyse" title="Analysis"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8M7.5 12l2-2.5 2 1.5 2-3"/></svg><span>Analysis</span></button>
       <button class="sb-item" id="btn-import" title="Import PGN"><svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M5 14v6h14v-6"/></svg><span>Import PGN</span></button>
     <span class="sb-gap"></span>
-      <button class="sb-item" id="btn-help" title="How to play"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17.2v.3"/></svg><span>How to play</span></button>
-      <a class="sb-item" href="https://github.com/abhieq31/Deskmate" target="_blank" rel="noopener" title="Source code"><svg viewBox="0 0 24 24" class="fill"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .8.1-.7.4-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5a3.9 3.9 0 0 1 1-2.7 3.6 3.6 0 0 1 .1-2.7s.8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .6 1.4.2 2.4.1 2.7a3.9 3.9 0 0 1 1 2.7c0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg><span>Source code</span></a>
       <button class="sb-item sb-toggle" id="sb-toggle" title="Expand menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="m13 6 6 6-6 6M5 6l6 6-6 6"/></svg><span>Collapse</span></button>
   </aside>
   <div class="sb-backdrop" id="sb-backdrop"></div>
+
+  <!-- home page -->
+  <section class="home" id="home" aria-label="Deskmate home">
+    <div class="home-inner">
+      <header class="home-hero">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjYzllMjY1Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNjI5OTI0Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNCIgZmlsbD0iIzI2MjQyMSIvPgogIDxwYXRoIGQ9Ik04IDhoMTJ2MTJIOHpNMzIgOGgxMnYxMkgzMnpNMjAgMjBoMTJ2MTJIMjB6TTQ0IDIwaDEydjEySDQ0ek04IDMyaDEydjEySDh6TTMyIDMyaDEydjEySDMyek0yMCA0NGgxMnYxMkgyMHpNNDQgNDRoMTJ2MTJINDR6IiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIuMDYiLz4KICA8cGF0aCBmaWxsPSJ1cmwoI2cpIiBkPSJNMjcgMTNjOSAuOCAxNSA3IDE1IDE5LjVWNTFIMTljMC04LjIgOC45LTcuNCA3LjItMTguNi0zIDIuMy00LjYgMi44LTcuNCA0LjYtMS41IDEtMi45LS40LTIuNS0yIDEuOC0zLjIgMi40LTMuNiAzLjQtNy40LjktMy4zIDMuOC02LjUgNS42LTguNEwyNyAxM3oiLz4KICA8Y2lyY2xlIGN4PSIyNSIgY3k9IjIzLjUiIHI9IjEuOCIgZmlsbD0iIzI2MjQyMSIvPgogIDxyZWN0IHg9IjE3IiB5PSI0OSIgd2lkdGg9IjI3IiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZykiLz4KPC9zdmc+Cg==" alt="" width="64" height="64" />
+        <div>
+          <h1>Desk<b>mate</b></h1>
+          <p>Chess with your colleagues: on one laptop, or on two with one short code.</p>
+        </div>
+      </header>
+      <div class="home-play">
+        <button class="home-tile primary" id="home-colleague">
+          <svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>
+          <span><strong>Play a colleague</strong><small>Each on your own laptop, one 6-letter code</small></span>
+        </button>
+        <button class="home-tile" id="home-join">
+          <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+          <span><strong>Join with a code</strong><small>Your colleague sent you a code</small></span>
+        </button>
+        <button class="home-tile" id="home-local">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+          <span><strong>Play on this laptop</strong><small>Pass and play; the board turns for each player</small></span>
+        </button>
+        <button class="home-tile hidden" id="home-resume">
+          <svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>
+          <span><strong>Resume game</strong><small id="home-resume-sub"></small></span>
+        </button>
+      </div>
+      <section class="home-recent">
+        <div class="home-recent-head">
+          <h2>Recent games</h2>
+          <button class="link-btn" id="home-all">All saved games</button>
+        </div>
+        <ul class="home-games" id="home-games"></ul>
+      </section>
+      <footer class="home-foot">
+        <button class="link-btn" id="btn-help">How to play</button>
+        <button class="link-btn" id="home-import">Import a PGN</button>
+        <a class="link-btn" href="https://github.com/abhieq31/Deskmate" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" class="fill"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .8.1-.7.4-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5a3.9 3.9 0 0 1 1-2.7 3.6 3.6 0 0 1 .1-2.7s.8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .6 1.4.2 2.4.1 2.7a3.9 3.9 0 0 1 1 2.7c0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg> Source code</a>
+      </footer>
+    </div>
+  </section>
 
   <main class="game">
     <!-- phones: menu button + the one-line move strip -->
@@ -672,6 +791,7 @@ kbd {
     </section>
     <div class="clock-wrap clock-top">
       <div class="clock" id="clock-top" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div>
+      <button class="icon-btn" id="btn-focus" title="Hide menu and moves (Z)" aria-label="Focus on the board"><svg viewBox="0 0 24 24" class="ico-expand"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><svg viewBox="0 0 24 24" class="ico-compress"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
       <button class="icon-btn gear" id="btn-settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </div>
 
@@ -694,6 +814,10 @@ kbd {
       </div>
     </section>
     <div class="clock-wrap clock-bottom">
+      <span class="focus-acts">
+        <button class="icon-btn act-draw" aria-label="Draw"><span class="half">½</span></button>
+        <button class="icon-btn danger act-resign" aria-label="Resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></button>
+      </span>
       <div class="clock" id="clock-bottom" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div>
     </div>
 
@@ -707,6 +831,7 @@ kbd {
         </div>
       </div>
       <div class="analysis hidden" id="analysis">
+        <p class="an-verdict" id="an-verdict"></p>
         <div class="an-head"><span class="an-eval" id="an-eval">0.0</span><span class="an-line" id="an-line"></span></div>
         <svg class="an-graph" id="an-graph" viewBox="0 0 100 40" preserveAspectRatio="none" aria-label="Evaluation graph"></svg>
         <div class="an-progress" id="an-progress"><span></span></div>
@@ -750,11 +875,8 @@ kbd {
     </div>
     <h3>Board</h3>
     <div class="themes" role="radiogroup" aria-label="Board theme">
-      <button class="swatch" data-theme="green" title="Green" aria-label="Green theme"></button>
-      <button class="swatch" data-theme="brown" title="Brown" aria-label="Brown theme"></button>
-      <button class="swatch" data-theme="blue" title="Blue" aria-label="Blue theme"></button>
-      <button class="swatch" data-theme="purple" title="Purple" aria-label="Purple theme"></button>
-      <button class="swatch" data-theme="slate" title="Slate" aria-label="Slate theme"></button>
+      <button class="swatch" data-theme="green" title="Green" aria-label="Green board"></button>
+      <button class="swatch" data-theme="stone" title="Stone" aria-label="Stone board"></button>
     </div>
     <h3>Game</h3>
     <div class="tools">
@@ -913,6 +1035,7 @@ kbd {
       <tr><td><kbd>N</kbd></td><td>New game</td></tr>
       <tr><td><kbd>H</kbd></td><td>Saved games</td></tr>
       <tr><td><kbd>M</kbd></td><td>Expand or collapse the menu</td></tr>
+      <tr><td><kbd>Z</kbd></td><td>Focus: show only the board, players and clocks</td></tr>
     </table>
   </dialog>
 
@@ -5705,6 +5828,33 @@ function material(fen) {
   return out;
 }
 
+const START = { p: 8, n: 2, b: 2, r: 2, q: 1 };
+
+/**
+ * Pieces each side has captured (the opponent's missing pieces, pawns first) and the points
+ * lead, as chess.com shows them next to the player names.
+ */
+function captures(fen) {
+  const count = { w: {}, b: {} };
+  for (const code of fenPieces(fen).values()) {
+    const c = code[0], role = code[1].toLowerCase();
+    count[c][role] = (count[c][role] || 0) + 1;
+  }
+  const out = { w: { pieces: [], score: 0 }, b: { pieces: [], score: 0 } };
+  const points = { w: 0, b: 0 };
+  for (const c of ['w', 'b']) {
+    const o = c === 'w' ? 'b' : 'w';
+    for (const role of ['p', 'b', 'n', 'r', 'q']) {
+      for (let i = (count[o][role] || 0); i < START[role]; i++) out[c].pieces.push(role);
+      points[c] += (count[c][role] || 0) * VALUES[role];
+    }
+  }
+  const diff = points.w - points.b;
+  if (diff > 0) out.w.score = diff;
+  if (diff < 0) out.b.score = -diff;
+  return out;
+}
+
 /** True if `color` has only a bare king (cannot ever deliver mate). */
 function bareKing(fen, color) {
   for (const code of fenPieces(fen).values()) if (code[0] === color && code[1] !== 'K') return false;
@@ -5729,6 +5879,8 @@ class Game {
     this.chess = new Chess();
     this.plies = [];
     for (const san of data.moves || []) this._push(this.chess.move(san));
+    // time left on the mover's clock after each move (ms), when the game had a clock
+    (data.clk || []).forEach((ms, i) => { if (this.plies[i] && ms != null) this.plies[i].clock = ms; });
   }
 
   get tcInfo() { return timeControl(this.tc); }
@@ -5805,6 +5957,19 @@ class Game {
     else this.finish(color === 'w' ? '0-1' : '1-0', `${this.nameOf(color)} ran out of time`);
   }
 
+  /**
+   * What each clock showed with `ply` moves played: the time its player had left after their
+   * last move up to that point, or the starting time before their first move.
+   */
+  clocksAt(ply) {
+    const out = { w: this.tcInfo.base * 60000, b: this.tcInfo.base * 60000 };
+    for (let i = 0; i < ply && i < this.plies.length; i++) {
+      const p = this.plies[i];
+      if (p.clock != null) out[p.color] = p.clock;
+    }
+    return out;
+  }
+
   undo() {
     if (!this.plies.length) return false;
     this.chess.undo();
@@ -5827,6 +5992,7 @@ class Game {
       id: this.id, white: this.white, black: this.black, tc: this.tc,
       startedAt: this.startedAt, endedAt: this.endedAt, result: this.result,
       termination: this.termination, clocks: this.clocks, moves: this.plies.map((p) => p.san),
+      clk: this.plies.some((p) => p.clock != null) ? this.plies.map((p) => (p.clock == null ? null : Math.round(p.clock))) : undefined,
       remote: this.remote,
     };
   }
@@ -5845,9 +6011,14 @@ class Game {
     if (this.termination) headers.push(['Termination', this.termination]);
     let text = headers.map(([k, v]) => `[${k} "${esc(v)}"]`).join('\n') + '\n\n';
     const parts = [];
+    const clk = (ms) => {
+      const t = Math.max(0, Math.round(ms / 1000));
+      return `{[%clk ${Math.floor(t / 3600)}:${String(Math.floor(t / 60) % 60).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}]}`;
+    };
     this.plies.forEach((p, i) => {
       if (i % 2 === 0) parts.push(`${i / 2 + 1}.`);
       parts.push(p.san);
+      if (p.clock != null) parts.push(clk(p.clock));
     });
     parts.push(this.result || '*');
     // wrap movetext at ~80 chars as PGN export format recommends
@@ -5872,6 +6043,12 @@ class Game {
       tc: timeControl(tcId).id,
       moves: c.history(),
     });
+    // clock times from [%clk h:mm:ss] comments (lichess and chess.com both write them)
+    const clocks = new Map(c.getComments().map(({ fen, comment }) => {
+      const m = /\[%clk (\d+):(\d+):(\d+(?:\.\d+)?)\]/.exec(comment || '');
+      return [fen, m ? ((+m[1] * 60 + +m[2]) * 60 + +m[3]) * 1000 : null];
+    }));
+    g.plies.forEach((p) => { if (clocks.get(p.fen) != null) p.clock = clocks.get(p.fen); });
     const date = h.Date && /^(\d{4})\.(\d{2})\.(\d{2})$/.exec(h.Date);
     if (date) g.startedAt = new Date(+date[1], +date[2] - 1, +date[3]).getTime();
     if (['1-0', '0-1', '1/2-1/2'].includes(h.Result)) {
@@ -5884,7 +6061,7 @@ class Game {
   }
 }
 
-return { START_FEN, TIME_CONTROLS, timeControl, fenPieces, checkSquare, material, Game };
+return { START_FEN, TIME_CONTROLS, timeControl, fenPieces, checkSquare, material, captures, Game };
 })();
 
 __mods["js/remote.js"] = (() => {
@@ -6678,6 +6855,7 @@ const DEFAULT_SETTINGS = {
   showDests: true,
   coords: true,
   theme: 'green',
+  focus: true, // during a game: only the board, the players and the clocks
   white: 'White',
   black: 'Black',
   tc: 'none',
@@ -6809,7 +6987,7 @@ return { confetti };
 
 __mods["js/app.js"] = (() => {
 // Deskmate application controller: wires the game model, board, clocks, live rooms, storage and UI.
-const { Game, TIME_CONTROLS, timeControl, checkSquare, material } = __mods["js/game.js"];
+const { Game, TIME_CONTROLS, timeControl, checkSquare, captures } = __mods["js/game.js"];
 const { Board } = __mods["js/board.js"];
 const { storage } = __mods["js/storage.js"];
 const { sound } = __mods["js/sound.js"];
@@ -6825,6 +7003,7 @@ const other = (c) => (c === 'w' ? 'b' : 'w');
 const colorName = (c) => (c === 'w' ? 'White' : 'Black');
 
 const settings = storage.loadSettings();
+if (!['green', 'stone'].includes(settings.theme)) settings.theme = 'green'; // the only two boards now
 if (!settings.pid) {
   settings.pid = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(36).padStart(2, '0')).join('');
   storage.saveSettings(settings);
@@ -6841,6 +7020,7 @@ let room = null; // live connection for game.remote.room
 let relaysUp = 0; // relays the room is connected to right now
 let joining = null; // { code, name, timer } while waiting for a room's first snapshot
 let an = null; // post-game analysis: { game, evals[], summary, done }
+let view = 'game'; // 'home' | 'game'
 let engine = null;
 
 const board = new Board($('#board'), { onMove });
@@ -6880,12 +7060,13 @@ function render() {
   renderStatus();
   renderControls();
   renderAnalysis();
+  applyFocus();
 }
 
 function renderPlayers() {
   const g = active();
   const fen = g.fenAt(viewPly);
-  const mat = material(fen);
+  const mat = captures(fen);
   const bottom = board.orientation, top = other(bottom);
   const turn = fen.split(' ')[1];
   const atEnd = viewPly === g.length;
@@ -6896,9 +7077,12 @@ function renderPlayers() {
     card.dataset.color = color;
     card.querySelector('[data-name]').textContent =
       (here ? g.nameOf(color) || colorName(color) : 'Opponent') + (!review && g.remote?.me === color ? ' (you)' : '');
+    // pieces this player has taken, grouped by kind like chess.com, then the points lead
     const m = mat[color];
+    const groups = [];
+    for (const r of m.pieces) (groups.at(-1)?.[0] === r ? groups.at(-1) : groups[groups.push([]) - 1]).push(r);
     card.querySelector('[data-material]').innerHTML =
-      m.pieces.map((r) => `<i class="pc ${other(color)}${r.toUpperCase()}"></i>`).join('') +
+      groups.map((grp) => `<span class="cap">${grp.map((r) => `<i class="pc ${other(color)}${r.toUpperCase()}"></i>`).join('')}</span>`).join('') +
       (m.score ? `<b>+${m.score}</b>` : '');
     const toMove = !g.over && turn === color && atEnd && here;
     const won = g.result === (color === 'w' ? '1-0' : '0-1');
@@ -6939,7 +7123,7 @@ function renderClocks() {
   for (const [sel, color] of [['#clock-top', other(bottom)], ['#clock-bottom', bottom]]) {
     const clock = $(sel);
     const time = clock.querySelector('[data-time]');
-    clock.classList.toggle('active', !g.over && g.turn === color && (review || bothSeated()));
+    clock.classList.toggle('active', !g.over && !review && viewPly === g.length && g.turn === color && bothSeated());
     clock.classList.toggle('unlimited', !g.hasClock);
     clock.setAttribute('aria-label', `${g.nameOf(color) || colorName(color)}'s clock`);
     if (!g.hasClock) {
@@ -6947,10 +7131,12 @@ function renderClocks() {
       clock.classList.remove('running', 'low', 'paused');
       continue;
     }
-    const ms = g.clocks[color];
+    // replaying: the clocks as they stood after the move on the board
+    const past = review || viewPly < g.length;
+    const ms = past ? g.clocksAt(viewPly)[color] : g.clocks[color];
     time.textContent = fmtClock(ms);
-    clock.classList.toggle('running', !review && clockRunning() && game.turn === color);
-    clock.classList.toggle('low', ms < 20000 && !review);
+    clock.classList.toggle('running', !past && clockRunning() && game.turn === color);
+    clock.classList.toggle('low', ms < 20000 && !past);
     clock.classList.toggle('paused', !review && paused && game.turn === color && game.length > 0 && !game.over);
   }
 }
@@ -7049,6 +7235,7 @@ async function onMove(from, to) {
   if (game.hasClock) {
     if (game.length > 1 && !paused) game.clocks[mover] -= now - lastTick;
     if (game.length > 1) game.clocks[mover] += game.tcInfo.inc * 1000;
+    ply.clock = game.clocks[mover];
     paused = false;
     lastTick = now;
   }
@@ -7142,7 +7329,7 @@ function startGame({ white, black, tc, remote = null, id, startedAt }) {
   storage.saveSettings(settings);
   persist();
   board.setOrientation(homeOrientation());
-  render();
+  setView('game');
   requestWakeLock();
 }
 
@@ -7165,7 +7352,7 @@ function openReview(data) {
   clearTimeout(flipTimer);
   board.setOrientation('w');
   closeDialogs();
-  render();
+  setView('game');
 }
 
 function exitReview() {
@@ -7276,6 +7463,19 @@ function applySnapshot(snap, moves) {
   if (snap.b && r.me !== 'b') game.black = snap.b;
 
   const local = game.plies.map((p) => p.san);
+  // The game ended on the other laptop (their clock saw ours run out, or they resigned or
+  // agreed a draw) while a move of ours was still on its way: the result stands, and the
+  // moves we made after it are taken back, so both laptops end on the same position.
+  if (snap.r && !game.result && moves.length < local.length && moves.every((s, i) => s === local[i])) {
+    while (game.length > moves.length) game.undo();
+    game.finish(snap.r, snap.t || 'Game over');
+    if (game.hasClock && snap.c) game.clocks = { w: snap.c[0], b: snap.c[1] };
+    viewPly = game.length;
+    persist();
+    publish();
+    onGameOver();
+    return;
+  }
   if (!local.every((s, i) => s === moves[i])) { render(); return; } // an older snapshot: ours is newer
   const wasAtEnd = viewPly === game.length;
   const wasOver = game.over;
@@ -7285,6 +7485,7 @@ function applySnapshot(snap, moves) {
   r.offer = snap.o || null;
   if (game.hasClock && snap.c && (last || snap.r)) {
     game.clocks = { w: snap.c[0], b: snap.c[1] };
+    if (last) last.clock = game.clocks[last.color];
     lastTick = Date.now();
   }
   if (wasAtEnd) viewPly = game.length;
@@ -7436,6 +7637,7 @@ function pvSan(fen, pv, max = 8) {
 }
 
 async function startAnalysis() {
+  setView('game');
   const g = active();
   if (!g.length) return toast('Play some moves first');
   // no engine help while a game is still being played
@@ -7498,6 +7700,23 @@ function renderAnalysis() {
   $('#an-line').textContent = !ev ? 'Stockfish is thinking…' : ev.pv?.length ? pvSan(fen, ev.pv) : g.result && viewPly === g.length ? g.termination : '';
   const best = ev?.pv?.[0];
   board.setAutoShapes(best ? [{ from: best.slice(0, 2), to: best.slice(2, 4) }] : []);
+
+  // chess.com-style verdict on the move that led here: "Nf6 is a blunder. Best was Qe7."
+  const played = g.plies[viewPly - 1];
+  const before = an.evals[viewPly - 1];
+  const kind = an.summary?.moves[viewPly - 1]?.kind;
+  let verdict = '';
+  if (played && before && ev) {
+    const bestUci = before.pv?.[0];
+    const bestSan = bestUci ? pvSan(g.fenAt(viewPly - 1), [bestUci]).replace(/^\d+(\.|…) /, '') : '';
+    const isBest = bestUci && bestUci === played.from + played.to + (played.promotion || '');
+    const name = esc(played.san);
+    if (played.san.endsWith('#')) verdict = `<b class="k-best">${name}</b> is checkmate.`;
+    else if (kind) verdict = `<b class="k-${kind}">${name}${MARKS[kind]}</b> is ${kind === 'inaccuracy' ? 'an' : 'a'} ${kind}.${bestSan ? ` Best was <b>${esc(bestSan)}</b>.` : ''}`;
+    else if (isBest) verdict = `<b class="k-best">${name}</b> is the best move.`;
+    else verdict = `<b>${name}</b> is a good move.${bestSan ? ` The engine prefers <b>${esc(bestSan)}</b>.` : ''}`;
+  }
+  $('#an-verdict').innerHTML = verdict;
 
   // graph: White's winning chances over the game
   const n = g.length;
@@ -7620,7 +7839,7 @@ $('#archive-list').addEventListener('click', (e) => {
     persist();
     closeDialogs();
     board.setOrientation(homeOrientation());
-    render();
+    setView('game');
   }
 });
 
@@ -7808,6 +8027,7 @@ document.addEventListener('keydown', (e) => {
   else if (k === 'n' || k === 'N') openNewGame();
   else if (k === 'h' || k === 'H') $('#btn-archive').click();
   else if (k === 'm' || k === 'M') setSidebar(!$('#sidebar').classList.contains('open'));
+  else if (k === 'z' || k === 'Z') toggleFocus();
   else if (k === '?') openDialog('#dlg-help');
   else return;
   e.preventDefault();
@@ -7862,6 +8082,66 @@ $('#sb-backdrop').addEventListener('click', () => setSidebar(false));
 // after picking something from the menu, fold it away again
 $$('#sidebar .sb-item:not(.sb-toggle)').forEach((b) => b.addEventListener('click', () => setSidebar(false)));
 
+/* ---------------- home page & focus mode ---------------- */
+
+const inProgress = () => !game.over && (game.length > 0 || !!game.remote);
+
+function setView(v) {
+  view = v;
+  document.body.dataset.view = v;
+  if (v === 'home') renderHome();
+  else render();
+}
+
+/** Focus mode (on by default): only the board, the players and their clocks while you play. */
+function applyFocus() {
+  document.body.classList.toggle('focus', view === 'game' && settings.focus && !an);
+  const b = $('#btn-focus');
+  b.title = settings.focus ? 'Show menu and moves (Z)' : 'Hide menu and moves (Z)';
+  b.setAttribute('aria-pressed', String(!!settings.focus));
+}
+
+function toggleFocus() {
+  settings.focus = !settings.focus;
+  storage.saveSettings(settings);
+  applyFocus();
+}
+
+function renderHome() {
+  const resume = inProgress();
+  $('#home-resume').classList.toggle('hidden', !resume);
+  if (resume) {
+    $('#home-resume-sub').textContent = `${game.white || 'White'} vs ${game.black || 'Black'}` +
+      (game.remote ? ` · live, code ${formatRoomCode(game.remote.room)}` : ` · ${Math.ceil(game.length / 2)} moves`);
+  }
+  const list = storage.loadArchive().slice(0, 5);
+  $('#home-games').innerHTML = list.length ? list.map((g) => {
+    const res = g.result ? g.result.replace(/1\/2/g, '½') : 'unfinished';
+    const cls = g.result === '1-0' ? 'w' : g.result === '0-1' ? 'b' : g.result ? 'd' : 'u';
+    const d = new Date(g.endedAt || g.startedAt);
+    return `<li data-id="${g.id}"><span class="res ${cls}">${res}</span>
+      <span class="who">${esc(g.white || '?')} vs ${esc(g.black || '?')}<small>${esc(g.termination || 'In progress')} · ${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</small></span>
+      <span class="acts"><button class="btn small" data-act="review">Review</button>${g.result ? '<button class="btn small primary" data-act="analyse">Analyse</button>' : ''}</span></li>`;
+  }).join('') : '<li class="empty">Your finished games will appear here.</li>';
+}
+
+$('#home-games').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const data = storage.loadArchive().find((g) => g.id === btn.closest('li').dataset.id);
+  if (!data) return;
+  openReview(data);
+  if (btn.dataset.act === 'analyse') startAnalysis();
+});
+$('#home-colleague').addEventListener('click', () => openRemote('create'));
+$('#home-join').addEventListener('click', () => openRemote('join'));
+$('#home-local').addEventListener('click', () => openNewGame());
+$('#home-resume').addEventListener('click', () => setView('game'));
+$('#home-all').addEventListener('click', () => { renderArchive(); openDialog('#dlg-archive'); });
+$('#home-import').addEventListener('click', () => { $('#import-error').classList.add('hidden'); openDialog('#dlg-import'); });
+$('#sb-home').addEventListener('click', (e) => { e.preventDefault(); setSidebar(false); setView('home'); });
+$('#btn-focus').addEventListener('click', toggleFocus);
+
 /* ---------------- boot ---------------- */
 
 placeMoves();
@@ -7869,7 +8149,7 @@ applyPrefs();
 // the offline download link only makes sense on the hosted site
 if (!/^https?:$/.test(location.protocol)) $('.offline-dl')?.remove();
 board.setOrientation(homeOrientation());
-render();
+setView(inProgress() ? 'game' : 'home');
 if (game.remote) connectRoom(game.remote.room);
 
 // a shared link (…/deskmate#K7QM2X) opens "Join with a code" with the code filled in

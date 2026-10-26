@@ -1,0 +1,55 @@
+---
+// A small corner link to Deskmate, the chess app hosted at /deskmate.
+---
+
+<a href="/deskmate" class="checkmate-corner" title="Play chess with a colleague on Deskmate">
+  <svg viewBox="0 0 24 24" aria-hidden="true"
+    ><path
+      d="M9 21h9v-3H7.5c0-2.4 1.4-4 3.2-5.6-1.4.2-2.5.8-3.6 1.6L5.5 12c.4-2.2 1.9-3.6 3.1-4.9L8 4.5l2.5 1.4C14.6 6.2 17 9.2 17 13.5V18"
+    ></path></svg
+  >
+  <span>Let's checkmate</span>
+</a>
+
+<style>
+  .checkmate-corner {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 40;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 13px 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--foreground);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    transition:
+      border-color 0.15s,
+      transform 0.15s;
+  }
+  .checkmate-corner:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    text-decoration: none;
+  }
+  .checkmate-corner svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--accent-hover);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  @media print {
+    .checkmate-corner {
+      display: none;
+    }
+  }
+</style>
