@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Deskmate · Chess with your colleagues</title>
-  <meta name="description" content="Free, open-source over-the-board chess for two players on one screen. Auto-flipping board, legal move hints, clocks and local game history. No account, no tracking." />
+  <meta name="description" content="Free, open-source chess for colleagues: two players on one laptop, or on two laptops with one short game code. Clocks, legal move hints, local game history. No account." />
   <meta name="theme-color" content="#161512" />
   <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjYzllMjY1Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNjI5OTI0Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNCIgZmlsbD0iIzI2MjQyMSIvPgogIDxwYXRoIGQ9Ik04IDhoMTJ2MTJIOHpNMzIgOGgxMnYxMkgzMnpNMjAgMjBoMTJ2MTJIMjB6TTQ0IDIwaDEydjEySDQ0ek04IDMyaDEydjEySDh6TTMyIDMyaDEydjEySDMyek0yMCA0NGgxMnYxMkgyMHpNNDQgNDRoMTJ2MTJINDR6IiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIuMDYiLz4KICA8cGF0aCBmaWxsPSJ1cmwoI2cpIiBkPSJNMjcgMTNjOSAuOCAxNSA3IDE1IDE5LjVWNTFIMTljMC04LjIgOC45LTcuNCA3LjItMTguNi0zIDIuMy00LjYgMi44LTcuNCA0LjYtMS41IDEtMi45LS40LTIuNS0yIDEuOC0zLjIgMi40LTMuNiAzLjQtNy40LjktMy4zIDMuOC02LjUgNS42LTguNEwyNyAxM3oiLz4KICA8Y2lyY2xlIGN4PSIyNSIgY3k9IjIzLjUiIHI9IjEuOCIgZmlsbD0iIzI2MjQyMSIvPgogIDxyZWN0IHg9IjE3IiB5PSI0OSIgd2lkdGg9IjI3IiBoZWlnaHQ9IjUiIHJ4PSIyLjUiIGZpbGw9InVybCgjZykiLz4KPC9zdmc+Cg==" type="image/svg+xml" />
     <style>
@@ -13,7 +13,7 @@
    ========================================================================== */
 
 :root {
-  --bg: #161512;
+  --bg: #312e2b;
   --bg-2: #1e1d1a;
   --panel: rgba(38, 36, 33, 0.82);
   --panel-solid: #262421;
@@ -31,7 +31,7 @@
   --radius: 10px;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25);
   /* everything but the board: 2 player rows + gaps + padding (height), rail + gap + padding (width) */
-  --board: min(calc(100vh - 136px), calc(100vw - 130px), 980px);
+  --board: min(calc(100vh - 136px), calc(100vw - 440px), 900px);
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', Ubuntu, sans-serif;
   --mono: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Menlo, Consolas, monospace;
   color-scheme: dark;
@@ -52,22 +52,6 @@ a:hover { text-decoration: underline; }
 .muted { color: var(--muted); }
 h2, h3 { color: var(--text-strong); margin: 0; font-weight: 600; letter-spacing: 0.01em; }
 h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 10px; }
-
-/* ---------- background aurora ---------- */
-.aurora { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
-.aurora i {
-  position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%;
-  filter: blur(90px); opacity: 0.16; mix-blend-mode: screen;
-  animation: drift 38s ease-in-out infinite alternate;
-}
-.aurora i:nth-child(1) { background: #7fa650; top: -25vmax; left: -15vmax; }
-.aurora i:nth-child(2) { background: #b58863; bottom: -30vmax; right: -20vmax; animation-duration: 46s; animation-delay: -12s; }
-.aurora i:nth-child(3) { background: #3692e7; top: 30%; left: 40%; width: 40vmax; height: 40vmax; opacity: 0.08; animation-duration: 54s; animation-delay: -24s; }
-@keyframes drift {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(8vmax, 5vmax) scale(1.15); }
-  100% { transform: translate(-6vmax, 9vmax) scale(0.95); }
-}
 
 /* ---------- brand (shown in the menu) ---------- */
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text-strong); font-size: 1.3rem; letter-spacing: 0.02em; }
@@ -106,23 +90,22 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .btn.small svg { width: 17px; height: 17px; }
 .half { font-size: 1.25rem; font-weight: 700; line-height: 1; }
 
-/* ---------- layout: the board is the page ----------
-   desktop:  [avatar name        clock]          phone:  [avatar name   clock]
-             [                        ]  [½   ]           [       board       ]
-             [         board          ]  [⚑   ]           [avatar name   clock]
-             [                        ]  [☰   ]           [ ½ Draw ⚑ Resign ☰ ]
+/* ---------- layout (chess.com desktop game view) ----------
+   desktop:  [avatar name        clock]  [ Moves        ☰ ]      phone:  [avatar name   clock]
+             [                        ]  [ 1. e4  e5      ]              [       board       ]
+             [         board          ]  [ …              ]              [avatar name   clock]
+             [                        ]  [ ½ Draw  Resign ]              [ Draw Resign Menu  ]
              [avatar name        clock]
    Each clock shares its player's grid cell, at the right edge of the board. */
 .game {
   --card-h: 44px;
-  --rail-w: 76px;
   display: grid;
-  grid-template-columns: var(--board) var(--rail-w);
+  grid-template-columns: var(--board) minmax(280px, 340px);
   grid-template-areas:
-    "ptop  ."
-    "board rail"
-    "pbot  .";
-  gap: 8px 14px;
+    "ptop  panel"
+    "board panel"
+    "pbot  panel";
+  gap: 8px 18px;
   justify-content: center;
   align-content: center;
   min-height: 100vh; min-height: 100dvh;
@@ -133,26 +116,47 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .player { justify-self: start; max-width: calc(100% - 180px); }
 .clock { justify-self: end; }
 .board-area { grid-area: board; position: relative; }
+.panel { grid-area: panel; }
+.rail { grid-area: rail; display: none; }
 
-/* the rail: Draw, Resign, (Code / Pause when they apply) and the menu */
-.rail { grid-area: rail; display: flex; flex-direction: column; gap: 6px; }
-.rail-gap { flex: 1; }
-.rb {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  width: 100%; padding: 10px 4px; border: 1px solid var(--line); border-radius: 10px;
-  background: rgba(38, 36, 33, 0.6); color: var(--text); cursor: pointer;
-  font: 600 0.75rem var(--font); letter-spacing: 0.02em;
-  transition: background 0.15s, color 0.15s, transform 0.12s;
+/* side panel */
+.panel {
+  display: flex; flex-direction: column;
+  height: 0; min-height: 100%; /* follow the board column's height instead of setting it */
+  background: #262522; border-radius: 8px; overflow: hidden;
 }
-.rb svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.rb .half { font-size: 1.3rem; font-weight: 700; line-height: 22px; height: 22px; }
-.rb:hover:not(:disabled) { background: rgba(255, 255, 255, 0.09); color: var(--text-strong); }
-.rb:active:not(:disabled) { transform: scale(0.96); }
-.rb:disabled { opacity: 0.3; cursor: default; }
-.rb:focus-visible { outline: 2px solid var(--blue); }
-.rb.danger { color: #f08c8c; }
-.rb.attn { color: var(--blue); border-color: rgba(54, 146, 231, 0.5); }
-.rb.offer { color: var(--gold); border-color: rgba(232, 182, 76, 0.5); animation: offerPulse 1.4s ease-in-out infinite; }
+.panel-head { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 14px; border-bottom: 1px solid var(--line); }
+.panel-title { font-weight: 700; color: var(--text-strong); }
+.panel-head .tc-badge { margin-left: auto; }
+.icon-btn {
+  display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 6px;
+  background: transparent; color: var(--text); cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.icon-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.icon-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-strong); }
+.panel .moves-slot { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.panel #moves-block { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; padding: 0; border: 0; }
+.panel #moves-block .sec-head { display: none; }
+.panel .moves { flex: 1 1 0; max-height: none; margin: 0; border: 0; border-radius: 0; background: transparent; }
+.panel .result-line { padding: 10px; border-top: 1px solid var(--line); }
+.panel-actions { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--line); }
+.panel-actions .btn { flex: 1; }
+.btn.action { min-height: 42px; gap: 10px; background: #3c3a37; border-color: transparent; }
+.btn.action:hover:not(:disabled) { background: #4a4743; }
+.btn.action .half { font-size: 1.15rem; font-weight: 700; }
+.btn.action svg { width: 18px; height: 18px; }
+.btn.action.offer, .rb.offer { color: var(--gold); box-shadow: inset 0 0 0 1px rgba(232, 182, 76, 0.6); animation: offerPulse 1.4s ease-in-out infinite; }
+
+/* phone action row */
+.rb {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 0 6px; border: 0; border-radius: 8px;
+  background: #3c3a37; color: var(--text-strong); cursor: pointer; font: 600 0.88rem var(--font);
+}
+.rb svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.rb .half { font-size: 1.15rem; font-weight: 700; }
+.rb:disabled { opacity: 0.35; }
+.rb.danger, .btn.action.danger { color: #f08c8c; }
 
 .card {
   background: var(--panel);
@@ -216,7 +220,7 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .swatch[aria-checked="true"] { border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(155, 199, 0, 0.2); }
 .swatch[data-theme="brown"], [data-theme="brown"] { --l: #f0d9b5; --d: #b58863; }
 .swatch[data-theme="blue"], [data-theme="blue"] { --l: #dee3e6; --d: #8ca2ad; }
-.swatch[data-theme="green"], [data-theme="green"] { --l: #ffffdd; --d: #86a666; }
+.swatch[data-theme="green"], [data-theme="green"] { --l: #ebecd0; --d: #739552; }
 .swatch[data-theme="purple"], [data-theme="purple"] { --l: #e8e0f0; --d: #9479b6; }
 .swatch[data-theme="slate"], [data-theme="slate"] { --l: #c9cfd6; --d: #5f6e7d; }
 
@@ -238,16 +242,8 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
   -webkit-tap-highlight-color: transparent;
 }
 .board-inner {
-  --rot: 0deg;
   position: absolute; inset: 0; border-radius: 6px; overflow: hidden;
-  transform: rotate(var(--rot));
 }
-.board.flipping .board-inner {
-  transition: transform 0.62s cubic-bezier(.65, 0, .35, 1); overflow: visible;
-  /* a square turned 45° is 1.41x as wide: shrink to 0.7 while turning so it stays in its own column */
-  animation: flipShrink 0.62s linear;
-}
-@keyframes flipShrink { 30%, 70% { scale: 0.7; } }
 
 .squares { position: absolute; inset: 0; display: grid; grid-template: repeat(8, 1fr) / repeat(8, 1fr); }
 .sq { position: relative; }
@@ -284,7 +280,7 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
 .coord.file { bottom: 4%; right: 6%; }
 .sq.light .coord { color: var(--d); }
 .sq.dark .coord { color: var(--l); }
-.board.no-coords .coord, .board.flipping .coord { opacity: 0; }
+.board.no-coords .coord { opacity: 0; }
 
 /* pieces */
 .pieces { position: absolute; inset: 0; pointer-events: none; }
@@ -293,7 +289,6 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; colo
   will-change: transform; z-index: 2;
   transition: transform 0.22s cubic-bezier(.25, .8, .35, 1), opacity 0.2s;
 }
-.board.flipping .piece { transition: transform 0.62s cubic-bezier(.65, 0, .35, 1); }
 .board.no-anim .piece, .board.no-anim .board-inner { transition: none !important; }
 .piece.moving { z-index: 4; }
 .piece.dragging {
@@ -494,15 +489,33 @@ kbd {
   background: #1c1b18; border: 1px solid #4a4742; border-bottom-width: 3px; font: 600 0.8rem var(--mono); color: var(--text-strong);
 }
 
-/* remote play */
+/* play a colleague */
 .tiny { font-size: 0.8rem; margin: 8px 0 0; }
 .center { text-align: center; }
-.remote-who { margin: 0 0 10px; color: var(--text-strong); font-weight: 500; }
-#remote-paste { margin-bottom: 8px; font-size: 0.78rem; }
-.remote-btns { display: flex; gap: 8px; }
-.remote-btns .btn { flex: 1; }
-.steps { margin: 6px 0 4px; padding-left: 20px; }
-.steps li { margin-bottom: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip span {
+  display: inline-block; padding: 7px 12px; border-radius: 99px; cursor: pointer; font-weight: 600; font-size: 0.88rem;
+  background: #1c1b18; border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-strong);
+}
+.chip input:checked + span { background: rgba(127, 166, 80, 0.2); border-color: var(--accent); }
+.chip input:focus-visible + span { outline: 2px solid var(--blue); }
+#dlg-remote .field { margin-bottom: 12px; }
+.code-input { font: 700 1.6rem var(--mono) !important; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; }
+.wide-btn { flex: 1; min-height: 44px; }
+.invite p { margin: 0 0 14px; }
+.room-code {
+  font: 700 2.6rem/1 var(--mono); letter-spacing: 0.14em; text-align: center; color: var(--text-strong);
+  padding: 18px 10px; border-radius: 12px; background: #1c1b18; border: 1px dashed rgba(255, 255, 255, 0.2);
+  user-select: all;
+}
+.center-actions { justify-content: center; margin-top: 14px; }
+.room-status { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 16px 0 0; color: var(--muted); font-size: 0.9rem; }
+.room-status.ok { color: var(--accent-2); }
+.room-status.err { color: #f08c8c; }
+.pulse { width: 10px; height: 10px; border-radius: 50%; background: currentColor; animation: breathe2 1.4s ease-in-out infinite; }
+@keyframes breathe2 { 50% { opacity: 0.3; } }
 .tabs { display: flex; gap: 4px; margin: 16px 0 14px; padding: 4px; border-radius: 10px; background: #1c1b18; }
 .tabs button {
   flex: 1; padding: 8px; border: 0; border-radius: 7px; background: transparent; color: var(--muted);
@@ -523,8 +536,6 @@ kbd {
 .color-pick .duo .pc { width: 26px; height: 26px; }
 .color-pick input:checked + span { border-color: var(--accent); background: rgba(127, 166, 80, 0.18); box-shadow: 0 0 0 3px rgba(127, 166, 80, 0.18); }
 .color-pick input:focus-visible + span { outline: 2px solid var(--blue); }
-.code-box { font-size: 0.82rem; word-break: break-all; background: #12110f; color: #d8f0a8; margin: 6px 0 0; }
-.btn.offer { color: var(--gold); animation: offerPulse 1.4s ease-in-out infinite; }
 @keyframes offerPulse { 50% { background: rgba(232, 182, 76, 0.2); } }
 
 /* toast & confetti */
@@ -541,11 +552,10 @@ kbd {
 
 /* ---------- responsive ---------- */
 @media (max-width: 760px) {
-  /* 2 player rows + rail + gaps + padding */
+  /* 2 player rows + action row + gaps + padding */
   :root { --board: min(100vw, calc(100vh - 190px)); --board: min(100vw, calc(100dvh - 190px)); }
   body { font-size: 14px; }
   .game {
-    --card-h: 44px;
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "ptop" "board" "pbot" "rail";
     gap: 8px;
@@ -557,9 +567,8 @@ kbd {
   .clock-ico { width: 20px; height: 20px; }
   .board-area { justify-self: center; width: var(--board); }
   .board-frame { border-radius: 0; }
-  .rail { flex-direction: row; padding: 0 10px; }
-  .rail-gap { display: none; }
-  .rb { flex: 1; flex-direction: row; gap: 8px; padding: 10px 6px; font-size: 0.85rem; }
+  .panel { display: none; }
+  .rail { display: flex; gap: 8px; padding: 0 10px; }
   .drawer {
     margin: auto 0 0; width: 100vw; max-width: 100vw; height: auto; max-height: 88vh;
     border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px 16px 0 0;
@@ -574,17 +583,14 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-  .aurora { display: none; }
 }
 
 </style>
 </head>
 <body>
-  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
-
   <main class="game">
     <section class="player top" id="player-top">
-      <span class="avatar" data-avatar aria-hidden="true"></span>
+      <span class="avatar" aria-hidden="true"></span>
       <div class="pmeta">
         <div class="pline"><span class="pname" data-name></span><span class="material" data-material></span></div>
         <div class="pstatus" data-status></div>
@@ -603,7 +609,7 @@ kbd {
     </section>
 
     <section class="player bottom" id="player-bottom">
-      <span class="avatar" data-avatar aria-hidden="true"></span>
+      <span class="avatar" aria-hidden="true"></span>
       <div class="pmeta">
         <div class="pline"><span class="pname" data-name></span><span class="material" data-material></span></div>
         <div class="pstatus" data-status></div>
@@ -611,14 +617,27 @@ kbd {
     </section>
     <div class="clock clock-bottom" id="clock-bottom" role="timer"><svg class="clock-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span data-time></span></div>
 
-    <!-- the only controls on screen; everything else is in the menu -->
+    <!-- desktop: chess.com-style side panel with the moves, Draw and Resign -->
+    <aside class="panel" aria-label="Moves">
+      <div class="panel-head">
+        <span class="panel-title">Moves</span>
+        <span class="tc-badge" id="panel-tc"></span>
+        <button class="icon-btn act-menu" title="Menu (O)" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      </div>
+      <div class="moves-slot" id="moves-slot-panel"></div>
+      <div class="panel-actions">
+        <button class="btn action act-draw"><span class="half">½</span><span>Draw</span></button>
+        <button class="btn action danger act-resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
+        <button class="btn action act-pause hidden"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
+      </div>
+    </aside>
+
+    <!-- phones: the same actions in one row under the board -->
     <nav class="rail" aria-label="Game actions">
-      <button class="rb" id="btn-draw" title="Agree to a draw"><span class="half">½</span><span>Draw</span></button>
-      <button class="rb danger" id="btn-resign" title="Resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
-      <button class="rb hidden" id="btn-code" title="Paste or show a game code"><svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span>Code</span></button>
-      <button class="rb hidden" id="btn-pause" title="Pause clocks (Space)"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
-      <span class="rail-gap"></span>
-      <button class="rb" id="btn-options" title="Menu (O)"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Menu</span></button>
+      <button class="rb act-draw"><span class="half">½</span><span>Draw</span></button>
+      <button class="rb danger act-resign"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Resign</span></button>
+      <button class="rb act-pause hidden"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg><span>Pause</span></button>
+      <button class="rb act-menu" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Menu</span></button>
     </nav>
   </main>
 
@@ -631,7 +650,7 @@ kbd {
 
     <section class="opt-sec menu-main">
       <button class="btn primary" id="btn-new"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New game</button>
-      <button class="btn" id="btn-remote"><svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>Play remotely</button>
+      <button class="btn" id="btn-remote"><svg viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>Play a colleague</button>
       <button class="btn" id="btn-archive"><svg viewBox="0 0 24 24"><path d="M3 5h18v4H3zM5 9h14v10H5zM9 13h6"/></svg>Saved games</button>
     </section>
 
@@ -644,6 +663,7 @@ kbd {
       <p class="muted" id="status-sub"></p>
     </section>
 
+    <div class="moves-slot" id="moves-slot-menu"></div>
     <section class="opt-sec" id="moves-block">
       <div class="sec-head">
         <h3>Moves</h3>
@@ -690,23 +710,6 @@ kbd {
     <p class="side-foot muted">Games are stored only in this browser. <a href="https://github.com/abhieq31/Deskmate" target="_blank" rel="noopener">Open source</a> — contributions welcome.<span class="offline-dl"> · <a href="" download="deskmate.html">Download the offline version</a> (one HTML file, no internet needed).</span></p>
   </dialog>
 
-  <!-- Remote: paste / show code -->
-  <dialog id="dlg-code" class="modal">
-    <div class="modal-head">
-      <h2>Game code</h2>
-      <button class="btn icon-only ghost" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-    </div>
-    <div id="remote-card">
-      <p class="remote-who" id="remote-who"></p>
-      <textarea id="remote-paste" rows="3" spellcheck="false" placeholder="Paste your opponent's code here…"></textarea>
-      <div class="remote-btns">
-        <button class="btn" id="remote-copy">Show my code</button>
-        <button class="btn primary" id="remote-apply">Apply code</button>
-      </div>
-      <p class="muted tiny">Tip: on a computer you can press Ctrl+V anywhere on the page.</p>
-    </div>
-  </dialog>
-
   <!-- New game -->
   <dialog id="dlg-new" class="modal">
     <form method="dialog" id="form-new">
@@ -733,65 +736,52 @@ kbd {
     <div class="modal-actions wrap">
       <button class="btn" id="over-review">Review game</button>
       <button class="btn" id="over-pgn">Download PGN</button>
-      <button class="btn hidden" id="over-code">Show final code</button>
       <button class="btn" id="over-new">New game</button>
       <button class="btn primary" id="over-rematch">Rematch</button>
     </div>
   </dialog>
 
-  <!-- Remote: create / join -->
+  <!-- Play a colleague: one short code, then the game is live on both laptops -->
   <dialog id="dlg-remote" class="modal">
     <div class="modal-head">
-      <h2>Play a colleague remotely</h2>
+      <h2 id="remote-title">Play a colleague</h2>
       <button class="btn icon-only ghost" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
-    <ol class="steps">
-      <li><b>Make a move.</b> Deskmate gives you a short game code.</li>
-      <li><b>Send the code</b> through Teams, Slack, email or any chat.</li>
-      <li><b>They paste it</b>, make their move and send a code back.</li>
-    </ol>
-    <p class="muted tiny">No server and no account. The whole game is inside the code.</p>
-    <div class="tabs" role="tablist">
+    <div class="tabs" role="tablist" id="remote-tabs">
       <button type="button" role="tab" data-tab="create" aria-selected="true">Start a game</button>
-      <button type="button" role="tab" data-tab="join" aria-selected="false">I have a code</button>
+      <button type="button" role="tab" data-tab="join" aria-selected="false">Join with a code</button>
     </div>
     <form method="dialog" id="form-remote-create" data-pane="create">
-      <div class="names two">
-        <label class="field"><span>Your name</span><input id="remote-my-name" maxlength="24" autocomplete="off" placeholder="Me" /></label>
-        <label class="field"><span>Colleague's name</span><input id="remote-opp-name" maxlength="24" autocomplete="off" placeholder="Opponent" /></label>
-      </div>
+      <label class="field"><span>Your name</span><input id="remote-create-name" maxlength="24" autocomplete="off" placeholder="Your name" required /></label>
       <h3>You play</h3>
       <div class="color-pick">
         <label><input type="radio" name="remote-color" value="w" checked /><span><i class="pc wK"></i>White</span></label>
         <label><input type="radio" name="remote-color" value="random" /><span><b class="duo"><i class="pc wK"></i><i class="pc bK"></i></b>Random</span></label>
         <label><input type="radio" name="remote-color" value="b" /><span><i class="pc bK"></i>Black</span></label>
       </div>
+      <h3>Clock</h3>
+      <div class="chips" id="remote-tc"></div>
       <div class="modal-actions">
-        <button type="button" class="btn" data-close>Cancel</button>
-        <button type="submit" class="btn primary">Create game</button>
+        <button type="submit" class="btn primary wide-btn">Create game</button>
       </div>
     </form>
     <form method="dialog" id="form-remote-join" data-pane="join" class="hidden">
-      <textarea id="remote-join-text" rows="4" spellcheck="false" placeholder="Paste the code your colleague sent (it starts with DM1-)"></textarea>
+      <label class="field"><span>Game code</span><input id="remote-join-code" class="code-input" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7Q-M2X" required /></label>
+      <label class="field"><span>Your name</span><input id="remote-join-name" maxlength="24" autocomplete="off" placeholder="Your name" required /></label>
+      <p class="error hidden" id="remote-join-error"></p>
       <div class="modal-actions">
-        <button type="button" class="btn" data-close>Cancel</button>
-        <button type="submit" class="btn primary">Join game</button>
+        <button type="submit" class="btn primary wide-btn" id="remote-join-btn">Join game</button>
       </div>
     </form>
-  </dialog>
-
-  <!-- Remote: send code -->
-  <dialog id="dlg-send" class="modal">
-    <div class="modal-head">
-      <h2 id="send-title">Send this code</h2>
-      <button class="btn icon-only ghost" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div data-pane="invite" class="hidden invite">
+      <p class="muted">Give your colleague this code. They open Deskmate, choose <b>Play a colleague → Join with a code</b> and type it in.</p>
+      <div class="room-code" id="room-code">K7Q-M2X</div>
+      <div class="modal-actions center-actions">
+        <button class="btn" id="room-copy-link">Copy link</button>
+        <button class="btn primary" id="room-copy">Copy code</button>
+      </div>
+      <p class="room-status" id="room-status"><span class="pulse"></span>Waiting for your colleague…</p>
     </div>
-    <textarea id="send-code" class="code-box" rows="3" readonly spellcheck="false"></textarea>
-    <div class="modal-actions wrap">
-      <button class="btn" id="send-link">Copy as link</button>
-      <button class="btn primary" id="send-copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>Copy code</button>
-    </div>
-    <p class="muted tiny center" id="send-hint"></p>
   </dialog>
 
   <!-- Resign -->
@@ -850,16 +840,16 @@ kbd {
     </div>
     <ul class="help">
       <li>Click or drag a piece. Dots show where it can go; rings show captures.</li>
-      <li>After each move the board turns to face the player whose turn it is (toggle <em>Auto-flip</em>).</li>
+      <li>On one laptop, the board turns to the side of whoever is to move (toggle <em>Auto-flip</em>).</li>
       <li>Right-click and drag to draw arrows; right-click a square to circle it.</li>
-      <li><em>Play remotely</em>: after each move you get a code. Send it in any chat, and paste the code your colleague sends back.</li>
+      <li><em>Play a colleague</em>: create a game and share its 6-character code once. Moves then appear on both laptops as they are played.</li>
       <li>Your current game survives a page reload. Finished games go to <em>Saved games</em>.</li>
     </ul>
     <table class="keys">
       <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Previous / next move</td></tr>
       <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>First / last move</td></tr>
       <tr><td><kbd>F</kbd></td><td>Flip board</td></tr>
-      <tr><td><kbd>Space</kbd></td><td>Pause / resume clocks</td></tr>
+      <tr><td><kbd>Space</kbd></td><td>Pause / resume clocks (same-laptop games)</td></tr>
       <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Takeback</td></tr>
       <tr><td><kbd>N</kbd></td><td>New game</td></tr>
       <tr><td><kbd>H</kbd></td><td>Saved games</td></tr>
@@ -4244,6 +4234,1348 @@ class Chess {
 return { BISHOP: BISHOP, BLACK: BLACK, Chess: Chess, DEFAULT_POSITION: DEFAULT_POSITION, KING: KING, KNIGHT: KNIGHT, Move: Move, PAWN: PAWN, QUEEN: QUEEN, ROOK: ROOK, SEVEN_TAG_ROSTER: SEVEN_TAG_ROSTER, SQUARES: SQUARES, WHITE: WHITE, validateFen: validateFen, xoroshiro128: xoroshiro128 };
 })();
 
+__mods["vendor/secp256k1.js"] = (() => {
+/*! noble-secp256k1 - MIT License (c) 2019 Paul Miller (paulmillr.com) */
+/**
+ * 5KB JS implementation of secp256k1 ECDSA / Schnorr signatures & ECDH.
+ * Compliant with RFC6979 & BIP340.
+ * @module
+ */
+/**
+ * Curve params from SEC 2 v2 §2.4.1.
+ * secp256k1 is a short Weierstrass / Koblitz curve with equation
+ * `y² == x³ + ax + b`.
+ * * P = `2n**256n - 2n**32n - 977n` // field over which calculations are done
+ * * N = `2n**256n - 0x14551231950b75fc4402da1732fc9bebfn` // group order, amount of curve points
+ * * h = `1n` // cofactor
+ * * a = `0n` // equation param
+ * * b = `7n` // equation param
+ * * Gx, Gy are coordinates of Generator / base point
+ */
+const freeze = Object.freeze;
+const P = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2fn;
+const N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
+const Gx = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798n;
+const Gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8n;
+// Mirror noble-curves: Point.CURVE() returns shared params, but those params must stay frozen so
+// callers cannot mutate them out from under the arithmetic constants captured below.
+const secp256k1_CURVE = freeze({
+    p: P,
+    n: N,
+    h: 1n,
+    a: 0n,
+    b: 7n,
+    Gx,
+    Gy,
+});
+// 32-byte field / scalar width, and the SHA-256 / HMAC-DRBG output width used
+// by the RFC6979 paths here.
+const L = 32;
+// Helpers and Precomputes sections are reused between libraries
+// ## Helpers
+// ----------
+/** Checks if something is Uint8Array. Be careful: nodejs Buffer will return true. */
+const isBytes = (a) => {
+    // Plain `instanceof Uint8Array` is too strict for some Buffer / proxy / cross-realm cases.
+    // The fallback still requires a real ArrayBuffer view, so plain
+    // JSON-deserialized `{ constructor: ... }` spoofing is rejected, and
+    // `BYTES_PER_ELEMENT === 1` keeps the fallback on byte-oriented views.
+    return (a instanceof Uint8Array ||
+        (ArrayBuffer.isView(a) &&
+            a.constructor.name === 'Uint8Array' &&
+            a.BYTES_PER_ELEMENT === 1));
+};
+/** Asserts something is Uint8Array. */
+const abytes = (value, length, title = '') => {
+    // Success path first: this runs at the start of every update() / digestInto(), and the
+    // common `abytes(data)` form must not pay for length handling it does not use.
+    if (isBytes(value) && (length === undefined || value.length === length))
+        return value;
+    // Error path: recompute freely to build the exact message.
+    const bytes = isBytes(value);
+    const ofLen = length !== undefined ? ` of length ${length}` : '';
+    const got = bytes ? `length=${value.length}` : `type=${typeof value}`;
+    const message = (title ? `"${title}" ` : '') + 'expected Uint8Array' + ofLen + ', got ' + got;
+    if (!bytes)
+        throw new TypeError(message);
+    throw new RangeError(message);
+};
+// Signing can retain the message across hash callbacks / awaits, and Schnorr hashes it more than
+// once. Take one owned snapshot so caller mutation cannot change the signing transcript.
+// cloneBytes expects an already-validated view; snapshotBytes validates, then copies.
+const cloneBytes = (value) => Uint8Array.from(value);
+const snapshotBytes = (value, title, length) => cloneBytes(abytes(value, length, title));
+// Callers keep values non-negative and within the requested width; padStart() won't truncate over-wide inputs.
+const padh = (n, pad) => n.toString(16).padStart(pad, '0');
+/** Convert byte array to hex string. */
+const bytesToHex = (bytes) => {
+    let hex = '';
+    for (const byte of abytes(bytes))
+        hex += padh(byte, 2);
+    return hex;
+};
+/** Convert hex string to byte array. */
+const hexToBytes = (hex) => {
+    const e = 'hex invalid'; // Strict ASCII hex only, with one generic error for parse failures.
+    if (typeof hex !== 'string')
+        throw new TypeError(e);
+    if (hex.length % 2 || !/^[\da-f]*$/i.test(hex))
+        throw new RangeError(e);
+    const array = new Uint8Array(hex.length / 2);
+    for (let ai = 0, hi = 0; ai < array.length; ai++, hi += 2) {
+        const n1 = hex.charCodeAt(hi);
+        const n2 = hex.charCodeAt(hi + 1);
+        // Regex guarantees ASCII. For 0..9/A..F/a..f, this maps char codes to 0..15.
+        array[ai] = ((n1 & 15) + (n1 >> 6) * 9) * 16 + (n2 & 15) + (n2 >> 6) * 9;
+    }
+    return array;
+};
+// WebCrypto is available in all modern environments
+const subtle = () => {
+    const s = globalThis?.crypto?.subtle;
+    if (s)
+        return s;
+    throw new Error('crypto.subtle must be defined, consider polyfill');
+};
+/** Copies several Uint8Arrays into one. */
+const concatBytes = (...arrays) => {
+    let sum = 0;
+    for (const a of arrays)
+        sum += abytes(a).length;
+    const res = new Uint8Array(sum);
+    let pad = 0;
+    for (const a of arrays) {
+        res.set(a, pad);
+        pad += a.length;
+    }
+    return res;
+};
+/**
+ * WebCrypto OS-level CSPRNG (random number generator).
+ * Will throw when not available; large-request ceilings are delegated to getRandomValues().
+ */
+const randomBytes = (len = L) => {
+    const c = globalThis?.crypto;
+    if (typeof c?.getRandomValues !== 'function')
+        throw new Error('crypto.getRandomValues must be defined, consider polyfill');
+    return c.getRandomValues(new Uint8Array(len));
+};
+const big = BigInt;
+const arange = (n, min, max, msg = 'bad number: out of range') => {
+    if (typeof n !== 'bigint')
+        throw new TypeError(msg);
+    if (min <= n && n < max)
+        return n;
+    throw new RangeError(msg);
+};
+/** Canonical modular reduction. Callers must provide a positive modulus. */
+const M = (a, b = P) => ((a %= b) >= 0n ? a : b + a);
+const modN = (a) => M(a, N);
+/** Modular inversion using extended euclidean GCD. Variable-time (non-CT). */
+const invert = (number, modulo) => {
+    if (number === 0n)
+        throw new Error('invert: expected non-zero number');
+    // modulo = 1 is the zero ring: gcd(x, 1) = 1 makes the loop below "succeed" and return the
+    // useless inverse 0. Reject it.
+    if (modulo <= 1n)
+        throw new Error('invert: expected modulus > 1, got ' + modulo);
+    // This is variable-time: the loop count depends on `number`.
+    let a = M(number, modulo);
+    let b = modulo;
+    // Only the Bézout coefficient of `number` (x/u chain) is tracked; the coefficient of `modulo`
+    // never affects the output, so it is not computed.
+    // prettier-ignore
+    let x = 0n, u = 1n;
+    while (a !== 0n) {
+        const q = b / a;
+        const r = b - a * q;
+        const m = x - u * q;
+        // prettier-ignore
+        b = a, a = r, x = u, u = m;
+    }
+    const gcd = b;
+    if (gcd !== 1n)
+        throw new Error('invert: does not exist');
+    return M(x, modulo);
+};
+const _hash = (name) => {
+    // @ts-ignore
+    const fn = hashes[name];
+    if (typeof fn !== 'function')
+        throw new Error('hashes.' + name + ' not set');
+    return fn;
+};
+// All exported provider slots are caller-configurable and may be unset or return arbitrary values,
+// so wrapper helpers must enforce the exact 32-byte digest contract instead of trusting providers.
+const callHash = (name, a, b) => abytes(_hash(name)(a, b), L, 'digest');
+const callHashAsync = async (name, a, b) => abytes(await _hash(name)(a, b), L, 'digest');
+/**
+ * SHA-256 helper used by the synchronous API.
+ * @param msg - message bytes to hash
+ * @returns 32-byte SHA-256 digest.
+ * @example
+ * Hash message bytes after wiring the synchronous SHA-256 implementation.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * import { sha256 } from '@noble/hashes/sha2.js';
+ * secp.hashes.sha256 = sha256;
+ * const digest = secp.hash(new Uint8Array([1, 2, 3]));
+ * ```
+ */
+// Public helper validates the message boundary explicitly; the configured provider is still looked
+// up dynamically and its output is checked with `gh(...)`.
+const hash = (msg) => callHash('sha256', abytes(msg, undefined, 'message'));
+// also rejects structurally similar Point values from other realms / bundled copies
+const apoint = (p) => {
+    if (p instanceof Point)
+        return p;
+    throw new TypeError('Point expected');
+};
+// ## End of Helpers
+// -----------------
+const E_BADPOINT = 'bad point: not on curve';
+/**
+ * secp256k1 formula. Koblitz curves are subclass of weierstrass curves with a=0,
+ * making it x³+b; callers validate x first.
+ */
+const koblitz = (x) => M(M(x * x) * x + 7n);
+/** assert is element of field mod P (incl. 0 for projective infinity coordinates) */
+const FpIsValid = (n) => arange(n, 0n, P);
+/** assert is element of field mod P (excl. 0 where current callers need a non-zero coordinate) */
+const FpIsValidNot0 = (n) => arange(n, 1n, P);
+/** assert is element of field mod N (excl. 0), matching the shared BIP340 scalar-failure rule used here.
+ * There is deliberately no FnIsValid: no caller accepts the scalar 0. */
+const FnIsValidNot0 = (n) => arange(n, 1n, N);
+// Shared parity primitive for BIP340 even-y checks and SEC 1 compressed prefixes.
+const isEven = (y) => !(y & 1n);
+/** SEC 1 compressed-prefix helper. Parity only: callers validate y before asking for the prefix byte. */
+const getPrefix = (y) => Uint8Array.of(isEven(y) ? 0x02 : 0x03);
+/** lift_x from BIP340 returns the unique point with x and an even square root of x³+7.
+ * SEC 1 callers still negate it for the odd-prefix branch. */
+const lift_x = (x) => {
+    // Let c = x³ + 7 mod p. Fail if x ≥ p. (also fail if x < 1)
+    const c = koblitz(FpIsValidNot0(x));
+    // r = √c candidate
+    // r = c^((p+1)/4) mod p
+    // This formula works for fields p = 3 mod 4 -- a special, fast case.
+    // Paper: "Square Roots from 1;24,51,10 to Dan Shanks".
+    let r = 1n;
+    for (let num = c, e = (P + 1n) / 4n; e > 0n; e >>= 1n) {
+        // powMod: modular exponentiation.
+        if (e & 1n)
+            r = (r * num) % P; // Uses exponentiation by squaring.
+        num = (num * num) % P; // Not constant-time.
+    }
+    if (M(r * r) !== c)
+        throw new Error('sqrt invalid'); // check if result is valid
+    return new Point(x, isEven(r) ? r : M(-r), 1n);
+};
+/**
+ * Point in 3d xyz projective coordinates. 3d takes less inversions than 2d.
+ * @param X - X coordinate.
+ * @param Y - Y coordinate.
+ * @param Z - projective Z coordinate.
+ * @example
+ * Do point arithmetic with the base point and encode the result as hex.
+ * ```ts
+ * import { Point } from '@noble/secp256k1';
+ * const hex = Point.BASE.double().toHex();
+ * ```
+ */
+class Point {
+    static BASE;
+    static ZERO;
+    X;
+    Y;
+    Z;
+    constructor(X, Y, Z) {
+        this.X = FpIsValid(X);
+        this.Y = FpIsValidNot0(Y); // Y can't be 0 in Projective
+        this.Z = FpIsValid(Z);
+        freeze(this);
+    }
+    /** Returns the shared curve metadata object by reference.
+     * It is readonly only at type level, and mutating it won't retarget arithmetic,
+     * which already uses module-load snapshots. */
+    static CURVE() {
+        return secp256k1_CURVE;
+    }
+    /** Create 3d xyz point from 2d xy. (0, 0) => (0, 1, 0), not (0, 0, 1) */
+    static fromAffine(ap) {
+        const { x, y } = ap;
+        return x === 0n && y === 0n ? I : new Point(x, y, 1n);
+    }
+    /** Convert Uint8Array or hex string to Point. */
+    static fromBytes(bytes) {
+        abytes(bytes);
+        const length = bytes.length;
+        const head = bytes[0];
+        const x = sliceBytesNumBE(bytes, 1, 33);
+        // SEC 1 defines the rare infinity encoding 0x00, but SEC 1 public-key validation rejects
+        // infinity. We keep 0x00 rejected here because this parser is reused by verify(), ECDH,
+        // and public-key validation helpers, so strict handling applies to all callers by default.
+        // Local secp256k1 crosstests show OpenSSL raw point codecs accept 0x00 too.
+        // Parse and validate SEC 1 compressed/uncompressed encodings before returning.
+        try {
+            if (length === 33 && (head === 0x02 || head === 0x03)) {
+                // Equation is y² == x³ + ax + b. We calculate y from x.
+                // lift_x() returns the even point; SEC 1 0x03 still needs the odd point.
+                const p = lift_x(x);
+                return head === 0x03 ? p.negate() : p;
+            }
+            // Uncompressed 65-byte point, 0x04 prefix
+            if (length === 65 && head === 0x04)
+                return new Point(x, sliceBytesNumBE(bytes, 33, 65), 1n).assertValidity();
+        }
+        catch (error) {
+            // Out-of-range coordinates and non-residue x report the same error as wrong
+            // prefixes / off-curve points, instead of generic range-check messages.
+            throw new Error(E_BADPOINT);
+        }
+        throw new Error(E_BADPOINT);
+    }
+    static fromHex(hex) {
+        return Point.fromBytes(hexToBytes(hex));
+    }
+    get x() {
+        return this.toAffine().x;
+    }
+    get y() {
+        return this.toAffine().y;
+    }
+    /** Equality check: compare points P&Q. */
+    equals(other) {
+        const { X: X1, Y: Y1, Z: Z1 } = this;
+        const { X: X2, Y: Y2, Z: Z2 } = apoint(other); // checks class equality
+        return M(X1 * Z2) === M(X2 * Z1) && M(Y1 * Z2) === M(Y2 * Z1);
+    }
+    is0() {
+        return this.Z === 0n;
+    }
+    /** Flip point over y coordinate. */
+    negate() {
+        return new Point(this.X, M(-this.Y), this.Z);
+    }
+    /** Point doubling: P+P, complete formula. */
+    double() {
+        return this.add(this);
+    }
+    /**
+     * Point addition: P+Q, complete, exception-free formula
+     * (Renes-Costello-Batina, algo 1 of [2015/1060](https://eprint.iacr.org/2015/1060)).
+     * Cost: `12M + 0S + 3*a + 3*b3 + 23add`.
+     */
+    // prettier-ignore
+    add(other) {
+        const { X: X1, Y: Y1, Z: Z1 } = this;
+        const { X: X2, Y: Y2, Z: Z2 } = apoint(other);
+        const a = 0n;
+        const b = 7n;
+        let X3 = 0n, Y3 = 0n, Z3 = 0n;
+        const b3 = M(b * 3n);
+        let t0 = M(X1 * X2), t1 = M(Y1 * Y2), t2 = M(Z1 * Z2), t3 = M(X1 + Y1); // step 1
+        let t4 = M(X2 + Y2); // step 5
+        t3 = M(t3 * t4);
+        t4 = M(t0 + t1);
+        t3 = M(t3 - t4);
+        t4 = M(X1 + Z1);
+        let t5 = M(X2 + Z2); // step 10
+        t4 = M(t4 * t5);
+        t5 = M(t0 + t2);
+        t4 = M(t4 - t5);
+        t5 = M(Y1 + Z1);
+        X3 = M(Y2 + Z2); // step 15
+        t5 = M(t5 * X3);
+        X3 = M(t1 + t2);
+        t5 = M(t5 - X3);
+        Z3 = M(a * t4);
+        X3 = M(b3 * t2); // step 20
+        Z3 = M(X3 + Z3);
+        X3 = M(t1 - Z3);
+        Z3 = M(t1 + Z3);
+        Y3 = M(X3 * Z3);
+        t1 = M(t0 + t0); // step 25
+        t1 = M(t1 + t0);
+        t2 = M(a * t2);
+        t4 = M(b3 * t4);
+        t1 = M(t1 + t2);
+        t2 = M(t0 - t2); // step 30
+        t2 = M(a * t2);
+        t4 = M(t4 + t2);
+        t0 = M(t1 * t4);
+        Y3 = M(Y3 + t0);
+        t0 = M(t5 * t4); // step 35
+        X3 = M(t3 * X3);
+        X3 = M(X3 - t0);
+        t0 = M(t3 * t1);
+        Z3 = M(t5 * Z3);
+        Z3 = M(Z3 + t0); // step 40
+        return new Point(X3, Y3, Z3);
+    }
+    subtract(other) {
+        return this.add(apoint(other).negate());
+    }
+    /**
+     * Point-by-scalar multiplication. Scalar must be in range 1 <= n < CURVE.n.
+     * Uses {@link wNAF} for base point.
+     * Uses fake point to mitigate leakage shape in JS, not as a hard constant-time guarantee.
+     * @param n scalar by which point is multiplied
+     * @param safe safe mode guards against timing attacks; unsafe mode is faster
+     */
+    multiply(n, safe = true) {
+        // Unsafe internal callers may legitimately need 0*P = O during double-scalar multiplication.
+        if (!safe && n === 0n)
+            return I;
+        FnIsValidNot0(n);
+        if (n === 1n)
+            return this;
+        if (this.equals(G))
+            return wNAF(n).p;
+        // init result point & fake point
+        let p = I;
+        let f = G;
+        let d = this;
+        // Safe mode always runs 256 iterations so ladder length can't leak the scalar's
+        // leading zero bits; unsafe mode stops at the top set bit for speed.
+        for (let i = 0; safe ? i < 256 : n > 0n; i++) {
+            // if bit is present, add to point
+            // if not present, add to fake, for timing safety
+            if (n & 1n)
+                p = p.add(d);
+            else if (safe)
+                f = f.add(d);
+            d = d.double();
+            n >>= 1n;
+        }
+        return p;
+    }
+    multiplyUnsafe(scalar) {
+        return this.multiply(scalar, false);
+    }
+    /** Convert point to 2d xy affine point. (X, Y, Z) ∋ (x=X/Z, y=Y/Z) */
+    toAffine() {
+        const { X: x, Y: y, Z: z } = this;
+        // fast-paths for ZERO point OR Z=1
+        if (z === 0n)
+            return { x: 0n, y: 0n };
+        if (z === 1n)
+            return { x, y };
+        const iz = invert(z, P);
+        // (Z * Z^-1) must be 1, otherwise bad math
+        if (M(z * iz) !== 1n)
+            throw new Error('inverse invalid');
+        // x = X*Z^-1; y = Y*Z^-1
+        return { x: M(x * iz), y: M(y * iz) };
+    }
+    /** Checks if the point is valid and on-curve. */
+    assertValidity() {
+        const { x, y } = this.toAffine(); // convert to 2d xy affine point.
+        FpIsValidNot0(x); // must be in range 1 <= x,y < P
+        FpIsValidNot0(y);
+        // y² == x³ + ax + b, equation sides must be equal
+        if (M(y * y) !== koblitz(x))
+            throw new Error(E_BADPOINT);
+        return this;
+    }
+    /** Converts point to 33/65-byte Uint8Array. */
+    toBytes(isCompressed = true) {
+        // Same policy as fromBytes(): SEC 1 has the rare infinity encoding 0x00, but we keep ZERO
+        // out of this byte surface because callers treat these encodings as public keys by default.
+        const { x, y } = this.assertValidity().toAffine();
+        const x32b = numTo32b(x);
+        if (isCompressed)
+            return concatBytes(getPrefix(y), x32b);
+        return concatBytes(Uint8Array.of(0x04), x32b, numTo32b(y));
+    }
+    toHex(isCompressed) {
+        return bytesToHex(this.toBytes(isCompressed));
+    }
+}
+/** Generator / base point */
+const G = new Point(Gx, Gy, 1n);
+/** Identity / zero point */
+const I = new Point(0n, 1n, 0n);
+// Static aliases
+Point.BASE = G;
+Point.ZERO = I;
+/** `Q = u1⋅G + u2⋅R`. Verifies Q is not ZERO. Unsafe: non-CT. */
+const doubleScalarMulUns = (R, u1, u2) => {
+    return G.multiply(u1, false).add(R.multiply(u2, false)).assertValidity();
+};
+// Inherits byte validation from bytesToHex(); the || '0' fallback keeps empty input mapped to 0n.
+const bytesToNumBE = (b) => big('0x' + (bytesToHex(b) || '0'));
+// Callers provide monotone slice bounds; subarray() would otherwise clamp or reinterpret them silently.
+const sliceBytesNumBE = (b, from, to) => bytesToNumBE(b.subarray(from, to));
+/** Generic 32-byte big-endian encoder. Must be 0 <= num < 2²⁵⁶; call sites need not be field/scalar elements. */
+const numTo32b = (num) => hexToBytes(padh(arange(num, 0n, 2n ** 256n), L * 2)); // L*2 = 64 hex chars for a zero-padded 32-byte value
+/** Normalize private key to scalar (bigint). Verifies scalar is in range 1 <= d < N. */
+const secretKeyToScalar = (secretKey) => {
+    const num = bytesToNumBE(abytes(secretKey, L, 'secret key'));
+    return arange(num, 1n, N, 'invalid secret key: outside of range');
+};
+/** For signature malleability, checks the strict upper-half predicate s > floor(N/2). */
+const highS = (n) => n > N >> 1n;
+// Recovery id of an affine nonce point: bit 0 is y parity, bit 1 is x = r + n.
+const getRecoveryBit = (x, y, r) => (x === r ? 0 : 2) | Number(y & 1n);
+/**
+ * Creates a SEC 1 public key from a 32-byte private key.
+ * @param privKey - 32-byte secret key.
+ * @param isCompressed - return 33-byte compressed SEC 1 encoding when `true`, otherwise 65-byte uncompressed.
+ * @returns serialized secp256k1 public key in SEC 1 encoding.
+ * @example
+ * Derive the serialized public key for a secp256k1 secret key.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * const secretKey = secp.utils.randomSecretKey();
+ * const publicKey = secp.getPublicKey(secretKey);
+ * ```
+ */
+const getPublicKey = (privKey, isCompressed = true) => {
+    return G.multiply(secretKeyToScalar(privKey)).toBytes(isCompressed);
+};
+const isValidSecretKey = (secretKey) => {
+    try {
+        return !!secretKeyToScalar(secretKey);
+    }
+    catch (error) {
+        return false;
+    }
+};
+const isValidPublicKey = (publicKey, isCompressed) => {
+    try {
+        const l = publicKey.length;
+        if (isCompressed === true && l !== 33)
+            return false;
+        if (isCompressed === false && l !== 65)
+            return false;
+        return !!Point.fromBytes(publicKey);
+    }
+    catch (error) {
+        return false;
+    }
+};
+const assertRecoveryBit = (recovery) => {
+    if (recovery != null && [0, 1, 2, 3].includes(recovery))
+        return recovery;
+    throw new Error('invalid recovery id');
+};
+const assertSigFormat = (format) => {
+    if (format === 'der')
+        throw new Error('Signature format "der" is not supported: switch to noble-curves');
+    if (format != null && format !== SIG_COMPACT && format !== SIG_RECOVERED)
+        throw new Error('Signature format must be one of: compact, recovered, der');
+};
+const assertSigLength = (sig, format = SIG_COMPACT) => {
+    assertSigFormat(format);
+    const bytes = abytes(sig, undefined, 'signature');
+    const len = 64 + Number(format === SIG_RECOVERED);
+    if (bytes.length !== len)
+        throw new Error(`Signature format "${format}" expects Uint8Array with length ${len}`);
+    return bytes;
+};
+/**
+ * ECDSA Signature class. Supports only compact 64-byte representation, not DER.
+ * @param r - signature `r` scalar.
+ * @param s - signature `s` scalar.
+ * @param recovery - optional recovery id.
+ * @example
+ * Build a recovered-format signature object and serialize it.
+ * ```ts
+ * import { Signature } from '@noble/secp256k1';
+ * const bytes = new Signature(1n, 2n, 0).toBytes('recovered');
+ * ```
+ */
+class Signature {
+    r;
+    s;
+    recovery;
+    constructor(r, s, recovery) {
+        this.r = FnIsValidNot0(r); // 1 <= r < N
+        this.s = FnIsValidNot0(s); // 1 <= s < N
+        // Keep recovered Signature objects internally consistent across all construction paths.
+        if (recovery != null)
+            this.recovery = assertRecoveryBit(recovery);
+        freeze(this);
+    }
+    static fromBytes(b, format = SIG_COMPACT) {
+        b = assertSigLength(b, format);
+        let rec;
+        if (format === SIG_RECOVERED) {
+            rec = b[0];
+            b = b.subarray(1);
+        }
+        const r = sliceBytesNumBE(b, 0, L);
+        const s = sliceBytesNumBE(b, L, 64);
+        return new Signature(r, s, rec);
+    }
+    addRecoveryBit(bit) {
+        return new Signature(this.r, this.s, bit);
+    }
+    hasHighS() {
+        return highS(this.s);
+    }
+    toBytes(format = SIG_COMPACT) {
+        // Standalone noble-secp256k1 does not implement DER; reject here so direct Signature users
+        // don't silently get compact bytes for an unsupported format.
+        assertSigFormat(format);
+        const { r, s, recovery } = this;
+        const res = concatBytes(numTo32b(r), numTo32b(s));
+        if (format === SIG_RECOVERED) {
+            return concatBytes(Uint8Array.of(assertRecoveryBit(recovery)), res);
+        }
+        return res;
+    }
+}
+/**
+ * RFC6979: ensure ECDSA msg is X bytes, convert to BigInt.
+ * RFC 6979 §2.3.2 says bits2int keeps the leftmost qlen bits and discards the rest.
+ * FIPS 186-4 4.6 gives the same leftmost-bit truncation rule. bits2int can produce res>N.
+ */
+// The 8 KiB cap is only a local DoS guard. Longer ordinary prehashes must still follow
+// RFC 6979 §2.3.2 truncation instead of being rejected just because blen > qlen.
+const MAX_PREHASHED_BYTES = 8192;
+const E_MSGBIG = 'input is too large';
+const oversizedMsg = (bytes, prehash) => !prehash && bytes.length > MAX_PREHASHED_BYTES;
+const bits2int = (bytes) => {
+    if (oversizedMsg(bytes))
+        throw new Error(E_MSGBIG);
+    const delta = bytes.length * 8 - 256;
+    const num = bytesToNumBE(bytes);
+    return delta > 0 ? num >> big(delta) : num;
+};
+/** int2octets can't be used; pads small msgs with 0: BAD for truncation as per RFC vectors */
+const bits2int_modN = (bytes) => modN(bits2int(abytes(bytes)));
+// Async entry points snapshot the message before their first await. An oversized prehash is
+// rejected before the copy, so an attacker-controlled view is never cloned just to fail in
+// bits2int().
+const snapshotMsg = (message, prehash) => {
+    const view = abytes(message, undefined, 'message');
+    if (oversizedMsg(view, prehash))
+        throw new Error(E_MSGBIG);
+    return cloneBytes(view);
+};
+const SIG_COMPACT = 'compact';
+const SIG_RECOVERED = 'recovered';
+const _sha = 'SHA-256';
+/**
+ * Hash implementations used by the synchronous and async ECDSA / Schnorr helpers.
+ * All slots are configurable API surface; wrapper helpers revalidate that SHA-256 and HMAC-SHA256
+ * providers still return exact 32-byte Uint8Array digests.
+ * @example
+ * Provide sync hash helpers before calling the synchronous signing API.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * import { hmac } from '@noble/hashes/hmac.js';
+ * import { sha256 } from '@noble/hashes/sha2.js';
+ * secp.hashes.sha256 = sha256;
+ * secp.hashes.hmacSha256 = (key, msg) => hmac(sha256, key, msg);
+ * const secretKey = secp.utils.randomSecretKey();
+ * const sig = secp.sign(new Uint8Array([1, 2, 3]), secretKey);
+ * ```
+ */
+const hashes = {
+    hmacSha256Async: async (key, message) => {
+        const s = subtle();
+        const k = await s.importKey('raw', key, { name: 'HMAC', hash: _sha }, false, ['sign']);
+        return new Uint8Array(await s.sign('HMAC', k, message));
+    },
+    hmacSha256: undefined,
+    sha256Async: async (msg) => new Uint8Array(await subtle().digest(_sha, msg)),
+    sha256: undefined,
+};
+// prehash=false means the caller already supplies the digest bytes
+// used by sign/verify/recover, and this helper returns the same reference unchanged.
+const prepMsg = (msg, prehash, async_) => {
+    const message = abytes(msg, undefined, 'message');
+    if (!prehash)
+        return message;
+    return async_ ? callHashAsync('sha256Async', message) : callHash('sha256', message);
+};
+const NULL = /* @__PURE__ */ new Uint8Array(0);
+const byte0 = /* @__PURE__ */ Uint8Array.of(0x00);
+const byte1 = /* @__PURE__ */ Uint8Array.of(0x01);
+const _drbgErr = 'drbg: tried max amount of iterations';
+// HMAC-DRBG from NIST 800-90. Minimal, non-full-spec - used for RFC6979 signatures.
+const hmacDrbg = (seed, pred) => {
+    let v = new Uint8Array(L); // Steps B, C of RFC6979 3.2: set hashLen
+    let k = new Uint8Array(L); // In our case, it's always equal to L
+    let i = 0; // Iterations counter, will throw when over max
+    const reset = () => {
+        v.fill(1);
+        k.fill(0);
+    };
+    // h = hmac(k || v || ...). The configured provider is still checked on every call because the
+    // exported slot can be replaced or unset at runtime.
+    const h = (...b) => callHash('hmacSha256', k, concatBytes(v, ...b));
+    const reseed = (seed = NULL) => {
+        // HMAC-DRBG reseed() function. Steps D-G
+        k = h(byte0, seed); // k = hmac(k || v || 0x00 || seed)
+        v = h(); // v = hmac(k || v)
+        if (seed.length === 0)
+            return;
+        k = h(byte1, seed); // k = hmac(k || v || 0x01 || seed)
+        v = h(); // v = hmac(k || v)
+    };
+    // HMAC-DRBG generate() function
+    const gen = () => {
+        if (i++ >= 1000)
+            throw new Error(_drbgErr);
+        v = h(); // v = hmac(k || v)
+        return v; // One block is enough here because secp256k1 qlen and SHA-256 hlen are both 32 bytes.
+    };
+    reset();
+    reseed(seed); // Steps D-G
+    let res = undefined; // Step H: grind until k is in [1..n-1]
+    // `pred` receives the live V buffer from gen(); it must treat that input as read-only and
+    // return independent bytes, because reset() scrubs the DRBG state before hmacDrbg returns.
+    while (!(res = pred(gen())))
+        reseed(); // test predicate until it returns ok
+    reset();
+    return res;
+};
+// Identical to hmacDrbg, but async: uses built-in WebCrypto
+const hmacDrbgAsync = async (seed, pred) => {
+    let v = new Uint8Array(L); // Steps B, C of RFC6979 3.2: set hashLen
+    let k = new Uint8Array(L); // In our case, it's always equal to L
+    let i = 0; // Iterations counter, will throw when over max
+    const reset = () => {
+        v.fill(1);
+        k.fill(0);
+    };
+    // h = hmac(k || v || ...). Async provider lookup still goes through `callHash(...)` because the
+    // exported slot can be replaced or unset at runtime.
+    const h = (...b) => callHashAsync('hmacSha256Async', k, concatBytes(v, ...b));
+    const reseed = async (seed = NULL) => {
+        // HMAC-DRBG reseed() function. Steps D-G
+        k = await h(byte0, seed); // k = hmac(k || v || 0x00 || seed)
+        v = await h(); // v = hmac(k || v)
+        if (seed.length === 0)
+            return;
+        k = await h(byte1, seed); // k = hmac(k || v || 0x01 || seed)
+        v = await h(); // v = hmac(k || v)
+    };
+    // HMAC-DRBG generate() function
+    const gen = async () => {
+        if (i++ >= 1000)
+            throw new Error(_drbgErr);
+        v = await h(); // v = hmac(k || v)
+        return v; // Same one-block shortcut: secp256k1 qlen and SHA-256 hlen are both 32 bytes here.
+    };
+    reset();
+    await reseed(seed); // Steps D-G
+    let res = undefined; // Step H: grind until k is in [1..n-1]
+    // Same contract as sync hmacDrbg(): pred sees the live V buffer and must not mutate or return it.
+    while (!(res = pred(await gen())))
+        await reseed(); // test predicate until it returns ok
+    reset();
+    return res;
+};
+// RFC6979 signature generation, preparation step.
+// Follows [SEC1](https://secg.org/sec1-v2.pdf) 4.1.3 & RFC6979.
+const _sign = (messageHash, secretKey, opts, drbg) => {
+    const [lowS, , format, extraEntropy] = opts; // generates low-s sigs by default
+    // RFC6979 3.2: we skip step A
+    const h1i = bits2int_modN(messageHash); // msg bigint
+    const d = secretKeyToScalar(secretKey); // validate private key, convert to bigint
+    const seedArgs = [numTo32b(d), numTo32b(h1i)]; // Step D of RFC6979 3.2
+    /** RFC6979 3.6: additional k' (optional). See {@link ECDSAExtraEntropy}. */
+    if (extraEntropy != null && extraEntropy !== false) {
+        // K = HMAC_K(V || 0x00 || int2octets(x) || bits2octets(h1) || k')
+        // gen random bytes OR pass as-is
+        seedArgs.push(abytes(extraEntropy === true ? randomBytes(L) : extraEntropy, undefined, 'extraEntropy'));
+    }
+    // Converts signature params into point w r/s, checks result for validity.
+    // To transform k => Signature:
+    // q = k⋅G
+    // r = q.x mod n
+    // s = k^-1(m + rd) mod n
+    // Can use scalar blinding b^-1(bm + bdr) where b ∈ [1,q−1] according to
+    // https://tches.iacr.org/index.php/TCHES/article/view/7337/6509. We've decided against it:
+    // a) dependency on CSPRNG b) 15% slowdown c) doesn't really help since bigints are not CT
+    const k2sig = (kBytes) => {
+        // RFC 6979 Section 3.2, step 3: k = bits2int(T)
+        // Important: all mod() calls here must be done over N
+        const k = bits2int(kBytes);
+        if (!(1n <= k && k < N))
+            return; // Valid scalars (including k) must be in 1..N-1
+        const ik = invert(k, N); // k^-1 mod n
+        const q = G.multiply(k).toAffine(); // q = k⋅G
+        const r = modN(q.x); // r = q.x mod n
+        // RFC 6979 §2.4 step 3 / §3.4 only spell out retry for r = 0.
+        // FIPS 186-5 §6.4.1 step 11 says deterministic ECDSA should fail on r = 0 or s = 0, but
+        // that restart-from-scratch note does not apply here: hmacDrbg() keeps advancing through one
+        // RFC6979 stream until k2sig() accepts a candidate, instead of restarting from the same seed.
+        if (r === 0n)
+            return;
+        const s = modN(ik * (h1i + r * d)); // s = k^-1(m + rd) mod n
+        if (s === 0n)
+            return;
+        let recovery = getRecoveryBit(q.x, q.y, r); // recovery bit (2 or 3, when q.x > n)
+        let normS = s; // normalized S
+        if (lowS && highS(s)) {
+            // if lowS was passed, ensure s is always
+            normS = N - s; // in the bottom half of CURVE.n
+            recovery ^= 1;
+        }
+        const sig = new Signature(r, normS, recovery); // use normS, not s
+        return sig.toBytes(format);
+    };
+    return drbg(concatBytes(...seedArgs), k2sig);
+};
+// Follows [SEC1](https://secg.org/sec1-v2.pdf) 4.1.4.
+const _verify = (sig, messageHash, publicKey, opts) => {
+    const [lowS, , format] = opts;
+    if (sig instanceof Signature)
+        throw new Error('Signature must be in Uint8Array, use .toBytes()');
+    // Deliberately outside the try: wrong-length / wrongly-typed inputs are caller bugs which
+    // throw loudly, while only well-formed signatures failing crypto checks return false.
+    assertSigLength(sig, format);
+    abytes(publicKey, undefined, 'publicKey');
+    try {
+        const { r, s, recovery } = Signature.fromBytes(sig, format);
+        const h = bits2int_modN(messageHash); // Truncate hash
+        const Q = Point.fromBytes(publicKey); // Validate public key. Q, not P: P is the field prime
+        if (lowS && highS(s))
+            return false; // lowS bans sig.s >= CURVE.n/2
+        const is = invert(s, N); // s^-1
+        // R = u1⋅G + u2⋅Q with u1 = hs^-1, u2 = rs^-1. Identity throws inside doubleScalarMulUns.
+        const { x, y } = doubleScalarMulUns(Q, modN(h * is), modN(r * is)).toAffine();
+        if (modN(x) !== r)
+            return false; // Reduce R.x in N's field, not P's.
+        // The recovery byte is part of the recovered signature and must describe this exact R.
+        return format !== SIG_RECOVERED || recovery === getRecoveryBit(x, y, r);
+    }
+    catch (error) {
+        return false;
+    }
+};
+// `own` snapshots extraEntropy bytes, for async paths that must not see caller mutation.
+const setDefaults = (opts, own = false) => {
+    const e = opts.extraEntropy;
+    return [
+        opts.lowS ?? true,
+        opts.prehash ?? true,
+        opts.format ?? SIG_COMPACT,
+        own && e != null && typeof e !== 'boolean' ? snapshotBytes(e, 'extraEntropy') : e,
+    ];
+};
+/**
+ * Sign a message using secp256k1. Sync: uses `hashes.sha256` and `hashes.hmacSha256`.
+ * Prehashes message with sha256, disable using `prehash: false`.
+ * @param message - message bytes to sign.
+ * @param secretKey - 32-byte secret key.
+ * @param opts - See {@link ECDSASignOpts} for details. Enabling {@link ECDSAExtraEntropy} improves security.
+ * @returns ECDSA signature encoded according to `opts.format`.
+ * @example
+ * Sign a message using secp256k1.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * import { hmac } from '@noble/hashes/hmac.js';
+ * import { sha256 } from '@noble/hashes/sha2.js';
+ * secp.hashes.sha256 = sha256;
+ * secp.hashes.hmacSha256 = (key, msg) => hmac(sha256, key, msg);
+ * const secretKey = secp.utils.randomSecretKey();
+ * const msg = new TextEncoder().encode('hello noble');
+ * secp.sign(msg, secretKey);
+ * secp.sign(msg, secretKey, { extraEntropy: true });
+ * secp.sign(msg, secretKey, { format: 'recovered' });
+ * ```
+ */
+const sign = (message, secretKey, opts = {}) => {
+    const o = setDefaults(opts);
+    assertSigFormat(o[2]);
+    const msg = prepMsg(message, o[1], false);
+    return _sign(msg, secretKey, o, hmacDrbg);
+};
+/**
+ * Sign a message using secp256k1. Async: uses built-in WebCrypto hashes.
+ * Prehashes message with sha256, disable using `prehash: false`.
+ * @param message - message bytes to sign.
+ * @param secretKey - 32-byte secret key.
+ * @param opts - See {@link ECDSASignOpts} for details. Enabling {@link ECDSAExtraEntropy} improves security.
+ * @returns ECDSA signature encoded according to `opts.format`.
+ * @example
+ * Sign a message using secp256k1 with the async WebCrypto path.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * import { keccak_256 } from '@noble/hashes/sha3.js';
+ * const secretKey = secp.utils.randomSecretKey();
+ * const msg = new TextEncoder().encode('hello noble');
+ * await secp.signAsync(msg, secretKey);
+ * await secp.signAsync(keccak_256(msg), secretKey, { prehash: false });
+ * await secp.signAsync(msg, secretKey, { extraEntropy: true });
+ * await secp.signAsync(msg, secretKey, { format: 'recovered' });
+ * ```
+ */
+const signAsync = async (message, secretKey, opts = {}) => {
+    const o = setDefaults(opts, true);
+    assertSigFormat(o[2]);
+    const msgBytes = snapshotMsg(message, o[1]);
+    const secretBytes = snapshotBytes(secretKey, 'secret key', L);
+    const msg = (await prepMsg(msgBytes, o[1], true));
+    return _sign(msg, secretBytes, o, hmacDrbgAsync);
+};
+/**
+ * Verify a signature using secp256k1. Sync: uses `hashes.sha256` and `hashes.hmacSha256`.
+ * @param signature - default is 64-byte `compact` format; also see {@link ECDSASignatureFormat}.
+ * @param message - message which was signed. Keep in mind `prehash` from opts.
+ * @param publicKey - public key that should verify the signature.
+ * @param opts - See {@link ECDSAVerifyOpts} for details.
+ * @returns `true` when the signature is valid. Malformed inputs — wrong signature length for
+ * the chosen format, non-Uint8Array arguments, unsupported format — throw instead of
+ * returning `false`. This is intentional, so caller bugs fail loudly; only well-formed
+ * signatures failing cryptographic checks return `false`.
+ * @example
+ * Verify a signature using secp256k1.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * import { hmac } from '@noble/hashes/hmac.js';
+ * import { sha256 } from '@noble/hashes/sha2.js';
+ * import { keccak_256 } from '@noble/hashes/sha3.js';
+ * secp.hashes.sha256 = sha256;
+ * secp.hashes.hmacSha256 = (key, msg) => hmac(sha256, key, msg);
+ * const secretKey = secp.utils.randomSecretKey();
+ * const msg = new TextEncoder().encode('hello noble');
+ * const publicKey = secp.getPublicKey(secretKey);
+ * const sig = secp.sign(msg, secretKey);
+ * const sigr = secp.sign(msg, secretKey, { format: 'recovered' });
+ * secp.verify(sig, msg, publicKey);
+ * secp.verify(sig, keccak_256(msg), publicKey, { prehash: false });
+ * secp.verify(sig, msg, publicKey, { lowS: false });
+ * secp.verify(sigr, msg, publicKey, { format: 'recovered' });
+ * ```
+ */
+const verify = (signature, message, publicKey, opts = {}) => {
+    const o = setDefaults(opts);
+    const msg = prepMsg(message, o[1], false);
+    return _verify(signature, msg, publicKey, o);
+};
+/**
+ * Verify a signature using secp256k1. Async: uses built-in WebCrypto hashes.
+ * @param sig - default is 64-byte `compact` format; also see {@link ECDSASignatureFormat}.
+ * @param message - message which was signed. Keep in mind `prehash` from opts.
+ * @param publicKey - public key that should verify the signature.
+ * @param opts - See {@link ECDSAVerifyOpts} for details.
+ * @returns `true` when the signature is valid. Malformed inputs — wrong signature length for
+ * the chosen format, non-Uint8Array arguments, unsupported format — reject instead of
+ * resolving `false`. This is intentional, so caller bugs fail loudly; only well-formed
+ * signatures failing cryptographic checks resolve to `false`.
+ * @example
+ * Verify a signature using secp256k1 with the async WebCrypto path.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * import { keccak_256 } from '@noble/hashes/sha3.js';
+ * const secretKey = secp.utils.randomSecretKey();
+ * const msg = new TextEncoder().encode('hello noble');
+ * const publicKey = secp.getPublicKey(secretKey);
+ * const sig = await secp.signAsync(msg, secretKey);
+ * const sigr = await secp.signAsync(msg, secretKey, { format: 'recovered' });
+ * await secp.verifyAsync(sig, msg, publicKey);
+ * await secp.verifyAsync(sigr, msg, publicKey, { format: 'recovered' });
+ * await secp.verifyAsync(sig, keccak_256(msg), publicKey, { prehash: false });
+ * ```
+ */
+const verifyAsync = async (sig, message, publicKey, opts = {}) => {
+    const o = setDefaults(opts);
+    const sigView = assertSigLength(sig, o[2]);
+    const msgView = abytes(message, undefined, 'message');
+    const publicKeyView = abytes(publicKey, undefined, 'publicKey');
+    // Reject bounded malformed inputs before copying attacker-controlled views. This also avoids
+    // copying a prehashed message that bits2int() would reject immediately.
+    if (oversizedMsg(msgView, o[1]) || (publicKeyView.length !== 33 && publicKeyView.length !== 65))
+        return false;
+    const sigBytes = cloneBytes(sigView);
+    const msgBytes = cloneBytes(msgView);
+    const publicKeyBytes = cloneBytes(publicKeyView);
+    const msg = (await prepMsg(msgBytes, o[1], true));
+    return _verify(sigBytes, msg, publicKeyBytes, o);
+};
+const _recover = (signature, messageHash, isCompressed) => {
+    const { r, s, recovery: rec } = Signature.fromBytes(signature, 'recovered');
+    // 0 or 1 recovery id determines sign of "y" coordinate.
+    // 2 or 3 means q.x was >N.
+    const recovery = assertRecoveryBit(rec);
+    // SEC 1 recovery derives e through the same truncation path as verification, so prehash:false
+    // must accept long digests here too instead of hard-requiring 32-byte SHA-256 input.
+    const h = bits2int_modN(messageHash); // Truncate hash; prepMsg() already validated it.
+    const radj = recovery > 1 ? r + N : r;
+    FpIsValidNot0(radj); // ensure q.x is still a field element
+    const ir = invert(radj, N); // r^-1
+    // Recovery bit and R.y share parity: even bit => 0x02, odd => 0x03.
+    const R = Point.fromBytes(concatBytes(getPrefix(big(recovery)), numTo32b(radj)));
+    // (sr^-1)R-(hr^-1)G = -(hr^-1)G + (sr^-1)R
+    return doubleScalarMulUns(R, modN(-h * ir), modN(s * ir)).toBytes(isCompressed);
+};
+/**
+ * ECDSA public key recovery. Requires msg hash and recovery id.
+ * Follows {@link https://secg.org/sec1-v2.pdf | SEC1} 4.1.6.
+ * @param signature - recovered-format signature from `sign(..., { format: 'recovered' })`.
+ * @param message - signed message bytes.
+ * @param opts - See {@link ECDSARecoverOpts} for details.
+ * @returns recovered public key bytes, compressed by default.
+ * @example
+ * Recover a secp256k1 public key from a recovered-format signature.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * import { hmac } from '@noble/hashes/hmac.js';
+ * import { sha256 } from '@noble/hashes/sha2.js';
+ * secp.hashes.sha256 = sha256;
+ * secp.hashes.hmacSha256 = (key, msg) => hmac(sha256, key, msg);
+ * const secretKey = secp.utils.randomSecretKey();
+ * const message = new Uint8Array([1, 2, 3]);
+ * const sig = secp.sign(message, secretKey, { format: 'recovered' });
+ * secp.recoverPublicKey(sig, message);
+ * ```
+ */
+const recoverPublicKey = (signature, message, opts = {}) => {
+    const msg = prepMsg(message, setDefaults(opts)[1], false);
+    return _recover(signature, msg, opts.isCompressed ?? true);
+};
+/**
+ * Async ECDSA public key recovery. Requires msg hash and recovery id.
+ * @param signature - recovered-format signature from `signAsync(..., { format: 'recovered' })`.
+ * @param message - signed message bytes.
+ * @param opts - See {@link ECDSARecoverOpts} for details.
+ * @returns recovered public key bytes, compressed by default.
+ * @example
+ * Recover a secp256k1 public key from a recovered-format signature with the async API.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * const secretKey = secp.utils.randomSecretKey();
+ * const message = new Uint8Array([1, 2, 3]);
+ * const sig = await secp.signAsync(message, secretKey, { format: 'recovered' });
+ * await secp.recoverPublicKeyAsync(sig, message);
+ * ```
+ */
+const recoverPublicKeyAsync = async (signature, message, opts = {}) => {
+    const prehash = setDefaults(opts)[1];
+    const sigBytes = cloneBytes(assertSigLength(signature, SIG_RECOVERED));
+    const msgBytes = snapshotMsg(message, prehash);
+    const isCompressed = opts.isCompressed ?? true;
+    const msg = (await prepMsg(msgBytes, prehash, true));
+    return _recover(sigBytes, msg, isCompressed);
+};
+/**
+ * Elliptic Curve Diffie-Hellman (ECDH) on secp256k1.
+ * Result is **NOT hashed** and returns the serialized shared point (compressed by default),
+ * not the SEC 1 x-only primitive `z = x_P`.
+ * secp256k1 has cofactor `h = 1`, so there is no separate cofactor-ECDH distinction here.
+ * @param secretKeyA - local 32-byte secret key.
+ * @param publicKeyB - peer public key.
+ * @param isCompressed - return 33-byte compressed output when `true`.
+ * @returns shared secret point bytes.
+ * @example
+ * Derive a shared secp256k1 secret with ECDH.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * const alice = secp.utils.randomSecretKey();
+ * const bob = secp.utils.randomSecretKey();
+ * const shared = secp.getSharedSecret(alice, secp.getPublicKey(bob));
+ * ```
+ */
+const getSharedSecret = (secretKeyA, publicKeyB, isCompressed = true) => {
+    return Point.fromBytes(publicKeyB).multiply(secretKeyToScalar(secretKeyA)).toBytes(isCompressed);
+};
+// FIPS 186-5 Appendix A.4.1 style key generation reduces a wide random integer mod (n - 1) and adds 1.
+// The 48-byte minimum keeps the secp256k1 bias bound below the appendix's epsilon <= 2^-64 target.
+const randomSecretKey = (seed) => {
+    seed = seed === undefined ? randomBytes(48) : seed;
+    abytes(seed);
+    // Keep the public range text aligned with the enforced 48-byte FIPS floor.
+    if (seed.length < 48 || seed.length > 1024)
+        throw new RangeError('expected 48-1024b');
+    const num = M(bytesToNumBE(seed), N - 1n);
+    return numTo32b(num + 1n);
+};
+const createKeygen = (getPublicKey) => (seed) => {
+    const secretKey = randomSecretKey(seed);
+    return { secretKey, publicKey: getPublicKey(secretKey) };
+};
+/**
+ * Generates a secp256k1 keypair.
+ * @param seed - optional entropy seed.
+ * @returns keypair with `secretKey` and `publicKey`.
+ * @example
+ * Generate a secp256k1 keypair for sync signing.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * import { hmac } from '@noble/hashes/hmac.js';
+ * import { sha256 } from '@noble/hashes/sha2.js';
+ * secp.hashes.sha256 = sha256;
+ * secp.hashes.hmacSha256 = (key, msg) => hmac(sha256, key, msg);
+ * const { secretKey, publicKey } = secp.keygen();
+ * ```
+ */
+const keygen = /* @__PURE__ */ createKeygen(getPublicKey);
+/**
+ * Math, hex, byte helpers. Not in `utils` because utils share API with noble-curves.
+ * @example
+ * Convert bytes to a hex string with the low-level helper namespace.
+ * ```ts
+ * import { etc } from '@noble/secp256k1';
+ * const hex = etc.bytesToHex(new Uint8Array([1, 2, 3]));
+ * ```
+ */
+const etc = /* @__PURE__ */ freeze({
+    hexToBytes,
+    bytesToHex,
+    concatBytes,
+    bytesToNumberBE: bytesToNumBE,
+    numberToBytesBE: numTo32b,
+    mod: M,
+    invert,
+    randomBytes,
+    secretKeyToScalar,
+    abytes,
+});
+/**
+ * Curve-specific key utilities.
+ * @example
+ * Generate a fresh secret key and derive its public key.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * const secretKey = secp.utils.randomSecretKey();
+ * const publicKey = secp.getPublicKey(secretKey);
+ * ```
+ */
+const utils = /* @__PURE__ */ freeze({
+    isValidSecretKey,
+    isValidPublicKey,
+    randomSecretKey,
+});
+// Schnorr signatures are superior to ECDSA from above. Below is Schnorr-specific BIP0340 code.
+// https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
+// Internal BIP340 tag names are ASCII-only here, so charCodeAt() is enough; this is not a general UTF-8 encoder.
+const getTag = (tag) => Uint8Array.from('BIP0340/' + tag, (c) => c.charCodeAt(0));
+// Both SHA-256 provider slots are configurable, so tag hashing still goes through the checked
+// wrappers even though the built-in defaults are deterministic and the tag bytes are ASCII-only.
+const taggedHash = (tag, ...messages) => {
+    const tagH = callHash('sha256', getTag(tag));
+    return callHash('sha256', concatBytes(tagH, tagH, ...messages));
+};
+// Async twin of taggedHash with the same checked provider boundary.
+const taggedHashAsync = (tag, ...messages) => callHashAsync('sha256Async', getTag(tag)).then((tagH) => callHashAsync('sha256Async', concatBytes(tagH, tagH, ...messages)));
+// BIP340 PubKey(sk) = bytes(d'⋅G), where bytes(P) is bytes(x(P)); signing also normalizes
+// d to the equivalent scalar whose point has even y so the x-only public key stays canonical.
+const extpubSchnorr = (priv) => {
+    const d_ = secretKeyToScalar(priv);
+    const p = G.multiply(d_); // P = d'⋅G; 0 < d' < n check is done inside
+    const { x, y } = p.assertValidity().toAffine(); // validate Point is not at infinity
+    const d = isEven(y) ? d_ : modN(-d_);
+    const px = numTo32b(x);
+    return { d, px };
+};
+const bytesModN = (bytes) => modN(bytesToNumBE(bytes));
+const challenge = (...args) => bytesModN(taggedHash('challenge', ...args));
+const challengeAsync = async (...args) => bytesModN(await taggedHashAsync('challenge', ...args));
+/** Schnorr public key is just `x` coordinate of Point as per BIP340. */
+const pubSchnorr = (secretKey) => {
+    return extpubSchnorr(secretKey).px; // d'=int(sk). Fail if d'=0 or d'≥n. Ret bytes(d'⋅G)
+};
+const keygenSchnorr = /* @__PURE__ */ createKeygen(pubSchnorr);
+// Common preparation fn for both sync and async signing
+const prepSigSchnorr = (message, secretKey, auxRand) => {
+    const m = snapshotBytes(message, 'message');
+    const { px, d } = extpubSchnorr(secretKey);
+    return { m, px, d, a: abytes(auxRand, L) };
+};
+const extractK = (rand) => {
+    const k_ = bytesModN(rand); // Let k' = int(rand) mod n
+    if (k_ === 0n)
+        throw new Error('sign failed: k is zero'); // Fail if k' = 0.
+    const { px, d } = extpubSchnorr(numTo32b(k_)); // Let R = k'⋅G.
+    return { rx: px, k: d };
+};
+// Common signature creation helper
+const createSigSchnorr = (k, px, e, d) => {
+    return concatBytes(px, numTo32b(modN(k + e * d)));
+};
+const E_INVSIG = 'invalid signature produced';
+/**
+ * Creates Schnorr signature as per BIP340. Verifies itself before returning anything.
+ * auxRand is optional and defaults to fresh 32-byte randomness; it is not the sole source of
+ * k generation, so bad CSPRNG won't be the only entropy source.
+ */
+const signSchnorr = (message, secretKey, auxRand = randomBytes(L)) => {
+    const { m, px, d, a } = prepSigSchnorr(message, secretKey, auxRand);
+    // Let t be the byte-wise xor of bytes(d) and hash/aux(a)
+    const t = numTo32b(d ^ bytesToNumBE(taggedHash('aux', a)));
+    // Let rand = hash/nonce(t || bytes(P) || m)
+    const { rx, k } = extractK(taggedHash('nonce', t, px, m));
+    // Let e = int(hash/challenge(bytes(R) || bytes(P) || m)) mod n.
+    const sig = createSigSchnorr(k, rx, challenge(rx, px, m), d);
+    // If Verify(bytes(P), m, sig) (see below) returns failure, abort
+    if (!verifySchnorr(sig, m, px))
+        throw new Error(E_INVSIG);
+    return sig;
+};
+const signSchnorrAsync = async (message, secretKey, auxRand = randomBytes(L)) => {
+    const { m, px, d, a } = prepSigSchnorr(message, secretKey, auxRand);
+    // Let t be the byte-wise xor of bytes(d) and hash/aux(a)
+    const t = numTo32b(d ^ bytesToNumBE(await taggedHashAsync('aux', a)));
+    // Let rand = hash/nonce(t || bytes(P) || m)
+    const { rx, k } = extractK(await taggedHashAsync('nonce', t, px, m));
+    // Let e = int(hash/challenge(bytes(R) || bytes(P) || m)) mod n.
+    const sig = createSigSchnorr(k, rx, await challengeAsync(rx, px, m), d);
+    // If Verify(bytes(P), m, sig) (see below) returns failure, abort
+    if (!(await verifySchnorrAsync(sig, m, px)))
+        throw new Error(E_INVSIG);
+    return sig;
+};
+const callSyncAsyncFn = (res, later) => {
+    return res instanceof Promise ? res.then(later) : later(res);
+};
+const _verifSchnorr = (signature, message, publicKey, challengeFn) => {
+    const sig = abytes(signature, 64, 'signature');
+    const msg = abytes(message, undefined, 'message');
+    const pub = abytes(publicKey, L, 'publicKey');
+    let P_;
+    let r;
+    let s;
+    let chalInput; // challenge preimage bytes(r) || bytes(P) || m
+    try {
+        // lift_x from BIP340. Convert 32-byte x coordinate to elliptic curve point.
+        // Fail if x ≥ p. Let c = x³ + 7 mod p.
+        const x = bytesToNumBE(pub);
+        P_ = lift_x(x); // lift_x returns the validated even-y point required by BIP340.
+        // P = lift_x(int(pk)); fail if that fails
+        r = FpIsValidNot0(sliceBytesNumBE(sig, 0, L)); // Let r = int(sig[0:32]); fail if r ≥ p.
+        // Let s = int(sig[32:64]); fail if s ≥ n.
+        // Stricter than BIP-340/libsecp256k1, which only reject s >= n. Honest signing reaches
+        // s = 0 only with negligible probability (k + e*d ≡ 0 mod n), so treat zero-s inputs as
+        // crafted edge cases and fail closed instead of carrying that extra verification surface.
+        s = FnIsValidNot0(sliceBytesNumBE(sig, L, 64));
+        // lift_x validated x < P, so the 32-byte input encoding equals bytes(P.x) exactly.
+        chalInput = concatBytes(numTo32b(r), pub, msg);
+    }
+    catch (error) {
+        return false;
+    }
+    // Hash-provider errors (unset hashes.sha256, missing crypto.subtle, bad provider digests)
+    // stay outside the catch above: backend misconfiguration is not an "invalid signature"
+    // result, so it throws / rejects instead of becoming false.
+    // int(challenge(bytes(r)||bytes(P)||m))%n
+    return callSyncAsyncFn(challengeFn(chalInput), (e) => {
+        try {
+            const { x, y } = doubleScalarMulUns(P_, s, modN(-e)).toAffine(); // R = s⋅G - e⋅P
+            if (!isEven(y) || x !== r)
+                return false; // -eP == (n-e)P
+            return true; // Fail if is_infinite(R) / not has_even_y(R) / x(R) ≠ r.
+        }
+        catch (error) {
+            return false; // is_infinite(R) throws inside doubleScalarMulUns
+        }
+    });
+};
+/** Verifies Schnorr signature. Invalid points, scalars and failed curve checks return false;
+ * hash-backend misconfiguration (e.g. unset hashes.sha256) throws instead, since it is a
+ * runtime/backend error, not an "invalid signature" result. */
+const verifySchnorr = (s, m, p) => _verifSchnorr(s, m, p, challenge);
+/** Async Schnorr verification. Curve/encoding failures after the initial byte checks still
+ * become false, but async backend failures reject the promise. Missing crypto.subtle is a
+ * runtime/backend error, not an "invalid signature" result, so we surface it instead of
+ * turning it into false. */
+const verifySchnorrAsync = async (s, m, p) => _verifSchnorr(s, m, p, challengeAsync);
+/**
+ * BIP340 Schnorr helpers over secp256k1.
+ * @example
+ * Sign and verify a BIP340 Schnorr signature.
+ * ```ts
+ * import * as secp from '@noble/secp256k1';
+ * import { sha256 } from '@noble/hashes/sha2.js';
+ * secp.hashes.sha256 = sha256;
+ * const secretKey = secp.utils.randomSecretKey();
+ * const message = new Uint8Array([1, 2, 3]);
+ * const sig = secp.schnorr.sign(message, secretKey);
+ * const publicKey = secp.schnorr.getPublicKey(secretKey);
+ * const isValid = secp.schnorr.verify(sig, message, publicKey);
+ * ```
+ */
+const schnorr = /* @__PURE__ */ freeze({
+    keygen: keygenSchnorr,
+    getPublicKey: pubSchnorr,
+    sign: signSchnorr,
+    verify: verifySchnorr,
+    signAsync: signSchnorrAsync,
+    verifyAsync: verifySchnorrAsync,
+});
+// ## Precomputes
+// --------------
+const precompute = () => {
+    const points = [];
+    let p = G;
+    let b = p;
+    for (let w = 0; w < 33; w++) {
+        b = p;
+        points.push(b);
+        for (let i = 1; i < 128; i++) {
+            b = b.add(p);
+            points.push(b);
+        } // i=1, bc we skip 0
+        p = b.double();
+    }
+    return points;
+};
+let Gpows = undefined; // precomputes for base point G
+// Branch-shaped negate helper for wNAF; not a hard constant-time primitive in JavaScript.
+const ctneg = (cnd, p) => {
+    const n = p.negate();
+    return cnd ? n : p;
+};
+/**
+ * Precomputes give 12x faster getPublicKey(), 10x sign(), 2x verify() by
+ * caching multiples of G (base point). Cache is stored in 32MB of RAM.
+ * Any time `G.multiply` is done, precomputes are used.
+ * Not used for getSharedSecret, which instead multiplies random pubkey `P.multiply`.
+ *
+ * w-ary non-adjacent form (wNAF) precomputation method is 10% slower than windowed method,
+ * but takes 2x less RAM. RAM reduction is possible by utilizing `.subtract`.
+ *
+ * !! Precomputes can be disabled by commenting-out call of the wNAF() inside Point#multiply().
+ */
+const wNAF = (n) => {
+    const comp = Gpows || (Gpows = precompute());
+    let p = I;
+    let f = G; // f must be G, or could become I in the end
+    for (let w = 0; w < 33; w++) {
+        let wbits = Number(n & 255n); // extract W=8 bits.
+        n >>= 8n; // shift number by W=8 bits.
+        // We use negative indexes to reduce size of precomputed table by 2x.
+        // Instead of needing precomputes 0..256, we only calculate them for 0..128.
+        // If an index > 128 is found, we do (256-index) - where 256 is next window.
+        // Naive: index +127 => 127, +224 => 224
+        // Optimized: index +127 => 127, +224 => 256-32
+        if (wbits > 128) {
+            wbits -= 256;
+            n += 1n;
+        }
+        const off = w * 128;
+        const offP = off + Math.abs(wbits) - 1;
+        const isOddW = w % 2 !== 0; // conditions, evaluate both; alternates fake-add sign per window
+        const isNeg = wbits < 0;
+        if (wbits === 0) {
+            // off == I: can't add it. Add the first point in this window to the fake accumulator.
+            f = f.add(ctneg(isOddW, comp[off])); // bits are 0: add garbage to fake point
+        }
+        else {
+            p = p.add(ctneg(isNeg, comp[offP])); // bits are 1: add to result point
+        }
+    }
+    if (n !== 0n)
+        throw new Error('invalid wnaf');
+    return { p, f }; // return both real and fake points for JIT/leakage-shape symmetry
+};
+/** Test-only surface for shared noble test suites. Not part of the public API. */
+const __TEST = /* @__PURE__ */ freeze({
+    // Shared tests expect the BIP340 helper to expose the canonical even-y point, not just the root.
+    lift_x: lift_x,
+    extractK: extractK,
+});
+// !! Remove the export below to easily use in REPL / browser console
+
+return { etc: etc, getPublicKey: getPublicKey, getSharedSecret: getSharedSecret, hash: hash, hashes: hashes, keygen: keygen, Point: Point, recoverPublicKey: recoverPublicKey, recoverPublicKeyAsync: recoverPublicKeyAsync, schnorr: schnorr, sign: sign, signAsync: signAsync, Signature: Signature, utils: utils, verify: verify, verifyAsync: verifyAsync, __TEST };
+})();
+
 __mods["js/game.js"] = (() => {
 // Game model: wraps chess.js with ply history, results, clocks state and PGN I/O.
 // Pure logic, no DOM — this file is covered by tests/game.test.mjs.
@@ -4332,8 +5664,9 @@ class Game {
     this.termination = data.termination || null; // human readable reason
     const tc = timeControl(this.tc);
     this.clocks = data.clocks || { w: tc.base * 60000, b: tc.base * 60000 };
-    // remote (code-exchange) games: which colour this browser plays, and a pending draw offer
-    this.remote = data.remote ? { me: data.remote.me, offer: data.remote.offer || null } : null;
+    // live remote games: room code, the colour this browser plays, the player id in each
+    // colour's seat (empty until someone sits there) and a pending draw offer
+    this.remote = data.remote ? { offer: null, ...data.remote } : null;
     this.chess = new Chess();
     this.plies = [];
     for (const san of data.moves || []) this._push(this.chess.move(san));
@@ -4496,21 +5829,10 @@ return { START_FEN, TIME_CONTROLS, timeControl, fenPieces, checkSquare, material
 })();
 
 __mods["js/remote.js"] = (() => {
-// Game codes for remote play: the whole game is packed into a short text code
-// that players paste to each other in any chat tool. No server is involved.
-//
-// Code = "DM1-" + base64url(JSON payload); codes from before the rename start "OBC1-".
-// Moves are stored as one byte each:
-// the index of the move in the position's legal moves, sorted by from+to+promotion,
-// so the encoding doesn't depend on the move order of any particular chess library.
+// Compact move encoding for live game snapshots: one byte per move, base64url.
+// Each byte is the index of the move among the position's legal moves, sorted by
+// from+to+promotion, so the encoding doesn't depend on any chess library's move order.
 const { Chess } = __mods["vendor/chess.js"];
-const CODE_PREFIX = 'DM1-';
-// any code this version can read: the current prefix plus the pre-rename one
-const CODE_RE = /\b(?:DM1|OBC1)-([A-Za-z0-9_-]+)/;
-
-/** True if the text contains something that looks like a game code. */
-const hasCode = (text) => CODE_RE.test(String(text));
-
 const sortedMoves = (chess) =>
   chess.moves({ verbose: true })
     .map((m) => ({ key: m.from + m.to + (m.promotion || ''), san: m.san }))
@@ -4539,6 +5861,7 @@ function packMoves(sans) {
   return toB64url(bytes);
 }
 
+/** Throws on data that does not decode to legal moves. */
 function unpackMoves(packed) {
   const chess = new Chess();
   return [...fromB64url(packed)].map((i) => {
@@ -4549,60 +5872,159 @@ function unpackMoves(packed) {
   });
 }
 
-/**
- * @param {{ id: string, white: string, black: string, moves: string[], sender: 'w'|'b',
- *           result?: string|null, termination?: string|null, offer?: 'w'|'b'|null }} g
- */
-function encodeCode(g) {
-  const payload = { i: g.id, w: g.white, b: g.black, s: g.sender, m: packMoves(g.moves) };
-  if (g.result) { payload.r = g.result; payload.t = g.termination || ''; }
-  if (g.offer) payload.o = g.offer;
-  const utf8 = new TextEncoder().encode(JSON.stringify(payload));
-  return CODE_PREFIX + toB64url(utf8);
-}
+return { packMoves, unpackMoves };
+})();
 
-/** Extract and decode a code from arbitrary pasted text (a bare code, a chat message or a link). */
-function decodeCode(text) {
-  const match = CODE_RE.exec(String(text));
-  if (!match) throw new Error('No Deskmate game code found.');
-  let p;
+__mods["js/live.js"] = (() => {
+// Live remote play. Both laptops join a "room" named by a short code; game snapshots travel
+// through public Nostr relays (plain WebSockets on port 443). There is no Deskmate server and
+// no account: the signing key is derived from the room code, so anyone holding the code can
+// read and post snapshots for that room, and nobody else knows where to look.
+const { schnorr } = __mods["vendor/secp256k1.js"];
+const DEFAULT_RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net', 'wss://offchain.pub'];
+
+/**
+ * Relays to use. A company can run its own Nostr relay and point Deskmate at it with
+ * localStorage['deskmate:relays'] = '["wss://relay.example.internal"]'.
+ */
+const RELAYS = (() => {
   try {
-    p = JSON.parse(new TextDecoder().decode(fromB64url(match[1])));
-  } catch {
-    throw new Error('This code is damaged — ask your opponent to copy it again.');
-  }
-  if (!p || typeof p.i !== 'string' || !['w', 'b'].includes(p.s)) throw new Error('This is not a valid game code.');
-  let moves;
-  try { moves = unpackMoves(p.m || ''); } catch { throw new Error('This code contains illegal moves.'); }
-  return {
-    id: p.i,
-    white: String(p.w || 'White').slice(0, 24),
-    black: String(p.b || 'Black').slice(0, 24),
-    sender: p.s,
-    moves,
-    result: ['1-0', '0-1', '1/2-1/2'].includes(p.r) ? p.r : null,
-    termination: p.r ? String(p.t || '').slice(0, 60) : null,
-    offer: ['w', 'b'].includes(p.o) ? p.o : null,
-  };
+    const custom = JSON.parse(globalThis.localStorage?.getItem('deskmate:relays') || 'null');
+    if (Array.isArray(custom) && custom.length && custom.every((u) => /^wss?:\/\//.test(u))) return custom;
+  } catch { /* no storage: use the defaults */ }
+  return DEFAULT_RELAYS;
+})();
+
+// NIP-78 application data. It is "parameterized replaceable": per (key, d-tag) a relay keeps
+// only the newest event, which is exactly "the latest state of this game".
+const KIND = 30078;
+// no 0/O, 1/I/L: easy to read out loud and to type
+const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const CODE_LENGTH = 6;
+
+const newRoomCode = () =>
+  [...crypto.getRandomValues(new Uint8Array(CODE_LENGTH))].map((b) => ALPHABET[b % ALPHABET.length]).join('');
+
+/** Clean up what someone typed or pasted ("k7q-m2x", a link…); returns the code or null. */
+function parseRoomCode(text) {
+  const s = String(text).toUpperCase().replace(/^.*#/, '').replace(/[^A-Z0-9]/g, '');
+  return s.length === CODE_LENGTH && [...s].every((c) => ALPHABET.includes(c)) ? s : null;
+}
+
+const formatRoomCode = (code) => `${code.slice(0, 3)}-${code.slice(3)}`;
+
+const enc = new TextEncoder();
+const hex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+const unhex = (s) => Uint8Array.from(s.match(/../g), (h) => parseInt(h, 16));
+const sha256 = async (data) => new Uint8Array(await crypto.subtle.digest('SHA-256', data));
+
+/** Key pair shared by both players, derived from the room code. */
+async function roomKeys(code) {
+  const secret = await sha256(enc.encode(`deskmate-room:${code}`));
+  return { secret, pubkey: hex(schnorr.getPublicKey(secret)) };
 }
 
 /**
- * Decide how an incoming code relates to the local game.
- * @returns {'new' | 'same' | 'update' | 'conflict'}
+ * A connection to one room on several relays at once. Every snapshot goes to all of them and
+ * duplicates are dropped on the way in, so the game keeps going while at least one relay works.
  */
-function compareToLocal(local, incoming) {
-  if (!local || local.id !== incoming.id) return 'new';
-  const mine = local.moves;
-  const theirs = incoming.moves;
-  const prefix = (a, b) => a.every((s, i) => s === b[i]);
-  if (theirs.length < mine.length) return prefix(theirs, mine) ? 'same' : 'conflict';
-  if (!prefix(mine, theirs)) return 'conflict';
-  const changed = theirs.length > mine.length || incoming.result !== (local.result || null) ||
-    incoming.offer !== (local.offer || null);
-  return changed ? 'update' : 'same';
+class Room {
+  /**
+   * @param {string} code
+   * @param {{ onSnapshot: (snap: object) => void, onStatus?: (connectedRelays: number) => void,
+   *           relays?: string[] }} opts
+   */
+  constructor(code, opts) {
+    this.code = code;
+    this.dTag = `deskmate:${code}`;
+    this.onSnapshot = opts.onSnapshot;
+    this.onStatus = opts.onStatus || (() => {});
+    this.relays = opts.relays || RELAYS;
+    this.sockets = new Map(); // url -> WebSocket
+    this.seen = new Set(); // event ids already handled
+    this.lastCreated = 0; // newest created_at seen or sent, to keep timestamps increasing
+    this.lastEvent = null; // re-sent to relays that (re)connect after we published
+    this.closed = false;
+    this.ready = roomKeys(code).then((k) => { this.keys = k; });
+  }
+
+  get connected() {
+    let n = 0;
+    for (const ws of this.sockets.values()) if (ws.readyState === WebSocket.OPEN) n++;
+    return n;
+  }
+
+  async connect() {
+    await this.ready;
+    for (const url of this.relays) this._open(url, 0);
+  }
+
+  _open(url, attempt) {
+    if (this.closed) return;
+    let ws;
+    try { ws = new WebSocket(url); } catch { return this._retry(url, attempt); }
+    this.sockets.set(url, ws);
+    ws.onopen = () => {
+      attempt = 0;
+      ws.send(JSON.stringify(['REQ', 'dm', { kinds: [KIND], authors: [this.keys.pubkey], '#d': [this.dTag] }]));
+      if (this.lastEvent) ws.send(JSON.stringify(['EVENT', this.lastEvent]));
+      this.onStatus(this.connected);
+    };
+    ws.onmessage = (msg) => this._message(msg.data);
+    ws.onclose = () => {
+      if (this.sockets.get(url) === ws) this.sockets.delete(url);
+      this.onStatus(this.connected);
+      this._retry(url, attempt + 1);
+    };
+    ws.onerror = () => ws.close();
+  }
+
+  _retry(url, attempt) {
+    if (this.closed) return;
+    setTimeout(() => this._open(url, attempt), Math.min(30000, 1000 * 2 ** attempt));
+  }
+
+  async _message(data) {
+    let msg;
+    try { msg = JSON.parse(data); } catch { return; }
+    if (msg[0] !== 'EVENT' || !msg[2]) return;
+    const ev = msg[2];
+    if (this.seen.has(ev.id) || ev.pubkey !== this.keys.pubkey || ev.kind !== KIND) return;
+    // a relay could hand us anything: check the event really was signed with the room key
+    try {
+      const id = hex(await sha256(enc.encode(JSON.stringify([0, ev.pubkey, ev.created_at, ev.kind, ev.tags, ev.content]))));
+      if (id !== ev.id || !(await schnorr.verifyAsync(unhex(ev.sig), unhex(ev.id), unhex(ev.pubkey)))) return;
+    } catch { return; }
+    if (this.seen.has(ev.id)) return;
+    this.seen.add(ev.id);
+    this.lastCreated = Math.max(this.lastCreated, ev.created_at);
+    let snap;
+    try { snap = JSON.parse(ev.content); } catch { return; }
+    this.onSnapshot(snap);
+  }
+
+  async publish(snapshot) {
+    await this.ready;
+    const created_at = Math.max(Math.floor(Date.now() / 1000), this.lastCreated + 1);
+    this.lastCreated = created_at;
+    const tags = [['d', this.dTag]];
+    const content = JSON.stringify(snapshot);
+    const id = hex(await sha256(enc.encode(JSON.stringify([0, this.keys.pubkey, created_at, KIND, tags, content]))));
+    const sig = hex(await schnorr.signAsync(unhex(id), this.keys.secret));
+    const ev = { id, pubkey: this.keys.pubkey, created_at, kind: KIND, tags, content, sig };
+    this.seen.add(id);
+    this.lastEvent = ev;
+    for (const ws of this.sockets.values()) if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(['EVENT', ev]));
+  }
+
+  close() {
+    this.closed = true;
+    for (const ws of this.sockets.values()) { ws.onclose = null; ws.close(); }
+    this.sockets.clear();
+  }
 }
 
-return { CODE_PREFIX, hasCode, packMoves, unpackMoves, encodeCode, decodeCode, compareToLocal };
+return { RELAYS, CODE_LENGTH, newRoomCode, parseRoomCode, formatRoomCode, Room };
 })();
 
 __mods["js/board.js"] = (() => {
@@ -4637,7 +6059,6 @@ class Board {
     this.drag = null;
     this.shapes = []; // { from, to } arrows, from === to is a circle
     this.drawing = null;
-    this.busy = false;
 
     root.classList.add('board');
     this.inner = el('div', 'board-inner', root);
@@ -4698,7 +6119,7 @@ class Board {
 
   _place(pieceEl, sq) {
     const [c, r] = this._pos(sq);
-    pieceEl.style.transform = `translate(${c * 100}%, ${r * 100}%) rotate(var(--counter, 0deg))`;
+    pieceEl.style.transform = `translate(${c * 100}%, ${r * 100}%)`;
   }
 
   /* ---------- public API ---------- */
@@ -4724,44 +6145,23 @@ class Board {
 
   setOrientation(color) {
     if (color === this.orientation) return;
+    this.root.classList.add('no-anim');
     this.orientation = color;
     this._layoutSquares();
     for (const [sq, p] of this.pieces) this._place(p.el, sq);
     this._renderShapes();
     this._highlight();
+    reflow(this.root);
+    this.root.classList.remove('no-anim');
   }
 
-  /** Spin the board 180° (pieces counter-rotate so they stay upright), then swap orientation. */
-  flip(animate = true) {
-    const target = this.orientation === 'w' ? 'b' : 'w';
-    if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      this.setOrientation(target);
-      return Promise.resolve();
-    }
+  /** Turn the board to the other side, instantly: no spin, no pieces sliding across. */
+  flip() {
     this._cancelDrag();
-    this.busy = true;
-    return new Promise((resolve) => {
-      const done = () => {
-        this.inner.removeEventListener('transitionend', onEnd);
-        clearTimeout(timer);
-        this.root.classList.add('no-anim');
-        this.root.classList.remove('flipping');
-        this.inner.style.removeProperty('--rot');
-        this.inner.style.removeProperty('--counter');
-        this.setOrientation(target);
-        reflow(this.root);
-        this.root.classList.remove('no-anim');
-        this.busy = false;
-        resolve();
-      };
-      const onEnd = (e) => { if (e.target === this.inner && e.propertyName === 'transform') done(); };
-      const timer = setTimeout(done, 1200);
-      this.inner.addEventListener('transitionend', onEnd);
-      this.root.classList.add('flipping');
-      reflow(this.inner);
-      this.inner.style.setProperty('--rot', '180deg');
-      this.inner.style.setProperty('--counter', '-180deg');
-    });
+    this.root.classList.add('no-anim');
+    this.setOrientation(this.orientation === 'w' ? 'b' : 'w');
+    reflow(this.root);
+    this.root.classList.remove('no-anim');
   }
 
   /** Show the promotion picker over the target file; resolves to 'q'|'r'|'b'|'n' or null. */
@@ -4859,7 +6259,6 @@ class Board {
   }
 
   _down(e) {
-    if (this.busy) return;
     const sq = this._eventSquare(e);
     if (!sq) return;
     if (e.button === 2) {
@@ -4900,7 +6299,6 @@ class Board {
     }
     const size = d.rect.width / 8;
     const x = e.clientX - d.rect.left - size / 2, y = e.clientY - d.rect.top - size / 2;
-    // the board may be visually rotated mid-flip; drags are blocked then, so plain px works
     d.el.style.transform = `translate(${x}px, ${y}px) scale(1.12)`;
     const over = this._eventSquare(e);
     if (over !== d.over) { d.over = over; this._highlight(); }
@@ -5029,12 +6427,14 @@ const DEFAULT_SETTINGS = {
   sound: true,
   showDests: true,
   coords: true,
-  theme: 'brown',
+  theme: 'green',
   white: 'White',
   black: 'Black',
   tc: 'none',
   myName: '',
-  oppName: '',
+  remoteTc: 'none',
+  // anonymous id for this browser: tells the two laptops in a live game which seat is whose
+  pid: '',
 };
 
 const storage = {
@@ -5061,7 +6461,8 @@ return { DEFAULT_SETTINGS, storage };
 })();
 
 __mods["js/sound.js"] = (() => {
-// Tiny synthesized sound set (Web Audio) — no audio files to download or license.
+// The only sound: a water drop when a piece is captured. Synthesized with Web Audio,
+// so there is no audio file to download or license. Ordinary moves are silent.
 let ctx = null;
 let enabled = true;
 
@@ -5075,51 +6476,31 @@ const audio = () => {
   return ctx;
 };
 
-/** Short filtered noise burst: sounds like wood on wood. */
-function knock(freq, gain, dur = 0.09, when = 0) {
-  const a = audio();
-  if (!a) return;
-  const t = a.currentTime + when;
-  const len = Math.floor(a.sampleRate * dur);
-  const buf = a.createBuffer(1, len, a.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 4);
-  const src = a.createBufferSource();
-  src.buffer = buf;
-  const bp = a.createBiquadFilter();
-  bp.type = 'bandpass';
-  bp.frequency.value = freq;
-  bp.Q.value = 1.4;
-  const g = a.createGain();
-  g.gain.setValueAtTime(gain, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-  src.connect(bp).connect(g).connect(a.destination);
-  src.start(t);
-}
-
-function tone(freq, dur, when = 0, gain = 0.12, type = 'sine') {
+/** A drop: a sine "bloop" whose pitch rises quickly as it fades, plus a softer echo. */
+function drop(when, from, to, gain, dur) {
   const a = audio();
   if (!a) return;
   const t = a.currentTime + when;
   const o = a.createOscillator();
-  o.type = type;
-  o.frequency.value = freq;
+  o.type = 'sine';
+  o.frequency.setValueAtTime(from, t);
+  o.frequency.exponentialRampToValueAtTime(to, t + dur * 0.6);
   const g = a.createGain();
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(gain, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(gain, t + 0.006);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g).connect(a.destination);
   o.start(t);
-  o.stop(t + dur + 0.05);
+  o.stop(t + dur + 0.02);
 }
 
 const sound = {
   setEnabled(v) { enabled = v; },
-  move() { if (enabled) knock(1800, 1.2); },
-  capture() { if (enabled) { knock(900, 1.6, 0.12); knock(2400, 0.6, 0.06, 0.03); } },
-  check() { if (enabled) { knock(1800, 1.0); tone(880, 0.18, 0.02, 0.06, 'triangle'); } },
-  end() { if (enabled) [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, 0.6, i * 0.09, 0.08)); },
-  lowTime() { if (enabled) tone(1320, 0.12, 0, 0.05, 'square'); },
+  capture() {
+    if (!enabled) return;
+    drop(0, 420, 1250, 0.32, 0.16);
+    drop(0.07, 650, 1500, 0.09, 0.12);
+  },
 };
 
 return { sound };
@@ -5177,25 +6558,35 @@ return { confetti };
 })();
 
 __mods["js/app.js"] = (() => {
-// Deskmate application controller: wires the game model, board, clocks, storage and UI.
-const { Game, TIME_CONTROLS, checkSquare, material } = __mods["js/game.js"];
+// Deskmate application controller: wires the game model, board, clocks, live rooms, storage and UI.
+const { Game, TIME_CONTROLS, timeControl, checkSquare, material } = __mods["js/game.js"];
 const { Board } = __mods["js/board.js"];
 const { storage } = __mods["js/storage.js"];
 const { sound } = __mods["js/sound.js"];
 const { confetti } = __mods["js/confetti.js"];
-const { encodeCode, decodeCode, compareToLocal, hasCode } = __mods["js/remote.js"];
+const { packMoves, unpackMoves } = __mods["js/remote.js"];
+const { Room, newRoomCode, parseRoomCode, formatRoomCode } = __mods["js/live.js"];
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 const other = (c) => (c === 'w' ? 'b' : 'w');
 const colorName = (c) => (c === 'w' ? 'White' : 'Black');
 
 const settings = storage.loadSettings();
+if (!settings.pid) {
+  settings.pid = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(36).padStart(2, '0')).join('');
+  storage.saveSettings(settings);
+}
+
 let game = restoreGame();
 let viewPly = game.length;
 let review = null; // a read-only Game opened from saved games / import
-let paused = game.hasClock && game.length > 0 && !game.over; // resume deliberately after a reload
+// a same-laptop timed game resumes paused after a reload; live games keep running
+let paused = game.hasClock && game.length > 0 && !game.over && !game.remote;
 let lastTick = Date.now();
 let flipTimer = null;
+let room = null; // live connection for game.remote.room
+let relaysUp = 0; // relays the room is connected to right now
+let joining = null; // { code, name, timer } while waiting for a room's first snapshot
 
 const board = new Board($('#board'), { onMove });
 
@@ -5210,22 +6601,24 @@ function restoreGame() {
 const active = () => review || game;
 const isLive = () => !review && viewPly === game.length;
 const clockRunning = () => !review && game.hasClock && !game.over && game.length > 0 && !paused;
-// in a remote game this browser only moves its own colour
-const myTurn = () => !game.remote || game.turn === game.remote.me;
-const homeOrientation = () => (game.remote ? game.remote.me : settings.autoFlip ? game.turn : 'w');
+const seated = (color) => !game.remote || !!(color === 'w' ? game.remote.pw : game.remote.pb);
+// a live game starts once both seats are taken; this browser moves only its own colour
+const bothSeated = () => seated('w') && seated('b');
+const myTurn = () => !game.remote || (game.turn === game.remote.me && bothSeated());
+const homeOrientation = () => (game.remote ? game.remote.me || 'w' : settings.autoFlip ? game.turn : 'w');
 
 /* ---------------- rendering ---------------- */
 
 function render() {
   const g = active();
   const fen = g.fenAt(viewPly);
-  const live = isLive();
+  const canMove = isLive() && !g.over && myTurn();
   board.set({
     fen,
     lastMove: g.lastMoveAt(viewPly),
     check: checkSquare(fen),
-    dests: live && !g.over && myTurn() ? g.dests() : new Map(),
-    movable: live && !g.over && myTurn() ? g.turn : null,
+    dests: canMove ? g.dests() : new Map(),
+    movable: canMove ? g.turn : null,
   });
   renderPlayers();
   renderMoves();
@@ -5243,31 +6636,37 @@ function renderPlayers() {
   const inCheck = !!checkSquare(fen);
   for (const [id, color] of [['#player-top', top], ['#player-bottom', bottom]]) {
     const card = $(id);
+    const here = review || seated(color);
     card.dataset.color = color;
-    card.querySelector('[data-name]').textContent = g.nameOf(color) + (g.remote?.me === color ? ' (you)' : '');
+    card.querySelector('[data-name]').textContent =
+      (here ? g.nameOf(color) || colorName(color) : 'Opponent') + (!review && g.remote?.me === color ? ' (you)' : '');
     const m = mat[color];
     card.querySelector('[data-material]').innerHTML =
       m.pieces.map((r) => `<i class="pc ${other(color)}${r.toUpperCase()}"></i>`).join('') +
       (m.score ? `<b>+${m.score}</b>` : '');
-    const toMove = !g.over && turn === color && atEnd;
+    const toMove = !g.over && turn === color && atEnd && here;
     const won = g.result === (color === 'w' ? '1-0' : '0-1');
     const offers = !g.over && g.remote?.offer === color;
     card.classList.toggle('to-move', toMove);
     card.classList.toggle('winner', won);
     card.classList.toggle('offer', offers);
-    card.querySelector('[data-status]').textContent = playerStatus(g, color, { toMove, won, offers, inCheck: inCheck && turn === color });
+    card.querySelector('[data-status]').textContent =
+      playerStatus(g, color, { here, toMove, won, offers, inCheck: inCheck && turn === color });
   }
   renderClocks();
 }
 
-/** One short line under a player's name: whose turn it is, check, draw offers, the result. */
-function playerStatus(g, color, { toMove, won, offers, inCheck }) {
+/** One short line under a player's name. */
+function playerStatus(g, color, { here, toMove, won, offers, inCheck }) {
   if (g.result) return won ? `♛ Won · ${g.termination}` : g.result === '1/2-1/2' ? `½ Draw · ${g.termination}` : '';
+  const r = !review && g.remote;
+  if (r && !here) return `Waiting to join · code ${formatRoomCode(r.room)}`;
+  if (r && color !== r.me && relaysUp === 0) return 'Reconnecting…';
   if (offers) return 'Offers a draw';
   if (inCheck && toMove) return 'Check!';
   if (!toMove) return '';
-  if (!g.remote || review) return 'To move';
-  return color === g.remote.me ? 'Your move' : 'Waiting for their code…';
+  if (!r) return 'To move';
+  return color === r.me ? 'Your move' : 'Thinking…';
 }
 
 function fmtClock(ms) {
@@ -5284,10 +6683,9 @@ function renderClocks() {
   for (const [sel, color] of [['#clock-top', other(bottom)], ['#clock-bottom', bottom]]) {
     const clock = $(sel);
     const time = clock.querySelector('[data-time]');
-    clock.dataset.color = color;
-    clock.classList.toggle('active', !g.over && g.turn === color);
+    clock.classList.toggle('active', !g.over && g.turn === color && (review || bothSeated()));
     clock.classList.toggle('unlimited', !g.hasClock);
-    clock.setAttribute('aria-label', `${g.nameOf(color)}'s clock`);
+    clock.setAttribute('aria-label', `${g.nameOf(color) || colorName(color)}'s clock`);
     if (!g.hasClock) {
       time.textContent = '∞';
       clock.classList.remove('running', 'low', 'paused');
@@ -5312,7 +6710,6 @@ function renderMoves() {
       (b ? `<button class="mv${viewPly === i + 2 ? ' active' : ''}" data-ply="${i + 2}">${san(b.san)}</button>` : '<span></span>') +
       '</li>');
   }
-  if (!g.plies.length) parts.push('<li class="empty">Make the first move, White. Good luck!</li>');
   list.innerHTML = parts.join('');
   const act = list.querySelector('.active');
   if (act) act.scrollIntoView({ block: 'nearest' });
@@ -5320,17 +6717,18 @@ function renderMoves() {
 
   const rl = $('#result-line');
   rl.classList.toggle('hidden', !g.result);
-  if (g.result) rl.innerHTML = `<strong>${g.result.replace('1/2', '½').replace('1/2', '½')}</strong><span>${g.termination} · ${g.winnerText()}</span>`;
+  if (g.result) rl.innerHTML = `<strong>${g.result.replace(/1\/2/g, '½')}</strong><span>${g.termination} · ${g.winnerText()}</span>`;
 }
 
-// SAN with figurine piece letters, like lichess's "figurine notation"
+// SAN with figurine piece letters
 const FIG = { K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘' };
 const san = (s) => s.replace(/[KQRBN]/g, (c) => `<span class="fig">${FIG[c]}</span>`);
 
+const tcText = (tc) => (tc.base ? `${tc.label} · ${tc.kind}` : 'Unlimited');
+
 function renderStatus() {
   const g = active();
-  const tc = g.tcInfo;
-  $('#tc-badge').textContent = tc.base ? `${tc.label} · ${tc.kind}` : 'Unlimited';
+  $('#tc-badge').textContent = $('#panel-tc').textContent = tcText(g.tcInfo);
   $('#game-date').textContent = new Date(g.startedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
   let title, sub;
   if (g.result) {
@@ -5340,23 +6738,12 @@ function renderStatus() {
     title = 'Reviewing game';
     sub = `${g.white} vs ${g.black}`;
   } else if (game.remote) {
-    const me = game.remote.me, opp = game.nameOf(other(me));
-    if (game.turn === me) {
-      title = game.chess.inCheck() ? 'Check! Your move' : 'Your move';
-      sub = game.remote.offer === other(me)
-        ? `${opp} offers a draw: accept with ½, or decline by making a move.`
-        : `You play ${colorName(me).toLowerCase()}. Make your move, then send the code to ${opp}.`;
-    } else {
-      title = `Waiting for ${opp}`;
-      sub = `When ${opp} sends a code, paste it anywhere on this page (Ctrl+V).`;
-    }
+    const r = game.remote;
+    title = bothSeated() ? `${game.white} vs ${game.black}` : 'Waiting for your colleague';
+    sub = `Live game · code ${formatRoomCode(r.room)}${relaysUp ? '' : ' · reconnecting…'}`;
   } else {
-    const turn = game.turn;
-    title = `${game.nameOf(turn)} to move`;
-    if (game.chess.inCheck()) title = `Check! ${title}`;
-    sub = paused && game.length > 0 && game.hasClock
-      ? 'Clocks paused — make a move or press Space to resume.'
-      : settings.autoFlip ? 'Pass the device: the board turns to face whoever is to move.' : `Playing as ${colorName(turn).toLowerCase()}.`;
+    title = `${game.nameOf(game.turn)} to move`;
+    sub = paused && game.length > 0 && game.hasClock ? 'Clocks paused.' : 'Same-laptop game.';
   }
   $('#status-text').textContent = title;
   $('#status-sub').textContent = sub;
@@ -5366,7 +6753,7 @@ function renderStatus() {
   const showBanner = !!review || viewPly !== game.length;
   banner.classList.toggle('hidden', !showBanner);
   if (review) $('#review-text').textContent = `Reviewing ${review.white} vs ${review.black}${review.result ? ` · ${review.result}` : ''}`;
-  else if (showBanner) $('#review-text').textContent = `Viewing move ${Math.ceil(viewPly / 2) || 0}${viewPly % 2 ? '' : viewPly ? '…' : ''} — the game is paused here`;
+  else if (showBanner) $('#review-text').textContent = `Viewing move ${Math.ceil(viewPly / 2) || 0}${viewPly % 2 ? '' : viewPly ? '…' : ''}`;
   $('#review-exit').textContent = review ? 'Back to live game' : 'Back to current move';
 }
 
@@ -5379,30 +6766,26 @@ function renderControls() {
   $('#nav-next').disabled = $('#nav-last').disabled = viewPly === g.length;
   const liveGame = !review;
   $('#btn-undo').disabled = !liveGame || game.length === 0 || !!game.remote;
-  const noActions = !liveGame || game.over || game.length === 0;
-  const theyOffer = game.remote && !game.over && game.remote.offer === other(game.remote.me);
-  const drawTitle = game.remote ? (theyOffer ? 'Accept the draw offer' : 'Offer a draw') : 'Agree to a draw';
-  const drawBtn = $('#btn-draw');
-  drawBtn.disabled = noActions;
-  drawBtn.classList.toggle('offer', !!theyOffer);
-  drawBtn.title = drawTitle;
-  $('#btn-resign').disabled = noActions;
-  renderRemoteCard();
-  const pauseBtn = $('#btn-pause');
-  pauseBtn.classList.toggle('hidden', !game.hasClock || !liveGame || !!game.remote);
-  pauseBtn.disabled = game.over || game.length === 0;
-  pauseBtn.innerHTML = paused ? ICON_RESUME : ICON_PAUSE;
-  pauseBtn.title = paused ? 'Resume clocks (Space)' : 'Pause clocks (Space)';
-  const codeBtn = $('#btn-code');
-  codeBtn.classList.toggle('hidden', !game.remote || !liveGame);
-  codeBtn.classList.toggle('attn', !!game.remote && !game.over && !myTurn());
+  const noActions = !liveGame || game.over || (game.remote ? !bothSeated() : game.length === 0);
+  const theyOffer = !!game.remote && !game.over && game.remote.offer === other(game.remote.me);
+  for (const b of $$('.act-draw')) {
+    b.disabled = noActions;
+    b.classList.toggle('offer', theyOffer);
+    b.title = game.remote ? (theyOffer ? 'Accept the draw offer' : 'Offer a draw') : 'Agree to a draw';
+  }
+  for (const b of $$('.act-resign')) b.disabled = noActions;
+  for (const b of $$('.act-pause')) {
+    b.classList.toggle('hidden', !game.hasClock || !liveGame || !!game.remote);
+    b.disabled = game.over || game.length === 0;
+    b.innerHTML = paused ? ICON_RESUME : ICON_PAUSE;
+    b.title = paused ? 'Resume clocks (Space)' : 'Pause clocks (Space)';
+  }
 }
-
 
 /* ---------------- moves ---------------- */
 
 async function onMove(from, to) {
-  if (!isLive() || game.over) return;
+  if (!isLive() || game.over || !myTurn()) return;
   let promotion;
   if (game.isPromotion(from, to)) {
     promotion = await board.askPromotion(to, game.turn);
@@ -5421,43 +6804,31 @@ async function onMove(from, to) {
     lastTick = now;
   }
   viewPly = game.length;
-
-  if (game.over) sound.end();
-  else if (ply.san.includes('+')) sound.check();
-  else if (ply.captured) sound.capture();
-  else sound.move();
+  if (ply.captured) sound.capture();
 
   persist();
+  publish();
   render();
-  if (game.over) onGameOver(true);
-  else if (game.remote) openSend();
+  if (game.over) onGameOver();
   else scheduleFlip();
 }
 
-function scheduleFlip(delay = 380) {
+/** Same-laptop games: after a move, show the board from the side of whoever moves next. */
+function scheduleFlip(delay = 300) {
   clearTimeout(flipTimer);
   if (!settings.autoFlip || review || game.remote) return;
-  flipTimer = setTimeout(async () => {
-    if (review || game.remote || !settings.autoFlip || board.orientation === game.turn) return;
-    if (board.busy) return scheduleFlip(200);
-    await board.flip();
+  flipTimer = setTimeout(() => {
+    if (review || game.remote || !settings.autoFlip || !isLive() || board.orientation === game.turn) return;
+    board.flip();
     renderPlayers();
   }, delay);
 }
 
-/** @param {boolean} [byMe] the game ended by an action in this browser (matters for remote games) */
-function onGameOver(byMe = false) {
+function onGameOver() {
   persist();
   storage.archive(game.toJSON());
   render();
   const g = game;
-  $('#over-code').classList.toggle('hidden', !g.remote);
-  if (g.remote && byMe) {
-    // the opponent only learns the result from our code, so lead with that
-    openSend();
-    if (g.result !== '1/2-1/2') confetti();
-    return;
-  }
   $('#over-title').textContent = g.winnerText();
   $('#over-reason').textContent = g.termination;
   $('#dlg-over').classList.toggle('drawn', g.result === '1/2-1/2');
@@ -5475,17 +6846,15 @@ function persist() {
 
 /* ---------------- clocks ---------------- */
 
-let lowWarned = { w: false, b: false };
 setInterval(() => {
   const now = Date.now();
   if (clockRunning()) {
     const c = game.turn;
     game.clocks[c] -= now - lastTick;
-    if (game.clocks[c] < 10000 && !lowWarned[c]) { lowWarned[c] = true; sound.lowTime(); }
     if (game.clocks[c] <= 0) {
       game.clocks[c] = 0;
       game.flag(c);
-      sound.end();
+      publish();
       onGameOver();
     }
     renderClocks();
@@ -5498,7 +6867,7 @@ addEventListener('pagehide', persist);
 document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
 
 function togglePause() {
-  if (review || !game.hasClock || game.over || game.length === 0) return;
+  if (review || game.remote || !game.hasClock || game.over || game.length === 0) return;
   paused = !paused;
   lastTick = Date.now();
   persist();
@@ -5508,14 +6877,15 @@ function togglePause() {
 
 /* ---------------- game lifecycle ---------------- */
 
-function startGame({ white, black, tc, remote = null, id }) {
+function startGame({ white, black, tc, remote = null, id, startedAt }) {
   if (game.length && !game.over) storage.archive(game.toJSON()); // keep unfinished games too
   clearTimeout(flipTimer);
-  game = new Game({ white, black, tc, remote, id });
+  if (!remote || remote.room !== room?.code) leaveRoom();
+  game = new Game({ white, black, tc, remote, id, startedAt });
+  if (remote) { game.white = white; game.black = black; } // an empty seat keeps an empty name
   review = null;
   viewPly = 0;
   paused = false;
-  lowWarned = { w: false, b: false };
   lastTick = Date.now();
   if (!remote) Object.assign(settings, { white, black, tc });
   storage.saveSettings(settings);
@@ -5526,15 +6896,14 @@ function startGame({ white, black, tc, remote = null, id }) {
 }
 
 function takeback() {
-  if (review || !game.length) return;
-  if (game.remote) return toast('Takebacks are not available in remote games');
+  if (review || !game.length || game.remote) return;
   clearTimeout(flipTimer);
   game.undo();
   viewPly = game.length;
   lastTick = Date.now();
   persist();
   render();
-  scheduleFlip(120);
+  scheduleFlip(0);
   toast('Move taken back');
 }
 
@@ -5550,7 +6919,7 @@ function openReview(data) {
 function exitReview() {
   review = null;
   viewPly = game.length;
-  board.setOrientation(game.remote || settings.autoFlip ? homeOrientation() : board.orientation);
+  board.setOrientation(homeOrientation());
   render();
 }
 
@@ -5558,8 +6927,232 @@ function goto(ply) {
   const g = active();
   viewPly = Math.max(0, Math.min(g.length, ply));
   render();
-  if (isLive()) scheduleFlip(60);
+  if (isLive()) scheduleFlip(0);
 }
+
+/* ---------------- live remote games ---------------- */
+
+/** The full state of the game as the other laptop needs it. */
+function snapshot() {
+  const r = game.remote;
+  return {
+    v: 1, g: game.id, st: game.startedAt, tc: game.tc,
+    w: game.white, b: game.black, pw: r.pw || '', pb: r.pb || '',
+    m: packMoves(game.plies.map((p) => p.san)),
+    c: [Math.round(game.clocks.w), Math.round(game.clocks.b)],
+    r: game.result, t: game.termination, o: r.offer || null,
+  };
+}
+
+function publish() {
+  if (room && game.remote?.room === room.code) room.publish(snapshot());
+}
+
+function connectRoom(code) {
+  if (room?.code === code) return;
+  leaveRoom();
+  room = new Room(code, {
+    onSnapshot: onRoomSnapshot,
+    onStatus: (n) => { relaysUp = n; renderPlayers(); renderStatus(); renderRoomStatus(); },
+  });
+  room.connect();
+}
+
+function leaveRoom() {
+  room?.close();
+  room = null;
+  relaysUp = 0;
+}
+
+function onRoomSnapshot(snap) {
+  if (!snap || snap.v !== 1 || !snap.g) return;
+  let moves;
+  try { moves = unpackMoves(snap.m || ''); } catch { return; }
+  if (joining) completeJoin(snap, moves);
+  else applySnapshot(snap, moves);
+}
+
+const seatOf = (snap) => (snap.pw === settings.pid ? 'w' : snap.pb === settings.pid ? 'b' : null);
+
+/** First snapshot after "Join": take the free seat and set up the game locally. */
+function completeJoin(snap, moves) {
+  const { code, name } = joining;
+  clearTimeout(joining.timer);
+  joining = null;
+  const me = seatOf(snap) || (!snap.pw ? 'w' : !snap.pb ? 'b' : null);
+  if (!me) {
+    joinFailed('This game already has two players.');
+    return;
+  }
+  startGame({
+    id: snap.g, startedAt: snap.st, tc: snap.tc,
+    white: me === 'w' ? name : snap.w, black: me === 'b' ? name : snap.b,
+    remote: {
+      room: code, me, offer: snap.o || null,
+      pw: me === 'w' ? settings.pid : snap.pw, pb: me === 'b' ? settings.pid : snap.pb,
+    },
+  });
+  for (const san of moves) game.moveSan(san);
+  if (snap.r && !game.result) game.finish(snap.r, snap.t || 'Game over');
+  if (game.hasClock && snap.c) game.clocks = { w: snap.c[0], b: snap.c[1] };
+  viewPly = game.length;
+  lastTick = Date.now();
+  persist();
+  publish(); // tells the other laptop we are here, with our name
+  closeDialogs();
+  render();
+  toast(`You play ${colorName(me).toLowerCase()} against ${game.nameOf(other(me)) || 'your colleague'}`);
+}
+
+/** Any later snapshot: a move, a draw offer, a result, the colleague joining, or a rematch. */
+function applySnapshot(snap, moves) {
+  if (!game.remote) return;
+  const me = seatOf(snap);
+  if (snap.g !== game.id) {
+    // a new game in this room (rematch); ignore old snapshots of earlier games
+    if (!me || (snap.st || 0) <= game.startedAt) return;
+    const r = game.remote;
+    startGame({ id: snap.g, startedAt: snap.st, tc: snap.tc, white: snap.w, black: snap.b, remote: { room: r.room, me, pw: snap.pw, pb: snap.pb } });
+    toast(`Rematch! You play ${colorName(me).toLowerCase()}.`);
+  }
+  const r = game.remote;
+  const someoneJoined = (!r.pw && snap.pw) || (!r.pb && snap.pb);
+  if (snap.pw) r.pw = snap.pw;
+  if (snap.pb) r.pb = snap.pb;
+  if (snap.w && r.me !== 'w') game.white = snap.w; // the colleague's name; ours stays ours
+  if (snap.b && r.me !== 'b') game.black = snap.b;
+
+  const local = game.plies.map((p) => p.san);
+  if (!local.every((s, i) => s === moves[i])) { render(); return; } // an older snapshot: ours is newer
+  const wasAtEnd = viewPly === game.length;
+  const wasOver = game.over;
+  let last = null;
+  for (const san of moves.slice(local.length)) last = game.moveSan(san) || last;
+  if (snap.r && !game.result) game.finish(snap.r, snap.t || 'Game over');
+  r.offer = snap.o || null;
+  if (game.hasClock && snap.c && (last || snap.r)) {
+    game.clocks = { w: snap.c[0], b: snap.c[1] };
+    lastTick = Date.now();
+  }
+  if (wasAtEnd) viewPly = game.length;
+  if (last?.captured) sound.capture();
+  persist();
+  render();
+  if (someoneJoined && r.me) {
+    $('#dlg-remote').close(); // the board is what matters now
+    toast(`${game.nameOf(other(r.me)) || 'Your colleague'} joined${myTurn() ? '. Your move!' : ''}`);
+  }
+  if (game.over && !wasOver) onGameOver();
+}
+
+/* the "Play a colleague" dialog */
+
+const REMOTE_TCS = ['none', '3+2', '5+0', '10+0', '15+10'];
+const shareLink = (code) =>
+  /^https?:$/.test(location.protocol) ? `${location.origin}${location.pathname}#${code}` : null;
+
+function setRemotePane(pane) {
+  $$('#dlg-remote [data-pane]').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== pane));
+  $$('#remote-tabs [data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === pane)));
+  $('#remote-tabs').classList.toggle('hidden', pane === 'invite');
+  $('#remote-title').textContent = pane === 'invite' ? 'Share this code' : 'Play a colleague';
+}
+$$('#remote-tabs [data-tab]').forEach((b) => b.addEventListener('click', () => setRemotePane(b.dataset.tab)));
+
+function openRemote(pane = 'create', code = '') {
+  $('#remote-create-name').value = $('#remote-join-name').value = settings.myName || '';
+  $('#remote-join-code').value = code ? formatRoomCode(code) : '';
+  $('#remote-join-error').classList.add('hidden');
+  $('#remote-join-btn').disabled = false;
+  $('#remote-join-btn').textContent = 'Join game';
+  const tc = settings.remoteTc || 'none';
+  $('#remote-tc').innerHTML = REMOTE_TCS.map((id) => {
+    const t = timeControl(id);
+    return `<label class="chip"><input type="radio" name="remote-tc" value="${id}"${id === tc ? ' checked' : ''} /><span>${t.base ? t.label : 'No clock'}</span></label>`;
+  }).join('');
+  setRemotePane(pane);
+  openDialog('#dlg-remote');
+  (pane === 'join' && code ? $('#remote-join-name') : pane === 'join' ? $('#remote-join-code') : $('#remote-create-name')).focus();
+}
+
+function showInvite() {
+  const code = game.remote.room;
+  $('#room-code').textContent = formatRoomCode(code);
+  $('#room-copy-link').classList.toggle('hidden', !shareLink(code));
+  renderRoomStatus();
+  setRemotePane('invite');
+  if (!$('#dlg-remote').open) openDialog('#dlg-remote');
+}
+
+function renderRoomStatus() {
+  const el = $('#room-status');
+  if (!el || !game.remote) return;
+  el.className = 'room-status';
+  if (bothSeated()) { el.classList.add('ok'); el.textContent = 'Connected. Game on!'; return; }
+  el.innerHTML = relaysUp
+    ? '<span class="pulse"></span>Waiting for your colleague…'
+    : '<span class="pulse"></span>Connecting…';
+}
+
+$('#form-remote-create').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = $('#remote-create-name').value.trim();
+  if (!name) return $('#remote-create-name').focus();
+  let color = (document.querySelector('input[name="remote-color"]:checked') || {}).value || 'w';
+  if (color === 'random') color = Math.random() < 0.5 ? 'w' : 'b';
+  const tc = (document.querySelector('input[name="remote-tc"]:checked') || {}).value || 'none';
+  Object.assign(settings, { myName: name, remoteTc: tc });
+  const code = newRoomCode();
+  const pid = settings.pid;
+  connectRoom(code);
+  startGame({
+    tc, white: color === 'w' ? name : '', black: color === 'b' ? name : '',
+    remote: { room: code, me: color, pw: color === 'w' ? pid : '', pb: color === 'b' ? pid : '' },
+  });
+  publish();
+  showInvite();
+});
+
+$('#form-remote-join').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const code = parseRoomCode($('#remote-join-code').value);
+  const name = $('#remote-join-name').value.trim();
+  if (!code) return joinError('A code has 6 letters and digits, like K7Q-M2X.');
+  if (!name) return $('#remote-join-name').focus();
+  if (game.remote?.room === code) { closeDialogs(); return toast('You are already in this game'); }
+  settings.myName = name;
+  storage.saveSettings(settings);
+  $('#remote-join-error').classList.add('hidden');
+  $('#remote-join-btn').disabled = true;
+  $('#remote-join-btn').textContent = 'Connecting…';
+  joining = {
+    code, name,
+    timer: setTimeout(() => joinFailed(relaysUp
+      ? 'No game found with this code. Check it, and ask your colleague to keep Deskmate open.'
+      : "Couldn't reach the game servers from this network."), 12000),
+  };
+  connectRoom(code);
+});
+
+function joinError(msg) {
+  const err = $('#remote-join-error');
+  err.textContent = msg;
+  err.classList.remove('hidden');
+  $('#remote-join-btn').disabled = false;
+  $('#remote-join-btn').textContent = 'Join game';
+}
+
+function joinFailed(msg) {
+  if (joining) clearTimeout(joining.timer);
+  joining = null;
+  // go back to the room of the game on the board, if it is a live one
+  if (game.remote) connectRoom(game.remote.room); else leaveRoom();
+  joinError(msg);
+}
+
+$('#room-copy').addEventListener('click', () => copy(formatRoomCode(game.remote.room), 'Code'));
+$('#room-copy-link').addEventListener('click', () => copy(shareLink(game.remote.room), 'Link'));
+$('#btn-remote').addEventListener('click', () => (game.remote && !game.over && !bothSeated() ? showInvite() : openRemote()));
 
 /* ---------------- dialogs ---------------- */
 
@@ -5576,7 +7169,7 @@ $$('[data-close]').forEach((b) => b.addEventListener('click', () => b.closest('d
 $$('dialog').forEach((d) => d.addEventListener('click', (e) => { if (e.target === d) d.close(); }));
 
 function openNewGame(prefill) {
-  const p = prefill || { white: game.white, black: game.black, tc: game.tc };
+  const p = prefill || (game.remote ? { white: settings.white, black: settings.black, tc: settings.tc } : { white: game.white, black: game.black, tc: game.tc });
   $('#new-white').value = p.white;
   $('#new-black').value = p.black;
   const grid = $('#tc-grid');
@@ -5617,7 +7210,7 @@ function renderArchive() {
     const cls = g.result === '1-0' ? 'w' : g.result === '0-1' ? 'b' : g.result ? 'd' : 'u';
     return `<li data-id="${g.id}">
       <span class="res ${cls}">${res}</span>
-      <span class="who"><strong>${esc(g.white)}</strong> vs <strong>${esc(g.black)}</strong>
+      <span class="who"><strong>${esc(g.white || '?')}</strong> vs <strong>${esc(g.black || '?')}</strong>
         <small>${esc(g.termination || 'In progress')} · ${Math.ceil(g.moves.length / 2)} moves · ${d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</small></span>
       <span class="acts">
         ${g.result ? '' : '<button class="btn small" data-act="resume">Resume</button>'}
@@ -5646,7 +7239,8 @@ $('#archive-list').addEventListener('click', (e) => {
     game = new Game(data);
     review = null;
     viewPly = game.length;
-    paused = game.hasClock && game.length > 0;
+    paused = game.hasClock && game.length > 0 && !game.remote;
+    if (game.remote) connectRoom(game.remote.room); else leaveRoom();
     persist();
     closeDialogs();
     board.setOrientation(homeOrientation());
@@ -5698,16 +7292,16 @@ function saveFile(name, text) {
 }
 
 function download(g) {
-  const slug = (s) => s.replace(/[^\w-]+/g, '_').slice(0, 20);
+  const slug = (s) => (s || '').replace(/[^\w-]+/g, '_').slice(0, 20);
   saveFile(`${slug(g.white)}_vs_${slug(g.black)}_${new Date(g.startedAt).toISOString().slice(0, 10)}.pgn`, g.pgn());
 }
 
-async function copy(text, what, quiet = false) {
+async function copy(text, what) {
   try {
     await navigator.clipboard.writeText(text);
     toast(`${what} copied`);
   } catch {
-    if (!quiet) prompt(`Copy the ${what}:`, text); // clipboard blocked: let the user copy by hand
+    prompt(`Copy the ${what}:`, text); // clipboard blocked: let the user copy by hand
   }
 }
 
@@ -5717,7 +7311,7 @@ function toast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
 /* ---------------- wake lock: keep the screen on during a game ---------------- */
@@ -5738,25 +7332,22 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) requ
 $('#btn-new').addEventListener('click', () => openNewGame());
 $('#btn-archive').addEventListener('click', () => { renderArchive(); openDialog('#dlg-archive'); });
 $('#btn-help').addEventListener('click', () => openDialog('#dlg-help'));
-$('#btn-options').addEventListener('click', () => {
-  openDialog('#dlg-options');
-  $('#moves .active')?.scrollIntoView({ block: 'nearest' });
-});
-$('#btn-flip').addEventListener('click', async () => { clearTimeout(flipTimer); await board.flip(); renderPlayers(); });
+const openMenu = () => { openDialog('#dlg-options'); $('#moves .active')?.scrollIntoView({ block: 'nearest' }); };
+$$('.act-menu').forEach((b) => b.addEventListener('click', openMenu));
+$$('.act-pause').forEach((b) => b.addEventListener('click', togglePause));
+$('#btn-flip').addEventListener('click', () => { clearTimeout(flipTimer); board.flip(); renderPlayers(); });
 $('#btn-undo').addEventListener('click', takeback);
-$('#btn-pause').addEventListener('click', togglePause);
-$('#btn-draw').addEventListener('click', () => openDialog('#dlg-draw'));
-$('#btn-draw').addEventListener('click', () => {
+
+$$('.act-draw').forEach((b) => b.addEventListener('click', () => {
   const r = game.remote;
-  const opp = r && game.nameOf(other(r.me));
+  const opp = r && (game.nameOf(other(r.me)) || 'your colleague');
   const theyOffer = r && r.offer === other(r.me);
   $('#draw-title').textContent = !r ? 'Agree to a draw?' : theyOffer ? `Accept ${opp}'s draw offer?` : `Offer ${opp} a draw?`;
   $('#draw-sub').textContent = !r ? 'Both players should agree before confirming.'
-    : theyOffer ? 'The game ends as a draw. Send the code so they see it.'
-    : 'The offer goes into the code you send. They can accept it, or decline by moving.';
+    : theyOffer ? 'The game ends as a draw.' : 'They can accept it, or decline by making a move.';
   $('#draw-confirm').textContent = r && !theyOffer ? 'Offer draw' : 'Draw';
   openDialog('#dlg-draw');
-});
+}));
 $('#draw-confirm').addEventListener('click', () => {
   $('#dlg-draw').close();
   if (game.over) return;
@@ -5764,44 +7355,46 @@ $('#draw-confirm').addEventListener('click', () => {
   if (r && r.offer !== other(r.me)) {
     r.offer = r.me;
     persist();
+    publish();
     render();
-    openSend();
+    toast('Draw offered');
     return;
   }
   game.agreeDraw();
-  sound.end();
-  onGameOver(true);
+  publish();
+  onGameOver();
 });
-$('#btn-resign').addEventListener('click', () => {
-  $('#resign-w span').textContent = `${game.white} resigns`;
-  $('#resign-b span').textContent = `${game.black} resigns`;
+$$('.act-resign').forEach((b) => b.addEventListener('click', () => {
+  $('#resign-w span').textContent = `${game.white || 'White'} resigns`;
+  $('#resign-b span').textContent = `${game.black || 'Black'} resigns`;
   // in a remote game you can only resign for yourself
   $('#resign-w').classList.toggle('hidden', game.remote?.me === 'b');
   $('#resign-b').classList.toggle('hidden', game.remote?.me === 'w');
   openDialog('#dlg-resign');
-});
+}));
 for (const c of ['w', 'b']) {
   $(`#resign-${c}`).addEventListener('click', () => {
     $('#dlg-resign').close();
     if (game.over) return;
     game.resign(c);
-    sound.end();
-    onGameOver(true);
+    publish();
+    onGameOver();
   });
 }
 
 $('#over-rematch').addEventListener('click', () => {
   $('#dlg-over').close();
-  if (game.remote) {
-    startGame({ white: game.black, black: game.white, tc: 'none', remote: { me: other(game.remote.me) } });
-    if (game.remote.me === 'b') openSend();
-    else toast('You have white now. Make your first move, then send the code.');
+  const r = game.remote;
+  if (r && r.me) {
+    // same room, colours swapped; the other laptop picks the new game up from the room
+    startGame({ white: game.black, black: game.white, tc: game.tc, remote: { room: r.room, me: other(r.me), pw: r.pb, pb: r.pw } });
+    publish();
+    toast(`Rematch: you play ${colorName(game.remote.me).toLowerCase()}`);
     return;
   }
   startGame({ white: game.black, black: game.white, tc: game.tc });
   toast('Colours swapped. Good luck!');
 });
-$('#over-code').addEventListener('click', () => { $('#dlg-over').close(); openSend(); });
 $('#over-new').addEventListener('click', () => { $('#dlg-over').close(); openNewGame(); });
 $('#over-review').addEventListener('click', () => { $('#dlg-over').close(); goto(0); toast('Use ← → to step through the game'); });
 $('#over-pgn').addEventListener('click', () => download(game));
@@ -5833,7 +7426,7 @@ document.addEventListener('keydown', (e) => {
   else if ((e.ctrlKey || e.metaKey) && k === 'z') takeback();
   else if (k === 'n' || k === 'N') openNewGame();
   else if (k === 'h' || k === 'H') $('#btn-archive').click();
-  else if (k === 'o' || k === 'O') $('#btn-options').click();
+  else if (k === 'o' || k === 'O') openMenu();
   else if (k === '?') openDialog('#dlg-help');
   else return;
   e.preventDefault();
@@ -5850,7 +7443,7 @@ const bindSwitch = (sel, key, after) => {
     after?.();
   });
 };
-bindSwitch('#set-autoflip', 'autoFlip', () => { render(); if (settings.autoFlip) scheduleFlip(50); });
+bindSwitch('#set-autoflip', 'autoFlip', () => { render(); if (settings.autoFlip) scheduleFlip(0); });
 bindSwitch('#set-dests', 'showDests', applyPrefs);
 bindSwitch('#set-coords', 'coords', applyPrefs);
 bindSwitch('#set-sound', 'sound', applyPrefs);
@@ -5868,171 +7461,26 @@ function applyPrefs() {
   $$('.swatch').forEach((s) => s.setAttribute('aria-checked', String(s.dataset.theme === settings.theme)));
 }
 
-/* ---------------- remote play (game codes) ---------------- */
-
-const shareLink = (code) =>
-  /^https?:$/.test(location.protocol) ? `${location.origin}${location.pathname}#${code}` : null;
-
-function currentCode() {
-  return encodeCode({
-    id: game.id, white: game.white, black: game.black, sender: game.remote.me,
-    moves: game.plies.map((p) => p.san), result: game.result, termination: game.termination,
-    offer: game.remote.offer,
-  });
-}
-
-function renderRemoteCard() {
-  if (!game.remote) return;
-  const opp = game.nameOf(other(game.remote.me));
-  $('#remote-who').textContent = `You play ${colorName(game.remote.me).toLowerCase()} against ${opp}`;
-  $('#remote-paste').placeholder = `Paste ${opp}'s code here…`;
-}
-
-/** Show the code for the opponent and try to put it on the clipboard right away. */
-function openSend() {
-  const r = game.remote;
-  const opp = game.nameOf(other(r.me));
-  const code = currentCode();
-  const link = shareLink(code);
-  let title;
-  if (game.over) title = `${game.winnerText()}. Send ${opp} the final code`;
-  else if (!game.length) title = `Invite ${opp}`;
-  else if (r.offer === r.me) title = `Draw offer ready for ${opp}`;
-  else title = `Your move is ready. Send it to ${opp}`;
-  $('#send-title').textContent = title;
-  $('#send-code').value = code;
-  $('#send-link').classList.toggle('hidden', !link);
-  $('#send-hint').textContent = game.over
-    ? 'Once they paste it, the game is over on their screen too.'
-    : `Send this in Teams, Slack, email or any chat. When ${opp} replies with a code, paste it anywhere on this page.`;
-  openDialog('#dlg-send');
-  copy(code, 'Code', true);
-}
-
-function joinOrUpdate(text) {
-  let d;
-  try { d = decodeCode(text); } catch (e) { toast(e.message); return false; }
-
-  // the code may belong to a game that is in saved games, not on the board
-  let base = game.id === d.id ? game : null;
-  if (!base) {
-    const saved = storage.loadArchive().find((g) => g.id === d.id);
-    if (saved) base = new Game(saved);
-  }
-  const local = base && { id: base.id, moves: base.plies.map((p) => p.san), result: base.result, offer: base.remote?.offer };
-  const kind = compareToLocal(local, d);
-  if (kind === 'same') { toast('You already have this move'); return true; }
-  if (kind === 'conflict') { toast('This code is from a different line of this game. Ask for their latest code.'); return false; }
-  if (base?.remote && d.sender === base.remote.me) { toast('That is your own code. Send it to your opponent.'); return false; }
-
-  closeDialogs();
-  const before = base ? base.length : 0;
-  if (kind === 'new') {
-    startGame({ id: d.id, white: d.white, black: d.black, tc: 'none', remote: { me: other(d.sender) } });
-  } else if (base !== game) {
-    if (game.length && !game.over) storage.archive(game.toJSON());
-    storage.removeFromArchive(base.id);
-    game = base;
-    review = null;
-    board.setOrientation(homeOrientation());
-  }
-  if (!game.remote) game.remote = { me: other(d.sender), offer: null };
-  // show the position before their move first, so their move animates in
-  for (const san of d.moves.slice(game.length, Math.max(before, d.moves.length - 1))) game.moveSan(san);
-  viewPly = game.length;
-  render();
-  setTimeout(() => {
-    const fresh = d.moves.slice(game.length);
-    let last = null;
-    for (const san of fresh) last = game.moveSan(san) || last;
-    game.remote.offer = d.offer;
-    if (d.result && !game.result) game.finish(d.result, d.termination || 'Game over');
-    viewPly = game.length;
-    persist();
-    render();
-    if (last) {
-      if (game.over) sound.end();
-      else if (last.san.includes('+')) sound.check();
-      else if (last.captured) sound.capture();
-      else sound.move();
-    }
-    if (game.over) onGameOver(false);
-    else if (kind === 'new' && !game.length) toast(`Joined: you play white against ${game.black}. Your move!`);
-    else if (kind === 'new') toast(`Joined: you play ${colorName(game.remote.me).toLowerCase()} against ${game.nameOf(other(game.remote.me))}`);
-    else if (d.offer && d.offer !== game.remote.me) toast(`${game.nameOf(d.offer)} offers a draw`);
-    else if (last) toast(`${game.nameOf(other(game.remote.me))} played ${last.san}`);
-  }, 350);
-  return true;
-}
-
-function applyFromHash() {
-  const text = decodeURIComponent(location.hash);
-  history.replaceState(null, '', location.pathname + location.search);
-  joinOrUpdate(text);
-}
-addEventListener('hashchange', () => { if (hasCode(location.hash)) applyFromHash(); });
-
-// paste a code anywhere on the page
-document.addEventListener('paste', (e) => {
-  if (e.target.closest('input, textarea')) return;
-  const text = e.clipboardData?.getData('text') || '';
-  if (!hasCode(text)) return;
-  e.preventDefault();
-  joinOrUpdate(text);
-});
-
-function openRemote(tab = 'create') {
-  $('#remote-my-name').value = settings.myName || '';
-  $('#remote-opp-name').value = settings.oppName || '';
-  $('#remote-join-text').value = '';
-  setRemoteTab(tab);
-  openDialog('#dlg-remote');
-}
-
-function setRemoteTab(tab) {
-  $$('#dlg-remote [data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
-  $$('#dlg-remote [data-pane]').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== tab));
-}
-$$('#dlg-remote [data-tab]').forEach((b) => b.addEventListener('click', () => setRemoteTab(b.dataset.tab)));
-
-$('#form-remote-create').addEventListener('submit', () => {
-  const me = $('#remote-my-name').value.trim() || 'Me';
-  const opp = $('#remote-opp-name').value.trim() || 'Opponent';
-  let color = (document.querySelector('input[name="remote-color"]:checked') || {}).value || 'w';
-  if (color === 'random') color = Math.random() < 0.5 ? 'w' : 'b';
-  Object.assign(settings, { myName: me, oppName: opp });
-  startGame({
-    white: color === 'w' ? me : opp, black: color === 'w' ? opp : me,
-    tc: 'none', remote: { me: color },
-  });
-  if (color === 'b') openSend();
-  else toast(`You play white. Make your first move, then send the code to ${opp}.`);
-});
-
-$('#form-remote-join').addEventListener('submit', (e) => {
-  if (!joinOrUpdate($('#remote-join-text').value)) e.preventDefault();
-});
-
-$('#remote-apply').addEventListener('click', () => {
-  if (joinOrUpdate($('#remote-paste').value)) $('#remote-paste').value = '';
-});
-$('#remote-copy').addEventListener('click', () => { $('#dlg-code').close(); openSend(); });
-$('#btn-code').addEventListener('click', () => { $('#remote-paste').value = ''; openDialog('#dlg-code'); });
-$('#send-copy').addEventListener('click', () => copy($('#send-code').value, 'Code'));
-$('#send-link').addEventListener('click', () => copy(shareLink($('#send-code').value), 'Link'));
-$('#send-code').addEventListener('focus', (e) => e.target.select());
-$('#btn-remote').addEventListener('click', () => openRemote());
+// The move list sits in the side panel on wide screens and inside the menu on phones.
+const phoneLayout = matchMedia('(max-width: 760px)');
+const placeMoves = () => $(phoneLayout.matches ? '#moves-slot-menu' : '#moves-slot-panel').appendChild($('#moves-block'));
+phoneLayout.addEventListener('change', placeMoves);
 
 /* ---------------- boot ---------------- */
 
+placeMoves();
 applyPrefs();
 // the offline download link only makes sense on the hosted site
 if (!/^https?:$/.test(location.protocol)) $('.offline-dl')?.remove();
 board.setOrientation(homeOrientation());
 render();
-if (hasCode(location.hash)) applyFromHash();
-if (paused) toast('Game restored — clocks paused');
-else if (game.length) toast('Game restored');
+if (game.remote) connectRoom(game.remote.room);
+
+// a shared link (…/deskmate#K7QM2X) opens "Join with a code" with the code filled in
+const linkCode = parseRoomCode(location.hash);
+if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+if (linkCode && linkCode !== game.remote?.room) openRemote('join', linkCode);
+else if (paused) toast('Game restored, clocks paused');
 
 // the single-file build (deskmate.html) has no sw.js next to it, wherever it is hosted
 const singleFile = document.documentElement.hasAttribute('data-single-file');

@@ -71,9 +71,12 @@
     "vite": "^6.3.5"
   },
   "lint-staged": {
-    "*.{js,ts,tsx,json}": [
+    "*.{js,ts,tsx}": [
       "oxfmt --write",
       "oxlint --fix"
+    ],
+    "*.json": [
+      "oxfmt --write"
     ]
   },
   "config": {
