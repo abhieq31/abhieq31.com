@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script>
+  (function () {
+    var p = location.pathname;
+    if (location.protocol !== "file:" && !/\/$/.test(p) && !/\.html?$/i.test(p)) {
+      var b = document.createElement("base"); b.href = p + "/"; document.head.appendChild(b);
+    }
+  })();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Data sync and Fabric – AdigiPQR</title>
+<style>
+:root { --bg:#f4f6f7; --surface:#fff; --ink:#18232c; --muted:#5d6a75; --line:#d9e0e4; --accent:#0e5b63; --head:#eaf0f2;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+@media (prefers-color-scheme: dark) { :root { --bg:#11181d; --surface:#182229; --ink:#e3e9ed; --muted:#9aa8b2; --line:#2b3943; --accent:#5fb7bf; --head:#20303a; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--font); }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 56px; display: grid; gap: 16px; }
+main > * { min-width: 0; }
+a { color: var(--accent); }
+h1 { font-size: 26px; line-height: 1.2; margin: 0; } h2 { font-size: 18px; margin: 0 0 8px; }
+.lede { color: var(--muted); margin: 4px 0 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { border-bottom: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top; }
+th { background: var(--head); }
+ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+code { font-family: var(--mono); font-size: 13px; }
+.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; align-items: stretch; }
+.flow div { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--bg); font-size: 13.5px; }
+.flow b { display: block; }
+</style>
+</head>
+<body>
+<main>
+  <div><a href="./#guide">← AdigiPQR</a>
+  <h1>From manual exports to an automatic data sync</h1>
+  <p class="lede">The workbook QA receives stays the same in every step: only the way the PAS-X rows arrive changes.</p></div>
+
+  <div class="card"><h2>What the job is</h2>
+  <p style="margin:0">Move one read-only query result — a few thousand rows per product per year — from the MES Oracle database to wherever QA builds the APQR. The volume is tiny. The real bottleneck is permission: <b>a read-only database account and a network path to the database</b>. Every automatic option, free or paid, needs exactly that approval.</p></div>
+
+  <div class="card"><h2>Three options</h2><table>
+    <tr><th></th><th>A · Manual export (today)</th><th>B · Scheduled pull, on-prem</th><th>C · Microsoft Fabric</th></tr>
+    <tr><td>How</td><td>MES team runs the query and drops the CSV on this web app or the plant portal</td><td>Windows Task Scheduler runs the same query nightly into the plant portal</td><td>On-premises data gateway + pipeline copy the query into a Lakehouse nightly; a notebook builds the workbook</td></tr>
+    <tr><td>Data leaves the plant network</td><td>No (this page works in the browser)</td><td>No</td><td>Yes — to the company's Microsoft tenant</td></tr>
+    <tr><td>Licences</td><td>none</td><td>none</td><td>Fabric F2 ≈ US$262.80/month pay-as-you-go, ≈ US$156.33/month reserved (US list price, Oct 2026); Power BI Pro per report viewer below F64</td></tr>
+    <tr><td>Set-up</td><td>done</td><td>about a day, once the DB account exists</td><td>weeks: tenant, gateway server, capacity, security review, qualification</td></tr>
+    <tr><td>Gives you</td><td>APQR workbook</td><td>APQR workbook, current every morning</td><td>APQR workbook + Power BI across products and sites + a home for LIMS / QMS / ERP data</td></tr></table></div>
+
+  <div class="card"><h2>Recommended order</h2><ol>
+    <li><b>Now:</b> option A — no approvals beyond what exists.</li>
+    <li><b>Ask IT</b> for the read-only MES database account and the network path. This unblocks everything below.</li>
+    <li><b>Option B</b> with that account: free, on-prem, the data is current daily.</li>
+    <li><b>Fabric</b> when the company wants one data platform anyway (several sites, LIMS/QMS/ERP next to MES, dashboards, continued process verification). For the APQR alone it adds a monthly cost, a cloud copy of GMP data and more to validate, without removing step 2.</li></ol></div>
+
+  <div class="card"><h2>The Fabric path</h2>
+  <div class="flow">
+    <div><b>MES Oracle DB</b>read-only account</div>
+    <div><b>On-premises data gateway</b>Windows server in the plant, outbound 443 only</div>
+    <div><b>Pipeline (nightly)</b>Copy activity: rolling-window query + load timestamp → Lakehouse table</div>
+    <div><b>Notebook</b>same conversion code → workbook files + curated tables</div>
+    <div><b>QA</b>workbook files; optional Power BI on the curated tables</div>
+  </div>
+  <ol style="margin-top:12px">
+    <li>Install the on-premises data gateway (standard mode) on a plant server that reaches the database.</li>
+    <li>Create an Oracle connection on the gateway with the read-only account.</li>
+    <li>Create a workspace and a Lakehouse.</li>
+    <li>Pipeline: Copy activity with the rolling-window query (material list as a pipeline parameter) and an extra <code>LOAD_TS</code> column = trigger time, appending to a raw table; then a Notebook activity; schedule nightly.</li>
+    <li>Notebook: keeps the newest load of each batch (a corrected re-run supersedes older rows), builds the same workbook as this page, and writes curated value and summary tables for Power BI.</li>
+    <li>Qualification run: one material, a closed period — compare the Fabric workbook cell by cell with this page's output for the same export.</li>
+  </ol>
+  <p class="lede" style="margin-top:10px">The query (rolling-window form), the notebook and the detailed checklist are in the internal AdigiPQR package (<code>fabric/</code>), not on this public page.</p></div>
+
+  <div class="card"><h2>Beyond</h2><ol>
+    <li><b>More sources in the same Lakehouse:</b> LIMS results, QMS (deviations, CAPA, change control), ERP (release, market) — the APQR sections that are manual today fill themselves.</li>
+    <li><b>Continued process verification:</b> the nightly summary table is a CPV dashboard — Cpk and trend signals per CPP as batches are made, not once a year.</li>
+    <li><b>Scanned BMR values:</b> records accepted on the scan tab (CSV export) join the same tables, so printout CPPs trend with the MES data.</li>
+    <li><b>Validation:</b> keep query and notebook under version control as the controlled source; treat the sync as GAMP 5 configured software with its own IQ/OQ.</li></ol></div>
+</main>
+</body>
+</html>
