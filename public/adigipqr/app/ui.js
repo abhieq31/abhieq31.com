@@ -18,6 +18,8 @@
     if (location.hash.slice(1) !== tab) history.replaceState(null, "", "#" + tab);
   }
   document.querySelectorAll("nav [role=tab]").forEach(function (b) { b.onclick = function () { show(b.dataset.tab); }; });
+  // The offline zip exists only on the public site; the offline copy and the plant portal hide the link.
+  if (!/(^|\.)abhieq31\.com$/.test(location.hostname)) { var z = $("offlineZip"); if (z) z.parentNode.hidden = true; }
   if (window.ADIGI_SQL) $("sqlTabBtn").hidden = false;
   var start = location.hash.slice(1);
   show(["apqr", "scan", "sql", "guide"].indexOf(start) >= 0 && (start !== "sql" || window.ADIGI_SQL) ? start : "apqr");
@@ -211,16 +213,16 @@
     [0, 0.5, 1].forEach(function (t) { var v = lo + t * (hi - lo); g += '<text x="' + (L - 6) + '" y="' + (Y(v) + 4) + '" font-size="10" text-anchor="end" fill="currentColor" opacity=".6">' + f(v, 2) + "</text>"; });
     function hl(v, color, dash, label) {
       if (v === null || v === undefined || !isFinite(v)) return "";
-      return '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="' + color + '" stroke-width="1.2"' + (dash ? ' stroke-dasharray="' + dash + '"' : "") +
-        '/><text x="' + (W - R) + '" y="' + (Y(v) - 3) + '" font-size="9.5" text-anchor="end" fill="' + color + '">' + label + "</text>";
+      return '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" style="stroke:' + color + '" stroke-width="1.2"' + (dash ? ' stroke-dasharray="' + dash + '"' : "") +
+        '/><text x="' + (W - R) + '" y="' + (Y(v) - 3) + '" font-size="9.5" text-anchor="end" style="fill:' + color + '">' + label + "</text>";
     }
-    g += hl(p.hi, "#c0392b", "", "USL " + f(p.hi)) + hl(p.lo, "#c0392b", "", "LSL " + f(p.lo));
-    if (ch.ucl) g += hl(ch.ucl, "#7a8794", "4 3", "UCL") + hl(ch.lcl, "#7a8794", "4 3", "LCL");
-    if (ch.cl !== undefined) g += hl(ch.cl, "#7a8794", "1 3", "");
-    g += '<polyline fill="none" stroke="#0e5b63" stroke-width="1.6" points="' + x.map(function (v, i) { return X(i) + "," + Y(v); }).join(" ") + '"/>';
+    g += hl(p.hi, "var(--limit)", "", "USL " + f(p.hi)) + hl(p.lo, "var(--limit)", "", "LSL " + f(p.lo));
+    if (ch.ucl) g += hl(ch.ucl, "var(--ctl)", "4 3", "UCL") + hl(ch.lcl, "var(--ctl)", "4 3", "LCL");
+    if (ch.cl !== undefined) g += hl(ch.cl, "var(--ctl)", "1 3", "");
+    g += '<polyline fill="none" style="stroke:var(--series)" stroke-width="1.6" points="' + x.map(function (v, i) { return X(i) + "," + Y(v); }).join(" ") + '"/>';
     x.forEach(function (v, i) {
-      var b = p.batches[i], col = out[b] ? "#c0392b" : flagged[i] ? "#d68910" : "#0e5b63", r = out[b] || flagged[i] ? 4.2 : 2.8;
-      g += '<circle cx="' + X(i) + '" cy="' + Y(v) + '" r="' + r + '" fill="' + col + '"><title>' + esc(b) + ": " + f(v, 4) + "</title></circle>";
+      var b = p.batches[i], col = out[b] ? "var(--limit)" : flagged[i] ? "var(--flag)" : "var(--series)", r = out[b] || flagged[i] ? 4.2 : 2.8;
+      g += '<circle cx="' + X(i) + '" cy="' + Y(v) + '" r="' + r + '" style="fill:' + col + '"><title>' + esc(b) + ": " + f(v, 4) + "</title></circle>";
     });
     var step = Math.max(1, Math.ceil(n / 6));
     for (var i = 0; i < n; i += step) g += '<text x="' + X(i) + '" y="' + (H - 14) + '" font-size="9" text-anchor="middle" fill="currentColor" opacity=".6">' + esc(p.batches[i].slice(-5)) + "</text>";

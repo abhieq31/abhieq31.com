@@ -14,28 +14,33 @@
 <meta name="robots" content="noindex">
 <title>Data sync and Fabric – AdigiPQR</title>
 <style>
-:root { --bg:#f4f6f7; --surface:#fff; --ink:#18232c; --muted:#5d6a75; --line:#d9e0e4; --accent:#0e5b63; --head:#eaf0f2;
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace; }
-@media (prefers-color-scheme: dark) { :root { --bg:#11181d; --surface:#182229; --ink:#e3e9ed; --muted:#9aa8b2; --line:#2b3943; --accent:#5fb7bf; --head:#20303a; color-scheme: dark; } }
+:root { --bg:#f3f7fb; --surface:#fff; --ink:#0f2236; --muted:#55687c; --line:#d6e1ec; --accent:#0b4f8a; --green:#12805c; --head:#edf3f9; --h:#0a3560;
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0b1622; --surface:#112131; --ink:#e4edf5; --muted:#93a6b8; --line:#22384c; --accent:#5aa9e6; --green:#4cc38a; --head:#17293b; --h:#e4edf5; color-scheme: dark; } }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--font); }
 main { max-width: 980px; margin: 0 auto; padding: 24px 16px 56px; display: grid; gap: 16px; }
 main > * { min-width: 0; }
 a { color: var(--accent); }
-h1 { font-size: 26px; line-height: 1.2; margin: 0; } h2 { font-size: 18px; margin: 0 0 8px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 8px 0 0; color: var(--h); } h2 { font-size: 18px; margin: 0 0 8px; }
 .lede { color: var(--muted); margin: 4px 0 0; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { border-bottom: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top; }
-th { background: var(--head); }
+th { background: var(--head); color: var(--h); }
 ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 code { font-family: var(--mono); font-size: 13px; }
 .flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; align-items: stretch; }
-.flow div { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--bg); font-size: 13.5px; }
+.flow div { border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 10px; padding: 10px; background: var(--bg); font-size: 13.5px; }
+.flow div:nth-child(even) { border-top-color: var(--green); }
+.band { background: linear-gradient(115deg, #0a3560 0%, #0b4f8a 52%, #12805c 100%); color: #fff; }
+.band div { max-width: 980px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 17px; }
+.band a { color: #fff; text-decoration: none; } .band i { font-style: normal; color: #9ff0c9; }
 .flow b { display: block; }
 </style>
 </head>
 <body>
+<div class="band"><div><svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b4f8a"/><stop offset="1" stop-color="#14a06c"/></linearGradient></defs><rect width="64" height="64" rx="15" fill="url(#lg)" stroke="#fff" stroke-opacity=".35" stroke-width="3"/><path d="M12 18H52M12 46H52" stroke="#fff" stroke-opacity=".55" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 4"/><path d="M13 36L22 29L30 34L39 25L47 28" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="47" cy="28" r="4.6" fill="#fff"/></svg><a href="./#guide">Adigi<i>PQR</i></a></div></div>
 <main>
   <div><a href="./#guide">← AdigiPQR</a>
   <h1>From manual exports to an automatic data sync</h1>

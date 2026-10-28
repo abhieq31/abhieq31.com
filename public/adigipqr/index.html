@@ -16,79 +16,138 @@
 <meta name="robots" content="noindex">
 <title>AdigiPQR – APQR data sheet</title>
 <meta name="description" content="Turns the PAS-X MES export into the QA APQR workbook in the browser. No upload: the file never leaves this computer.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' role='img' aria-label='AdigiPQR'> <defs> <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'> <stop offset='0' stop-color='%230b4f8a'/> <stop offset='1' stop-color='%2314a06c'/> </linearGradient> </defs> <rect width='64' height='64' rx='15' fill='url(%23g)'/> <%21-- a control chart: every batch between the two limits --> <path d='M12 18H52M12 46H52' stroke='%23fff' stroke-opacity='.55' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='4 4'/> <path d='M13 36L22 29L30 34L39 25L47 28' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/> <circle cx='47' cy='28' r='4.6' fill='%23fff'/> </svg>" type="image/svg+xml">
+<meta name="theme-color" content="#0b4f8a">
 <style>
-:root { --bg:#f4f6f7; --surface:#fff; --ink:#18232c; --muted:#5d6a75; --line:#d9e0e4; --accent:#0e5b63; --accent-soft:#e3eff0;
-  --warn-bg:#fbe5d8; --warn-ink:#8a3412; --ok-bg:#e4f1e7; --ok-ink:#2c6e3f; --amber-bg:#fdf1d8; --amber-ink:#7a5205; --head:#eaf0f2;
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#11181d; --surface:#182229; --ink:#e3e9ed; --muted:#9aa8b2;
-  --line:#2b3943; --accent:#5fb7bf; --accent-soft:#1d3338; --warn-bg:#4a2618; --warn-ink:#f4b896; --ok-bg:#1d3a26; --ok-ink:#8fd3a2;
-  --amber-bg:#3d3010; --amber-ink:#f0cf7e; --head:#20303a; color-scheme: dark; } }
+:root { --bg:#f3f7fb; --surface:#fff; --ink:#0f2236; --muted:#55687c; --line:#d6e1ec; --head:#edf3f9;
+  --blue:#0b4f8a; --blue-deep:#0a3560; --blue-soft:#e7f0fa; --green:#12805c; --green-bright:#14a06c; --green-soft:#e2f4ec;
+  --accent:var(--blue); --accent-soft:var(--blue-soft); --series:#0b4f8a; --limit:#c0392b; --ctl:#8395a7; --flag:#d68910;
+  --warn-bg:#fbe7dc; --warn-ink:#8a3412; --ok-bg:var(--green-soft); --ok-ink:#0f6b4c; --amber-bg:#fdf1d8; --amber-ink:#7a5205;
+  --shadow: 0 1px 2px rgba(15,34,54,.05), 0 4px 14px rgba(15,34,54,.05);
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0b1622; --surface:#112131; --ink:#e4edf5; --muted:#93a6b8;
+  --line:#22384c; --head:#17293b; --blue:#5aa9e6; --blue-deep:#0a2440; --blue-soft:#13304a; --green:#4cc38a; --green-bright:#4cc38a; --green-soft:#123528;
+  --series:#6fb6ee; --limit:#ff7a6b; --ctl:#7f93a6; --flag:#f0b44c; --warn-bg:#4a2618; --warn-ink:#f4b896; --ok-ink:#8fe0b5;
+  --amber-bg:#3d3010; --amber-ink:#f0cf7e; --shadow:none; color-scheme: dark; } }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font); }
 a { color: var(--accent); }
-header { background: var(--surface); border-bottom: 1px solid var(--line); }
 .in { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
-header .in { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; padding-top: 12px; padding-bottom: 12px; }
-.brand { font-weight: 650; font-size: 17px; } .brand span { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
-nav { display: flex; flex-wrap: wrap; gap: 4px 18px; } nav button { border: 0; background: none; color: var(--muted); padding: 4px 0; font: inherit; cursor: pointer; }
-nav button[aria-selected="true"] { color: var(--ink); box-shadow: inset 0 -2px var(--accent); }
-main { padding-top: 22px; padding-bottom: 48px; display: grid; gap: 16px; }
+/* header: blue to green band */
+header { background: linear-gradient(115deg, #0a3560 0%, #0b4f8a 52%, #12805c 100%); color: #fff; }
+header .in { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; padding-top: 14px; padding-bottom: 0; }
+.brand { display: flex; align-items: center; gap: 11px; padding-bottom: 12px; color: #fff; text-decoration: none; }
+.brand .logo { flex: none; border-radius: 9px; box-shadow: 0 0 0 1.5px rgba(255,255,255,.35); }
+.brand b { font-size: 19px; font-weight: 650; letter-spacing: .2px; } .brand b i { font-style: normal; color: #9ff0c9; }
+.brand small { display: block; font-size: 12.5px; color: rgba(255,255,255,.75); line-height: 1.2; }
+nav { display: flex; flex-wrap: wrap; gap: 2px; align-self: end; margin-left: auto; }
+nav button { border: 0; background: none; color: rgba(255,255,255,.78); padding: 9px 14px 11px; font: 500 14.5px var(--font); cursor: pointer; border-radius: 9px 9px 0 0; }
+nav button:hover { color: #fff; background: rgba(255,255,255,.08); }
+nav button[aria-selected="true"] { color: var(--blue-deep); background: var(--bg); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) nav button[aria-selected="true"] { color: var(--ink); } }
+/* privacy strip */
+.private { background: var(--green-soft); border-bottom: 1px solid var(--line); color: var(--ok-ink); }
+.private .in { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding-top: 9px; padding-bottom: 9px; font-size: 14px; }
+.private svg { flex: none; } .private b { color: var(--ink); } .private .in > span { flex: 1 1 240px; min-width: 0; }
+.private details { margin-left: auto; } .private summary { cursor: pointer; color: var(--green); font-weight: 600; font-size: 13.5px; }
+.private details[open] { flex-basis: 100%; margin-left: 0; }
+.private details ul { margin: 6px 0 2px; padding-left: 20px; color: var(--ink); font-size: 13.5px; display: grid; gap: 3px; }
+main { padding-top: 24px; padding-bottom: 48px; display: grid; gap: 16px; }
 main > *, section > * { min-width: 0; }
-h1 { font-size: 26px; line-height: 1.2; margin: 0; } h2 { font-size: 17px; margin: 0 0 10px; }
-.lede { color: var(--muted); margin: 4px 0 0; max-width: 78ch; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
-.drop { border: 1.5px dashed var(--line); border-radius: 12px; background: var(--surface); padding: 22px; display: grid; gap: 6px; cursor: pointer; text-align: left; }
-.drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
-.drop strong { font-size: 18px; } .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0; color: var(--blue-deep); letter-spacing: -.2px; } h2 { font-size: 17px; margin: 0 0 10px; color: var(--ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) h1 { color: var(--ink); } }
+.lede { color: var(--muted); margin: 6px 0 0; max-width: 80ch; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; box-shadow: var(--shadow); }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; counter-reset: s; }
+.steps div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px 11px 50px; position: relative; font-size: 13.5px; color: var(--muted); }
+.steps div::before { counter-increment: s; content: counter(s); position: absolute; left: 13px; top: 12px; width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--blue), var(--green-bright)); color: #fff; font: 600 13px/26px var(--font); text-align: center; }
+.steps b { display: block; color: var(--ink); font-size: 14px; }
+.drop { border: 2px dashed #a9c2da; border-radius: 14px; background: var(--surface); padding: 24px; display: grid; gap: 6px; cursor: pointer; text-align: left; transition: border-color .15s, background .15s; }
+.drop:hover, .drop.over { border-color: var(--green); background: var(--green-soft); }
+.drop strong { font-size: 18px; color: var(--blue); } .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .drop { border-color: var(--line); } }
+.lock { display: inline-flex; align-items: center; gap: 5px; color: var(--ok-ink); font-size: 13px; font-weight: 600; }
 .row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; }
 label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 input, select, textarea { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
 textarea { width: 100%; font: 12.5px/1.45 var(--mono); }
-input:focus, select:focus, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-button.b { font: 500 14px var(--font); border-radius: 8px; padding: 9px 16px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
-button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+input:focus, select:focus, button:focus-visible, summary:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+input[type="checkbox"] { accent-color: var(--green); }
+button.b { font: 500 14px var(--font); border-radius: 9px; padding: 9px 16px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--blue); }
+button.b:hover:not(:disabled) { border-color: var(--blue); }
+button.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+button.primary:hover:not(:disabled) { background: var(--blue-deep); }
+button.go { background: var(--green); border-color: var(--green); color: #fff; padding: 10px 20px; font-weight: 600; }
+button.go:hover:not(:disabled) { background: #0e6a4c; border-color: #0e6a4c; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.primary, :root:not([data-theme="light"]) button.go { color: #04121f; } }
 button:disabled { opacity: .5; cursor: default; }
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
-.kpi b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; line-height: 1.2; } .kpi span { color: var(--muted); font-size: 12.5px; }
-.kpi.warn { background: var(--warn-bg); border-color: transparent; color: var(--warn-ink); } .kpi.warn span { color: inherit; }
-.kpi.amber { background: var(--amber-bg); border-color: transparent; color: var(--amber-ink); } .kpi.amber span { color: inherit; }
-details.sec { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
-details.sec > summary { cursor: pointer; padding: 14px 18px; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--blue); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow); }
+.kpi:nth-child(even) { border-top-color: var(--green-bright); }
+.kpi b { display: block; font-size: 25px; font-variant-numeric: tabular-nums; line-height: 1.2; color: var(--blue-deep); } .kpi span { color: var(--muted); font-size: 12.5px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .kpi b { color: var(--ink); } }
+.kpi.warn { background: var(--warn-bg); border-color: transparent; border-top-color: var(--limit); color: var(--warn-ink); } .kpi.warn b, .kpi.warn span { color: inherit; }
+.kpi.amber { background: var(--amber-bg); border-color: transparent; border-top-color: var(--flag); color: var(--amber-ink); } .kpi.amber b, .kpi.amber span { color: inherit; }
+details.sec { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+details.sec > summary { cursor: pointer; padding: 14px 18px; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; color: var(--blue-deep); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) details.sec > summary { color: var(--ink); } }
 details.sec > summary::-webkit-details-marker { display: none; }
-details.sec > summary::after { content: "Show"; color: var(--accent); font-weight: 500; font-size: 13.5px; }
-details.sec[open] > summary::after { content: "Hide"; }
+details.sec > summary::after { content: "Show ▾"; color: var(--green); font-weight: 600; font-size: 13px; }
+details.sec[open] > summary::after { content: "Hide ▴"; }
+details.sec[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: 14px; }
 details.sec > .body { padding: 0 18px 18px; display: grid; gap: 12px; }
-.scroll { overflow: auto; max-height: 520px; border: 1px solid var(--line); border-radius: 8px; }
+.scroll { overflow: auto; max-height: 520px; border: 1px solid var(--line); border-radius: 10px; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
-th, td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
-th { background: var(--head); font-weight: 600; position: sticky; top: 0; z-index: 1; }
+th, td { border-bottom: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+th { background: var(--head); font-weight: 600; position: sticky; top: 0; z-index: 1; color: var(--blue-deep); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) th { color: var(--ink); } }
+tbody tr:hover td { background: var(--blue-soft); }
 td.n, th.n { text-align: right; font-family: var(--mono); font-size: 12.5px; }
 tr.bad td { background: var(--warn-bg); } tr.amb td { background: var(--amber-bg); }
-.pill { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--head); color: var(--muted); white-space: nowrap; }
+.pill { display: inline-block; font-size: 12px; padding: 1px 9px; border-radius: 999px; background: var(--head); color: var(--muted); white-space: nowrap; }
 .pill.ok { background: var(--ok-bg); color: var(--ok-ink); } .pill.bad { background: var(--warn-bg); color: var(--warn-ink); } .pill.amb { background: var(--amber-bg); color: var(--amber-ink); }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; } .chips button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 3px 11px; font: 13px var(--font); cursor: pointer; }
-.chips button[aria-pressed="true"] { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; } .chips button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 4px 12px; font: 13px var(--font); cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--blue); color: #fff; border-color: var(--blue); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chips button[aria-pressed="true"] { color: #04121f; } }
 .charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
-.chart { border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
-.chart h3 { font-size: 13.5px; margin: 0 0 2px; } .chart p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+.chart { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--surface); }
+.chart h3 { font-size: 13.5px; margin: 0 0 2px; color: var(--ink); } .chart p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
 .chart svg { width: 100%; height: auto; display: block; }
-.msg { min-height: 1.4em; color: var(--muted); } .msg.err { color: var(--warn-ink); } .msg.ok { color: var(--ok-ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 16px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
+.legend i.dot { width: 9px; height: 9px; border: 0; border-radius: 50%; }
+.msg { min-height: 1.4em; color: var(--muted); } .msg.err { color: var(--warn-ink); } .msg.ok { color: var(--ok-ink); font-weight: 500; }
 .note { font-size: 13px; color: var(--muted); }
 .sheettabs { display: flex; flex-wrap: wrap; gap: 4px; } .sheettabs button { border: 0; background: none; padding: 5px 10px; color: var(--muted); cursor: pointer; font: 14px var(--font); border-bottom: 2px solid transparent; }
-.sheettabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.sheettabs button[aria-selected="true"] { color: var(--blue); border-bottom-color: var(--green-bright); font-weight: 600; }
 .qa th, .qa td { border: 1px solid var(--line); white-space: nowrap; } .qa td.oos { background: var(--warn-bg); color: var(--warn-ink); }
-.bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; } .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.bar { height: 8px; background: var(--head); border-radius: 99px; overflow: hidden; } .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--blue), var(--green-bright)); transition: width .3s; }
 .recs td { white-space: nowrap; } .thumb { width: 100%; max-width: 520px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; } @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
+.card h2 .tag { font-size: 11.5px; font-weight: 600; color: var(--green); background: var(--green-soft); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
 [hidden] { display: none !important; }
-footer { color: var(--muted); font-size: 12.5px; padding-bottom: 28px; }
+footer { border-top: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 12.5px; }
+footer .in { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; padding-top: 14px; padding-bottom: 18px; }
+footer .logo { vertical-align: -4px; margin-right: 6px; }
 code, .mono { font-family: var(--mono); font-size: 12.5px; }
+@media (max-width: 640px) { nav { margin-left: 0; } nav button { padding: 8px 10px 10px; font-size: 14px; } h1 { font-size: 22px; } .private details { margin-left: 0; } }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="logo" viewBox="0 0 64 64"><defs>
+    <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b4f8a"/>
+      <stop offset="1" stop-color="#14a06c"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#lg)"/>
+  <!-- a control chart: every batch between the two limits -->
+  <path d="M12 18H52M12 46H52" stroke="#fff" stroke-opacity=".55" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 4"/>
+  <path d="M13 36L22 29L30 34L39 25L47 28" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="47" cy="28" r="4.6" fill="#fff"/></symbol></svg>
 <header><div class="in">
-  <div class="brand">AdigiPQR<span>APQR data from PAS-X MES</span></div>
+  <div class="brand"><svg class="logo" width="36" height="36" aria-hidden="true"><use href="#logo"/></svg><div><b>Adigi<i>PQR</i></b><small>APQR data from PAS-X MES and BMR scans</small></div></div>
   <nav role="tablist">
     <button role="tab" data-tab="apqr" aria-selected="true">APQR sheet</button>
     <button role="tab" data-tab="scan" aria-selected="false">CPP from BMR scans</button>
@@ -96,16 +155,32 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
     <button role="tab" data-tab="guide" aria-selected="false">Guides</button>
   </nav>
 </div></header>
+<div class="private" role="note"><div class="in">
+  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span><b>Runs only on this computer.</b> Files you choose are read by this browser and never uploaded — no server receives, stores or sees your data.</span>
+  <details><summary>How is that ensured?</summary><ul>
+    <li>This page is a set of static files. It has no upload function and there is no server-side program behind it that could receive a file.</li>
+    <li>Everything — reading the export, building the Excel, OCR of scans — is done by JavaScript in this browser tab; the result is saved straight to your Downloads folder.</li>
+    <li>The only network traffic is the page loading its own program files (and, on the scan tab, its OCR model). You can watch this in the browser: F12 → Network.</li>
+    <li>Closing or refreshing the tab erases the data. The browser keeps only your name (for the verifier field) and the OCR language model — no batch data, no scans.</li>
+    <li>For a plant PC without internet, the same page runs from a local folder: <a href="adigipqr-offline.zip" id="offlineZip">offline copy (.zip)</a>.</li></ul></details>
+</div></div>
 
 <main class="in">
 <!-- ============================================================== APQR -->
 <section id="tab-apqr" style="display:grid;gap:16px">
-  <div><h1>APQR data sheet</h1>
-  <p class="lede">Drop the raw export of the PAS-X query. You get QA's workbook — BMR detail, stage sheets, Yield data, Temp. &amp; RH, BPR Details, Packing Yield — plus Summary (Cpk, out-of-limit batches, trend signals) and Excel trend charts. <b>The file is processed in this browser and never uploaded.</b></p></div>
+  <div><h1>APQR data sheet from PAS-X MES</h1>
+  <p class="lede">Drop the raw export of the PAS-X query. You get QA's workbook — BMR detail, stage sheets, Yield data, Temp. &amp; RH, BPR Details, Packing Yield — plus Summary (Cpk, out-of-limit batches, trend signals) and Excel trend charts.</p></div>
+  <div class="steps">
+    <div><b>Export from PAS-X</b>Run the APQR query read-only, export the grid as CSV.</div>
+    <div><b>Drop the file here</b>Pick material and manufacturing period; check the overview.</div>
+    <div><b>Download the APQR Excel</b>QA layout, Summary, trend charts, source traceability.</div>
+  </div>
   <label class="drop" id="drop">
     <input type="file" id="file" accept=".csv,.txt,.xlsx">
     <strong>Drop the export (.csv or .xlsx) or click to choose</strong>
     <span class="note">From <code>01_APQR_Final_PASX.sql</code>: PL/SQL Developer → run → <i>Fetch last page</i> → right-click → <i>Export results → CSV</i>.</span>
+    <span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span>
     <span class="mono" id="filechip">No file yet.</span>
   </label>
   <div class="msg" id="msg"></div>
@@ -117,7 +192,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       <label>Manufactured to<input type="date" id="fTo"></label>
       <button class="b" id="apply">Apply</button>
       <span style="flex:1"></span>
-      <button class="b primary" id="dl">Download APQR Excel</button>
+      <button class="b go" id="dl">Download APQR Excel</button>
     </div><div class="note" id="period" style="margin-top:8px"></div></div>
 
     <div class="kpis" id="kpis"></div>
@@ -131,6 +206,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
     </div></details>
     <details class="sec" id="secCharts"><summary><span>Trend charts</span></summary><div class="body">
       <div class="chips" id="cFilter"><button data-f="" aria-pressed="true">All</button><button data-f="flag" aria-pressed="false">Only flagged</button></div>
+      <div class="legend"><span><i style="border-color:var(--series)"></i>batch value</span><span><i style="border-color:var(--limit)"></i>MBR limit (LSL/USL)</span><span><i style="border-color:var(--ctl);border-top-style:dashed"></i>control limit (3σ)</span><span><i class="dot" style="background:var(--limit)"></i>outside limit</span><span><i class="dot" style="background:var(--flag)"></i>trend signal</span></div>
       <div class="charts" id="charts"></div></div></details>
     <details class="sec" id="secSheets"><summary><span>Preview of the QA sheets</span></summary><div class="body">
       <div class="sheettabs" id="sheetTabs"></div><div class="scroll"><table class="qa" id="tSheet"></table></div></div></details>
@@ -146,15 +222,20 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 <!-- ============================================================== SCANS -->
 <section id="tab-scan" hidden style="display:grid;gap:16px">
   <div><h1>CPP values from scanned BMR pages</h1>
-  <p class="lede">Printouts from equipment that is not connected to PAS-X sit at the end of the BMR. This page reads them <b>in the browser</b> (open-source OCR, nothing uploaded), checks every record against itself, and adds the records you accept to the APQR Excel.</p></div>
+  <p class="lede">Printouts from equipment that is not connected to PAS-X sit at the end of the BMR. This page reads them with open-source OCR <b>running in this browser</b>, checks every record against itself, and adds the records you accept to the APQR Excel.</p></div>
+  <div class="steps">
+    <div><b>Drop the scanned BMR</b>PDF or image; optionally limit the pages.</div>
+    <div><b>Read and check</b>Every record is checked against its own printed totals.</div>
+    <div><b>Accept, then download</b>Accepted records go into the APQR Excel with page numbers.</div>
+  </div>
   <div class="grid2">
     <div class="card" style="display:grid;gap:12px">
       <label class="drop" id="sdrop"><input type="file" id="sfile" accept=".pdf,.png,.jpg,.jpeg">
-        <strong>Drop the scanned BMR / BPR (PDF or image)</strong><span class="mono" id="schip">No file yet.</span></label>
+        <strong>Drop the scanned BMR / BPR (PDF or image)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="schip">No file yet.</span></label>
       <div class="row"><label>Pages (optional)<input id="spages" placeholder="e.g. 347-357"></label><button class="b primary" id="sread" disabled>Read</button></div>
       <div class="bar"><i id="sbar"></i></div><div class="msg" id="smsg"></div>
     </div>
-    <div class="card"><h2>Read today</h2>
+    <div class="card"><h2>Read today <span class="tag">balance printouts</span></h2>
       <p class="note" style="margin:0">Individual Weight Variation Record (balance printout): batch, serial, interval, side, balance, limits, n, average, min, max, SD and every individual weight.</p>
       <h2 style="margin-top:14px">How a value is trusted</h2>
       <p class="note" style="margin:0">The individual weights must reproduce the printed n, min, max, range, average and SD; Min %/Max % must follow; the printed result must agree with the limits; the limits must be the average or standard weight ± 5 / 7.5 / 10 %; serial numbers must rise with time. Records that fail any check need a person to compare them with the page before they can be accepted.</p></div>
@@ -162,7 +243,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
   <div id="sresult" hidden style="display:grid;gap:12px">
     <div class="card"><div class="row">
       <label>Your name (recorded as verifier)<input id="sby" required></label>
-      <button class="b primary" id="sacceptAll">Accept all records that passed every check</button>
+      <button class="b go" id="sacceptAll">Accept all records that passed every check</button>
       <button class="b" id="scsv">Download accepted records (CSV)</button>
     </div><div class="msg" id="sdecide"></div></div>
     <div class="card" style="overflow:auto"><table class="recs" id="srecs"></table></div>
@@ -205,7 +286,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
     <tr><td>MES long data, Report info</td><td>The source rows, and which file (SHA-256) they came from.</td></tr></table></div>
 </section>
 </main>
-<footer class="in">AdigiPQR <span id="ver"></span> · Data preparation for QA review, not a validated computer system: verify values against the batch record before use in an APQR.</footer>
+<footer><div class="in"><span><svg class="logo" width="18" height="18" aria-hidden="true"><use href="#logo"/></svg>AdigiPQR <span id="ver"></span></span><span>Runs entirely in your browser · no data leaves this computer</span><span>Data preparation for QA review, not a validated computer system: verify values against the batch record before use in an APQR.</span></div></footer>
 
 <script>
   (function () {
