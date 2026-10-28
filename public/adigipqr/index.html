@@ -204,7 +204,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
   <div class="steps" id="apqrSteps">
     <div><b>Export from PAS-X</b>Material + period, read-only, CSV.</div>
     <div><b>Drop it here</b>Batches, CPPs and trends at a glance.</div>
-    <div><b>Get QA's workbook</b>QA's own format, every value traced.</div>
+    <div><b>Drop QA's workbook</b>Curated APQR in QA's exact layout.</div>
   </div>
   <label class="drop" id="drop">
     <input type="file" id="file" accept=".csv,.txt,.xlsx">
@@ -225,16 +225,17 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       <label class="m-batch" hidden style="flex:1 1 340px">Batch numbers (comma, space or one per line)<textarea id="fBatches" rows="2" placeholder="2105013021, 2105013022"></textarea></label>
       <button class="b" id="apply">Apply</button>
       <span style="flex:1"></span>
-      <button class="b go" id="dl">Download APQR Excel</button>
+      <button class="b" id="dl" title="Every PAS-X stage, step and parameter as columns, with Cpk and trends - not QA's layout">PAS-X overview (.xlsx)</button>
     </div><div class="note" id="period" style="margin-top:8px"></div></div>
 
     <div class="card" id="fillCard" style="display:grid;gap:12px">
-      <div><h2 style="margin:0">Fill QA's official workbook <span class="tag">QA format</span></h2>
-      <p class="note" style="margin:6px 0 0">Running file or empty template. New batches added, empty cells filled, nothing QA typed is overwritten. A report sheet traces every value.</p></div>
+      <div><h2 style="margin:0">Curated APQR in QA's exact layout <span class="tag">QA format</span></h2>
+      <p class="note" style="margin:6px 0 0">Drop QA's APQR workbook for this product. Values are written only where the PAS-X source agrees with QA's own values for earlier batches; everything else stays for QA, with the reason in the report sheet.</p></div>
       <label class="drop" id="tdrop"><input type="file" id="tfile" accept=".xlsx">
         <strong>Drop QA's APQR workbook (.xlsx)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="tchip">No file yet.</span></label>
-      <div class="row" style="align-items:center"><label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="tYellow"> Leave yellow (LIMS / Tantra) columns to QA</label>
-        <span style="flex:1"></span><button class="b go" id="tdl" disabled>Fill &amp; download</button></div>
+      <div class="row" style="align-items:center"><label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="tOnly" checked> New workbook with only the batches selected above</label>
+        <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="tYellow"> Leave yellow (LIMS / Tantra) columns to QA</label>
+        <span style="flex:1"></span><button class="b go" id="tdl" disabled>Download curated APQR</button></div>
       <div class="row" style="align-items:center;margin-top:-4px"><button class="b" id="exTpl">Use the example QA workbook</button><span class="note">empty template, invented product</span></div>
       <div class="msg" id="tmsg"></div>
       <div id="tres" hidden class="scroll" style="max-height:none"><table id="tsum"></table></div>
@@ -366,11 +367,11 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       "vendor/exceljs.min.js?v=7e49da6858",
       "vendor/jszip.min.js?v=7f839b2d46",
       "vendor/tesseract/tesseract.min.js?v=000c27d9cd",
-      "app/core.js?v=9bed64121f",
+      "app/core.js?v=eef8fa3794",
       "app/ocr.js?v=0a9472933d",
-      "app/compare.js?v=5bae6074b6",
+      "app/compare.js?v=7345181400",
       "app/worker.js?v=c53214a1de",
-      "app/ui.js?v=0ae0e57474"
+      "app/ui.js?v=4a2d707029"
     ];
     files.forEach(function (src) {
       var s = document.createElement("script");

@@ -465,7 +465,8 @@
   $("tdl").onclick = async function () {
     if (!S.tpl || !S.model) return;
     var btn = this; btn.disabled = true; msg("tmsg", "");
-    var p = progress("Filling QA's workbook", [["open", "Opening QA's workbook"], ["fill", "Adding batches · filling empty cells"],
+    var only = $("tOnly").checked;
+    var p = progress(only ? "Curated APQR in QA's layout" : "Filling QA's workbook", [["open", "Opening QA's workbook"], ["fill", "Learning from QA's values · filling cells"],
       ["report", "Writing the fill report sheet"], ["zip", "Compressing the .xlsx"], ["save", "Saving to Downloads"]]);
     try {
       var sel = S.sel, req = sel.byBatch ? "batch numbers: " + sel.want.join(", ") : "material " + (sel.mat || "all") + ", manufactured " + (sel.from || "any") + " to " + (sel.to || "any");
@@ -473,17 +474,19 @@
         ["Generated", new Date().toISOString()], ["Tool", "AdigiPQR web app v" + C.VERSION + " (processed in the browser, nothing uploaded)"],
         ["Status", "Prepared from the PAS-X MES execution record for QA review. Verify against the batch record before use in the APQR."]];
       var tb = S.tpl.buffer.slice(0);
-      var res = await job("fill", { buf: tb, opts: { leaveYellow: $("tYellow").checked, info: info } }, [tb]);
+      var res = await job("fill", { buf: tb, opts: { leaveYellow: $("tYellow").checked, onlyRequested: only, info: info } }, [tb]);
       p.step("save");
       save(new Blob([res.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
-        S.tpl.name.replace(/\.xlsx$/i, "") + "_filled_" + stamp() + ".xlsx");
+        S.tpl.name.replace(/\.xlsx$/i, "") + (only ? "_curated_" : "_filled_") + stamp() + ".xlsx");
       var cnt = {}; res.report.forEach(function (r) { cnt[r.STATUS] = (cnt[r.STATUS] || 0) + 1; });
       var T = window.AdigiCompare.STATUS_TEXT, notes = res.report.filter(function (r) { return !r.CELL; });
       $("tsum").innerHTML = "<tr><th>Result</th><th class=\"n\">Cells</th><th>Meaning</th></tr>" + Object.keys(T).filter(function (k) { return cnt[k]; }).map(function (k) {
         return '<tr class="' + (k === "AMBIGUOUS" ? "amb" : "") + '"><td>' + esc(k) + '</td><td class="n">' + cnt[k] + "</td><td>" + esc(T[k]) + "</td></tr>";
       }).join("") + notes.map(function (r) { return '<tr><td>' + esc(r.SHEET || "–") + "</td><td></td><td>" + esc(r.STATUS + ": " + r.SOURCE) + "</td></tr>"; }).join("");
       $("tres").hidden = false;
-      msg("tmsg", (cnt.FILLED || 0) + " values written. Every one is traced in the last sheet, 'AdigiPQR fill report'.", "ok");
+      var learned = res.report.filter(function (r) { return r.STATUS === "FILLED" && /learned:/.test(r.SOURCE); }).length;
+      msg("tmsg", (cnt.FILLED || 0) + " values written" + (learned ? ", " + learned + " of them from sources proven against QA's own values" : "") +
+        ". Every value is traced in the sheet 'AdigiPQR fill report'" + (learned ? "; the proven sources are in 'AdigiPQR mapping'." : "."), "ok");
       await p.done((cnt.FILLED || 0).toLocaleString("en-IN") + " values written");
     } catch (e) { p.fail("Could not fill the workbook: " + e.message); msg("tmsg", "Could not fill the workbook: " + e.message, "err"); }
     btn.disabled = false;

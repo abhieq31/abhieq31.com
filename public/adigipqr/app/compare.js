@@ -102,7 +102,7 @@
   var PART_HINTS = [["amlo", "amlo"], ["valsartan", "vals"], ["lot-i ", "lot.?i\\b"], ["lot-ii", "lot.?ii"]];
   var EQUIP_STAGE = [["dispens", "dispens"], ["lubrication", "lub|blend"], ["blend", "blend|lub"], ["compression", "compress"], ["coating", "coat"], ["granulation", "roll|compact|granul"], ["capsul", "capsul|encapsul|fill"], ["packing", "pack|blister"]];
   var EQUIP_TOKEN = new RegExp("(?:[A-Z]{2}/\\d{2})?/[A-Z]{2,5}\\d{2,3}\\b", "g");
-  var STATUS_TEXT = {"FILLED": "written from PAS-X", "KEPT": "QA had already typed a value: left as it was", "LEFT_FOR_QA": "QA's own field, LIMS sheet or yellow column", "NOT_IN_MES": "not recorded in this PAS-X export", "AMBIGUOUS": "several PAS-X readings could be meant: left for QA", "NO_MAPPING_RULE": "column not mapped yet: left for QA", "OTHER_EQUIPMENT": "column of another machine than the batch was made on: left empty", "SHEET_SKIPPED": "sheet not filled", "NOTHING_FILLED": "check these batches: no value was written for them"};
+  var STATUS_TEXT = {"FILLED": "written from PAS-X", "KEPT": "QA had already typed a value: left as it was", "LEFT_FOR_QA": "QA's own field, LIMS sheet or yellow column", "NOT_IN_MES": "not recorded in this PAS-X export", "AMBIGUOUS": "several PAS-X readings could be meant: left for QA", "NO_MAPPING_RULE": "column not mapped yet: left for QA", "OTHER_EQUIPMENT": "column of another machine than the batch was made on: left empty", "QA_LEAVES_EMPTY": "QA leaves this column empty (all reference batches): left empty", "NOT_FROM_PASX": "QA's values for the reference batches come from elsewhere (no PAS-X value reproduces them): left for QA", "SHEET_SKIPPED": "sheet not filled", "NOTHING_FILLED": "check these batches: no value was written for them"};
   var STOP = ["of", "the", "and", "in", "at", "to", "for", "by", "no", "min", "max", "ave", "avg", "nlt", "nmt", "between"];
   var RX = {};
   function rx(p) { return RX[p] || (RX[p] = new RegExp(p)); }
@@ -458,6 +458,189 @@
     });
   }
 
+
+  /* ---------------------------------------------------------------- QA's layout, only the requested batches (= qamap) */
+  function startKey(t) {                          // MFG_START -> 'YYYY-MM-DD HH:MM' or null (= qamap._start_key)
+    var m = s(t).trim().match(/^(\d{2})[-/](\d{2})[-/](\d{4})(?:\D+(\d{2}):(\d{2}))?/);
+    if (m) return m[3] + "-" + m[2] + "-" + m[1] + " " + (m[4] || "00") + ":" + (m[5] || "00");
+    m = s(t).trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:\D+(\d{2}):(\d{2}))?/);
+    return m ? m[1] + "-" + m[2] + "-" + m[3] + " " + (m[4] || "00") + ":" + (m[5] || "00") : null;
+  }
+  function isFormula(v) { return typeof v === "string" && v.charAt(0) === "="; }
+  function clearBatches(wb, layouts) {             // every typed value of a batch row goes; formulas, formats, headers stay
+    wb.worksheets.forEach(function (ws) {
+      var lay = layouts[ws.name];
+      if (!lay) return;
+      ws.eachRow({ includeEmpty: false }, function (row, r) {
+        if (r < lay.first) return;
+        row.eachCell({ includeEmpty: false }, function (cell) {
+          if (cell.type === 1) return;
+          var v = raw(cell);
+          if (v !== null && v !== undefined && !isFormula(v)) cell.value = null;
+        });
+      });
+    });
+  }
+  function trim(wb, layouts) {                     // rows below the last batch go; serial numbers 1..n
+    var lasts = [];                                // every sheet's last batch row first: links must not meet a shortened master
+    wb.worksheets.forEach(function (ws) {
+      var lay = layouts[ws.name];
+      if (!lay) return;
+      var last = lay.first - 1, n = 0, max = ws.rowCount;
+      for (var r = lay.first; r <= max; r++) {
+        var v = resolve(wb, ws, addr(r, lay.bcol));
+        if (v !== null && v !== undefined && BATCH_RE.test(str(v).trim())) {
+          last = r; n++;
+          if (lay.sr && !isFormula(raw(ws.getCell(r, 1)))) ws.getCell(r, 1).value = n;
+        }
+      }
+      lasts.push([ws, last]);
+    });
+    // ExcelJS spliceRows leaves trailing rows in place: drop them from the sheet's row list (vendored, pinned ExcelJS)
+    lasts.forEach(function (x) { if (x[0]._rows.length > x[1]) x[0]._rows.length = x[1]; });
+  }
+
+  /* ---------------------------------------------------------------- learned mapping (= qamap.learn) */
+  var MAP_SHEET = "AdigiPQR mapping", REPORT_SHEET = "AdigiPQR fill report";
+  var MAP_COLS = ["Sheet", "QA column", "Stat", "Step code path", "Parameter", "Value", "Factor", "Agreed", "Reference batches"];
+  var FIELDS = ["READING_MIN", "READING_MAX", "READING_AVG", "INDIVIDUAL_MIN", "INDIVIDUAL_MAX", "INDIVIDUAL_AVG"];
+  var AGG = ["min", "max", "mean"], LEARN_MIN_RATE = 0.8, LEARN_MIN_N = 3, SEP = "\u0001";
+  function cmpArr(a, b) { for (var i = 0; i < Math.min(a.length, b.length); i++) { if (a[i] < b[i]) return -1; if (a[i] > b[i]) return 1; } return a.length - b.length; }
+  function family(code, param) { return [code.split(" > ")[0] + " > *", bare(param.replace(/LHS/g, "").replace(/RHS/g, ""))]; }
+  function series(by) {
+    var ser = new Map(), fam = new Map(), keyOf = {};
+    Object.keys(by).sort().forEach(function (b) {
+      by[b].forEach(function (m) {
+        var code = s(m.row.STEP_CODE_PATH), param = m.APQR_PARAMETER;
+        FIELDS.forEach(function (f) {
+          var v = num(m.row[f]);
+          if (v === null) return;
+          var k = [code, param, f], ks = k.join(SEP);
+          if (!ser.has(ks)) { ser.set(ks, {}); keyOf[ks] = k; }
+          var sv = ser.get(ks); if (!(b in sv)) sv[b] = v;
+          var fk = family(code, param).concat([f]), fks = fk.join(SEP);
+          if (!fam.has(fks)) fam.set(fks, { key: fk, members: {} });
+          fam.get(fks).members[ks] = k;
+        });
+      });
+    });
+    var fams = Array.from(fam.values()).sort(function (a, b) { return cmpArr(a.key, b.key); });
+    fams.forEach(function (fa) {
+      var ks = Object.keys(fa.members).map(function (x) { return fa.members[x]; }).sort(cmpArr);
+      if (ks.length < 2) return;
+      var bs = {};
+      ks.forEach(function (k) { Object.keys(ser.get(k.join(SEP))).forEach(function (b) { bs[b] = 1; }); });
+      var vals = {};
+      Object.keys(bs).sort().forEach(function (b) {
+        vals[b] = ks.filter(function (k) { return b in ser.get(k.join(SEP)); }).map(function (k) { return ser.get(k.join(SEP))[b]; });
+      });
+      AGG.forEach(function (agg) {
+        var k = [fa.key[0], fa.key[1] + " [" + agg + "]", fa.key[2]], o = {};
+        Object.keys(vals).forEach(function (b) {
+          var v = vals[b];
+          o[b] = agg === "min" ? Math.min.apply(null, v) : agg === "max" ? Math.max.apply(null, v) : v.reduce(function (x, y) { return x + y; }, 0) / v.length;
+        });
+        ser.set(k.join(SEP), o); keyOf[k.join(SEP)] = k;
+      });
+    });
+    return { ser: ser, keyOf: keyOf };
+  }
+  function reference(wb, layouts, by) {            // QA's numbers for batches also in the export, + batches per sheet
+    var ref = {}, keys = [], nref = {};
+    wb.worksheets.forEach(function (ws) {
+      var lay = layouts[ws.name];
+      if (!lay || SHEETS.indexOf(sheetKind(ws.name)) < 0) return;
+      for (var r = lay.first; r <= ws.rowCount; r++) {
+        var b = resolve(wb, ws, addr(r, lay.bcol));
+        b = b !== null && b !== undefined ? str(b).trim() : "";
+        if (!(b in by)) continue;
+        nref[ws.name] = (nref[ws.name] || 0) + 1;
+        lay.cols.forEach(function (col) {
+          var k = [ws.name, col.parts.join(" > "), col.stat], ks = k.join(SEP);
+          if (!(ks in ref)) { ref[ks] = {}; keys.push(k); }
+          var v = at(ws, r, col.c, "raw"), x = isFormula(v) ? null : toNum(v);
+          if (x !== null && !blank(v)) { if (!(b in ref[ks])) ref[ks][b] = x; }
+          else if (!blank(v)) { if (!(b in ref[ks])) ref[ks][b] = null; }   // text: QA fills it
+        });
+      }
+    });
+    return { ref: ref, keys: keys.sort(cmpArr), nref: nref };
+  }
+  function learn(wb, layouts, by) {
+    var R = reference(wb, layouts, by), out = {};
+    if (!R.keys.length) return out;
+    var S = series(by), first = Object.keys(by).sort()[0];
+    var keys = Object.keys(S.keyOf).map(function (x) { return S.keyOf[x]; })
+      .sort(function (a, b) { var x = /\]$/.test(a[1]), y = /\]$/.test(b[1]); return x !== y ? (x ? 1 : -1) : cmpArr(a, b); });
+    R.keys.forEach(function (k) {
+      var sheet = k[0], column = k[1], stat = k[2], allv = R.ref[k.join(SEP)];
+      if ((R.nref[sheet] || 0) < LEARN_MIN_N) return;
+      var lk = lookup(sheet, column, stat, by[first]);
+      if (lk.kind === "H" || lk.kind === "Q" || lk.kind === "E" || lk.status === "QA_FIELD" || lk.status === "OTHER_EQUIPMENT") return;
+      var bs = Object.keys(allv);
+      if (!bs.length) { out[k.join(SEP)] = { key: k, source: null, agreed: 0, of: R.nref[sheet], empty: true }; return; }
+      var qv = {}; bs.forEach(function (b) { if (allv[b] !== null) qv[b] = allv[b]; });
+      var qb = Object.keys(qv);
+      if (qb.length < LEARN_MIN_N) return;
+      var best = [0, null];
+      keys.forEach(function (sk) {
+        var sv = S.ser.get(sk.join(SEP));
+        [1, 1 / 60, 60].forEach(function (fac) {
+          var n = 0;
+          for (var i = 0; i < qb.length; i++) { var b = qb[i]; if (b in sv && closeLearn(sv[b] * fac, qv[b])) n++; }
+          if (n > best[0]) best = [n, sk.concat([fac])];
+        });
+      });
+      var ok = best[0] >= LEARN_MIN_N && best[0] >= LEARN_MIN_RATE * qb.length;
+      out[k.join(SEP)] = { key: k, source: ok ? best[1] : null, agreed: ok ? best[0] : 0, of: qb.length, empty: false };
+    });
+    return out;
+  }
+  // stricter than close for choosing a source: QA's rounding passes, a constant series cannot stand in for varying values
+  function closeLearn(a, b) { return Math.abs(a - b) <= Math.max(0.011, Math.abs(b) * 0.001); }
+  function learnedValue(src, b) {
+    var code = src[0], param = src[1], field = src[2], fac = src[3], v;
+    if (/ > \*$/.test(code)) {
+      var i = param.lastIndexOf(" ["), base = param.slice(0, i), agg = param.slice(i + 2, -1);
+      var vals = b.filter(function (m) { var f = family(s(m.row.STEP_CODE_PATH), m.APQR_PARAMETER); return f[0] === code && f[1] === base; })
+        .map(function (m) { return num(m.row[field]); }).filter(function (x) { return x !== null; });
+      if (!vals.length) return null;
+      v = agg === "min" ? Math.min.apply(null, vals) : agg === "max" ? Math.max.apply(null, vals) : vals.reduce(function (x, y) { return x + y; }, 0) / vals.length;
+    } else {
+      var hit = b.filter(function (m) { return s(m.row.STEP_CODE_PATH) === code && m.APQR_PARAMETER === param && num(m.row[field]) !== null; })[0];
+      if (!hit) return null;
+      v = num(hit.row[field]);
+    }
+    return v * fac;
+  }
+  function readMapping(wb) {
+    var ws = wb.getWorksheet(MAP_SHEET), out = {};
+    if (!ws) return out;
+    ws.eachRow({ includeEmpty: false }, function (row, r) {
+      if (r === 1) return;
+      var v = []; for (var c = 1; c <= 9; c++) v.push(cached(row.getCell(c)));
+      if (!v[0]) return;
+      var k = [s(v[0]), s(v[1]), s(v[2])], empty = v[5] === "QA leaves empty";
+      out[k.join(SEP)] = { key: k, source: v[3] && !empty ? [s(v[3]), s(v[4]), s(v[5]), Number(v[6])] : null,
+        agreed: Number(v[7] || 0), of: Number(v[8] || 0), empty: empty };
+    });
+    return out;
+  }
+  function writeMapping(wb, mapping) {
+    var old = wb.getWorksheet(MAP_SHEET);
+    if (old) wb.removeWorksheet(old.id);
+    var ws = wb.addWorksheet(MAP_SHEET);
+    ws.addRow(MAP_COLS).eachCell(function (c) { c.font = { bold: true }; });
+    Object.keys(mapping).map(function (k) { return mapping[k]; }).sort(function (a, b) { return cmpArr(a.key, b.key); }).forEach(function (e) {
+      ws.addRow(e.key.concat(e.source ? e.source : ["", "", e.empty ? "QA leaves empty" : "", ""]).concat([e.agreed, e.of]));
+    });
+    [22, 60, 7, 44, 32, 16, 9, 8, 10].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+  }
+  function srcText(e) {
+    var f = e.source[3], unit = f < 1 ? " [seconds -> minutes]" : f > 1 ? " [minutes -> seconds]" : "";
+    return e.source[0] + " > " + e.source[1] + " (" + e.source[2].toLowerCase() + ")" + unit + "; learned: agreed with QA on " + e.agreed + " of " + e.of + " reference batches";
+  }
+
   /* ---------------------------------------------------------------- 4. fill QA's workbook (= qamap.fill) */
   var MASTERS = ["BMR detail", "BPR Details"];
   var REF = /^=?\(?\s*(?:'([^']+)'|([A-Za-z0-9_.]+))!\$?([A-Z]{1,3})\$?(\d+)\s*\)?$/;
@@ -473,14 +656,29 @@
   }
   function fill(wb, mesRows, opts) {
     opts = opts || {};
-    var by = prepare(mesRows), order = uniq(mesRows.map(function (r) { return s(r.BATCH_NO).replace(/\.0$/, ""); })), report = [];
+    var by = prepare(mesRows), report = [], first = {};
+    // new batches in manufacturing order: first start, then batch number (= pivot.in_batch_order and the web app)
+    mesRows.forEach(function (r) {
+      var b = s(r.BATCH_NO).replace(/\.0$/, ""), k = startKey(r.MFG_START);
+      if (!(b in first)) first[b] = k;
+      else if (k && (first[b] === null || k < first[b])) first[b] = k;
+    });
+    var order = Object.keys(first).sort(function (a, b) { var x = first[a] || "9999", y = first[b] || "9999"; return x < y ? -1 : x > y ? 1 : a < b ? -1 : a > b ? 1 : 0; });
+    var layouts = {};
+    wb.worksheets.forEach(function (ws) { if (ws.name !== MAP_SHEET && ws.name !== REPORT_SHEET) layouts[ws.name] = layout(ws, "raw"); });
+    var mapping = readMapping(wb);
+    if (opts.learn !== false) {                    // QA's own values for batches that are also in the export
+      var lr = learn(wb, layouts, by);
+      Object.keys(lr).forEach(function (k) { if (!(k in mapping) || lr[k].of >= mapping[k].of) mapping[k] = lr[k]; });
+    }
+    if (opts.onlyRequested) clearBatches(wb, layouts);
     var note = function (sheet, status, text) { report.push({ SHEET: sheet, CELL: "", BATCH_NO: "", COLUMN: "", STAT: "", VALUE: null, STATUS: status, SOURCE: text }); };
     var masters = MASTERS.map(function (k) { return wb.worksheets.filter(function (w) { return sheetKind(w.name) === k; })[0]; }).filter(Boolean);
     var sheets = masters.concat(wb.worksheets.filter(function (w) { return masters.indexOf(w) < 0; }));
     sheets.forEach(function (ws) {
       var kindW = sheetKind(ws.name), mapped = SHEETS.indexOf(kindW) >= 0, lims = kindW === "LIMS";
       if (!(mapped || lims)) return;
-      var lay = layout(ws, "raw");
+      var lay = layouts[ws.name];
       if (!lay) return;
       if (lay.packing) { note(ws.name, "SHEET_SKIPPED", "rows are packing batch numbers; the PAS-X export lists manufacturing batches"); return; }
       if (lims && !mapped) { note(ws.name, "LEFT_FOR_QA", "LIMS results: the batch rows come from the linked batch column"); return; }
@@ -524,6 +722,14 @@
           report.push(rec);
           if (cur !== null && String(cur).trim() !== "") { rec.STATUS = "KEPT"; rec.VALUE = cur; return; }
           if (opts.leaveYellow && col.yellow) { rec.STATUS = "LEFT_FOR_QA"; rec.SOURCE = "yellow column (LIMS / Tantra)"; return; }
+          var learned = mapping[[ws.name, column, col.stat].join(SEP)];
+          if (learned) {
+            if (learned.empty) { rec.STATUS = "QA_LEAVES_EMPTY"; rec.SOURCE = "QA left it empty for all " + learned.of + " reference batches"; return; }
+            if (!learned.source) { rec.STATUS = "NOT_FROM_PASX"; rec.SOURCE = "no PAS-X value reproduces QA's values (" + learned.of + " reference batches)"; return; }
+            var lv = learnedValue(learned.source, b);
+            if (lv === null) { rec.STATUS = "NOT_IN_MES"; return; }
+            cell.value = lv; rec.VALUE = lv; rec.STATUS = "FILLED"; rec.SOURCE = srcText(learned); return;
+          }
           var lk = lookup(ws.name, column, col.stat, b);
           if (lk.status) { rec.STATUS = lk.status === "QA_FIELD" ? "LEFT_FOR_QA" : lk.status; return; }
           var several = lk.kind !== "E" && lk.kind !== "H" && uniq(lk.vals.map(r4)).length > 1;
@@ -536,6 +742,8 @@
         });
       });
     });
+    if (opts.onlyRequested) trim(wb, layouts);
+    if (Object.keys(mapping).length) writeMapping(wb, mapping);
     var missing = order.filter(function (bno) { return !report.some(function (x) { return x.BATCH_NO === bno && x.STATUS === "FILLED"; }); });
     if (missing.length) note("", "NOTHING_FILLED", "batches without any value written: " + missing.join(", "));
     // linked cells (='BMR detail'!B6) keep their cached result: set it to what they now point to, so the file shows the
@@ -556,7 +764,7 @@
   }
   var REPORT_COLS = ["SHEET", "CELL", "BATCH_NO", "COLUMN", "STAT", "VALUE", "STATUS", "SOURCE"];
   function addReport(wb, report, info) {
-    var name = "AdigiPQR fill report", old = wb.getWorksheet(name);
+    var name = REPORT_SHEET, old = wb.getWorksheet(name);
     if (old) wb.removeWorksheet(old.id);
     var ws = wb.addWorksheet(name);
     (info || []).forEach(function (r) { var row = ws.addRow(r); row.getCell(1).font = { bold: true }; });
