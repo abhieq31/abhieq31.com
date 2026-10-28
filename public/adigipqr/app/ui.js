@@ -78,7 +78,10 @@
     $("pnote").textContent = "Working in this browser tab · nothing is uploaded" + (W ? "" : " · in-page mode (slower)"); $("pnote").className = "";
     list.innerHTML = steps.map(function (st) { return '<li><span class="d"></span><span>' + esc(st[1]) + "<small></small></span><span class=\"t\"></span></li>"; }).join("");
     var li = list.children, sec = function (ms) { return (ms / 1000).toFixed(1) + " s"; };
-    timer = setInterval(function () { $("ptime").textContent = sec(performance.now() - t0); }, 100);
+    timer = setInterval(function () {
+      var el = performance.now() - t0; $("ptime").textContent = sec(el);
+      if (el > 20000 && $("pclose").hidden) { $("pclose").textContent = "Cancel"; $("pclose").hidden = false; }   // never stuck
+    }, 100);
     function goTo(i, detail) {
       var now = performance.now();
       for (var k = Math.max(cur, 0); k < i; k++) { li[k].className = "done"; if (k === cur) li[k].querySelector(".t").textContent = sec(now - since); }
@@ -100,13 +103,20 @@
       },
       fail: function (text) {
         clearInterval(timer); $("prog").className = "prog bad"; $("pnote").textContent = text; $("pnote").className = "err";
-        $("pclose").hidden = false; P = null;
+        $("pclose").textContent = "Close"; $("pclose").hidden = false; P = null;
       }
     };
     P = api;
     return api;
   }
-  $("pclose").onclick = function () { $("prog").hidden = true; };
+  $("pclose").onclick = function () {
+    if (P && W) {                                // Cancel: stop the worker, start a clean one (the export has to be dropped again)
+      W.terminate(); W = null; wReady = null; S.loaded = false;
+      Object.keys(jobs).forEach(function (k) { jobs[k].rej(new Error("cancelled")); delete jobs[k]; });
+      setTimeout(worker, 0);
+    }
+    $("prog").hidden = true;
+  };
   // warm up the worker while the user picks a file (file://: load its bundle first)
   if (location.protocol === "file:") {
     var wb = document.createElement("script"); wb.src = "app/worker-bundle.js";

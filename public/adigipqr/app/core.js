@@ -4,7 +4,7 @@
  */
 (function (global) {
   "use strict";
-  var VERSION = "2.4.0";
+  var VERSION = "2.5.0";
   var IPC_RE = /in.?process|ipc|check|record|parameter|monitor/i;
   var PHASE_RE = /^(PRE.?LUB\w*|LUB\w*|LOT\w*|PART\w*|PREHEAT\w*|PRE\w*IPC|SPRAY\w*|DRY\w*|COOL\w*)$/i;
   var SEC_RE = /^(s|sec|secs|second|seconds)$/i;

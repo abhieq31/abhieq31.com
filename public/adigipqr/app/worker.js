@@ -17,18 +17,88 @@ async function sha256(buf) {
   } catch (e) { return null; }
 }
 
-async function readTable(buf, name) {
-  if (/\.xlsx$/i.test(name)) {
-    var wb = new ExcelJS.Workbook(); await wb.xlsx.load(buf);
-    var ws = wb.worksheets[0], head = [], out = [];
-    ws.eachRow({ includeEmpty: false }, function (row, i) {
-      var vals = []; for (var c = 1; c <= ws.columnCount; c++) { var v = row.getCell(c).value;
-        if (v && typeof v === "object") v = "result" in v ? v.result : v.text !== undefined ? v.text : v instanceof Date ? v.toISOString() : v;
-        vals.push(v === null || v === undefined ? "" : String(v)); }
-      if (i === 1) head = vals; else { var o = {}; head.forEach(function (h, j) { o[h] = vals[j]; }); out.push(o); }
+/* .xlsx export -> rows, read straight from the sheet XML (JSZip + a scanner): the export is one flat table, so the
+   full ExcelJS object model (seconds per 10,000 rows, minutes on a slow PC) is not needed. Same rules as Excel:
+   shared strings, inline strings, numbers in shortest form, date-formatted cells as DD-MM-YYYY HH:MM (= the SQL). */
+function unxml(t) {
+  return t.indexOf("&") < 0 && t.indexOf("_x") < 0 ? t : t
+    .replace(/_x([0-9A-Fa-f]{4})_/g, function (m, h) { return String.fromCharCode(parseInt(h, 16)); })
+    .replace(/&(lt|gt|amp|quot|apos|#\d+|#x[0-9A-Fa-f]+);/g, function (m, e) {
+      return e === "lt" ? "<" : e === "gt" ? ">" : e === "amp" ? "&" : e === "quot" ? '"' : e === "apos" ? "'" :
+        String.fromCodePoint(e.charAt(1) === "x" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10));
     });
-    return { rows: out, cols: head };
+}
+function texts(xml) {                            // all <t> runs of one string item (rich text), phonetic runs left out
+  var out = "", re = /<t(?:\s[^>]*)?>([\s\S]*?)<\/t>|<t(?:\s[^>]*)?\/>/g, m;
+  xml = xml.replace(/<rPh\b[\s\S]*?<\/rPh>/g, "");
+  while ((m = re.exec(xml))) out += m[1] || "";
+  return unxml(out);
+}
+function colIndex(ref) { var n = 0; for (var i = 0; i < ref.length; i++) { var c = ref.charCodeAt(i); if (c < 65) break; n = n * 26 + c - 64; } return n - 1; }
+var DATE_IDS = { 14: 1, 15: 1, 16: 1, 17: 1, 18: 1, 19: 1, 20: 1, 21: 1, 22: 1, 45: 1, 46: 1, 47: 1 };
+function dateStyles(xml) {                       // style index -> 'd' (date), 'dt' (date + time), 't' (time) for date formats
+  var fmts = {}, m, re = /<numFmt\b[^>]*numFmtId="(\d+)"[^>]*formatCode="([^"]*)"/g;
+  while ((m = re.exec(xml))) fmts[m[1]] = unxml(m[2]);
+  var xfs = (xml.match(/<cellXfs\b[\s\S]*?<\/cellXfs>/) || [""])[0], out = [], i = 0, x = /<xf\b([^>]*)/g;
+  while ((m = x.exec(xfs))) {
+    var id = (m[1].match(/numFmtId="(\d+)"/) || [0, "0"])[1], code = (fmts[id] || "").replace(/"[^"]*"|\[[^\]]*\]|\\./g, "").toLowerCase();
+    var isDate = DATE_IDS[id] || /[dy]/.test(code) || (/m/.test(code) && /[dyh]/.test(code)), isTime = /h|s/.test(code) || id === "22" || id === "20" || id === "21";
+    out[i++] = isDate ? (isTime ? "dt" : "d") : isTime && /h/.test(code) ? "t" : "";
   }
+  return out;
+}
+function serialDate(v, kind) {                   // Excel serial (1900 system) -> 'DD-MM-YYYY HH:MM'
+  var ms = Math.round((v - 25569) * 86400000), d = new Date(ms), p = function (n) { return (n < 10 ? "0" : "") + n; };
+  var dd = p(d.getUTCDate()) + "-" + p(d.getUTCMonth() + 1) + "-" + d.getUTCFullYear(), tt = p(d.getUTCHours()) + ":" + p(d.getUTCMinutes());
+  return kind === "d" ? dd : kind === "t" ? tt : dd + " " + tt;
+}
+async function readXlsx(buf) {
+  var zip = await JSZip.loadAsync(buf), file = function (n) { var f = zip.file(n); return f ? f.async("string") : Promise.resolve(""); };
+  var target = "xl/worksheets/sheet1.xml";
+  var wbx = await file("xl/workbook.xml"), rels = await file("xl/_rels/workbook.xml.rels");
+  var rid = (wbx.match(/<sheet\b[^>]*r:id="([^"]+)"/) || [])[1];
+  if (rid) {
+    var rel = (rels.match(new RegExp('<Relationship\\b[^>]*Id="' + rid + '"[^>]*>')) || [""])[0], tg = (rel.match(/Target="([^"]+)"/) || [])[1];
+    if (tg) target = tg.charAt(0) === "/" ? tg.slice(1) : "xl/" + tg.replace(/^\.\//, "");
+  }
+  var sst = [], sx = await file("xl/sharedStrings.xml"), m, re = /<si>([\s\S]*?)<\/si>|<si\/>/g;
+  while ((m = re.exec(sx))) sst.push(m[1] ? texts(m[1]) : "");
+  var styles = dateStyles(await file("xl/styles.xml")), xml = await file(target);
+  if (!xml) throw new Error("No worksheet found in the .xlsx file.");
+  var rows = [], cur = null, cell = /<row\b[^>]*?(\/)?>|<\/row>|<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, next = 0;
+  while ((m = cell.exec(xml))) {
+    var tag = m[0];
+    if (tag.charCodeAt(1) === 114) { cur = []; rows.push(cur); next = 0; continue; }       // <row
+    if (tag.charCodeAt(1) === 47) { cur = null; continue; }                                 // </row>
+    if (!cur) continue;
+    var at = m[2] || "", body = m[3] || "", r = at.match(/\br="([A-Z]+)/), ci = r ? colIndex(r[1]) : next;
+    next = ci + 1;
+    if (!body) continue;
+    var t = (at.match(/\bt="(\w+)"/) || [])[1], v, vm;
+    if (t === "inlineStr") v = texts(body);
+    else {
+      vm = body.match(/<v>([\s\S]*?)<\/v>/); if (!vm) continue;
+      v = vm[1];
+      if (t === "s") v = sst[+v];
+      else if (t === "str" || t === "e") v = unxml(v);
+      else if (t !== "b") {
+        var st = styles[+((at.match(/\bs="(\d+)"/) || [0, 0])[1])], n = +v;
+        v = st && isFinite(n) ? serialDate(n, st) : isFinite(n) ? String(n) : v;
+      }
+    }
+    cur[ci] = v;
+  }
+  var head = (rows.shift() || []).map(function (h) { return h === undefined ? "" : String(h).trim(); }), out = new Array(rows.length);
+  for (var i = 0; i < rows.length; i++) {
+    var o = {}, rw = rows[i];
+    for (var j = 0; j < head.length; j++) if (head[j]) o[head[j]] = rw[j] === undefined ? "" : rw[j];
+    out[i] = o;
+  }
+  return { rows: out.filter(function (o) { for (var k in o) if (o[k] !== "") return true; return false; }), cols: head.filter(Boolean) };
+}
+
+async function readTable(buf, name) {
+  if (/\.xlsx$/i.test(name)) return readXlsx(buf);
   var res = Papa.parse(new TextDecoder("utf-8").decode(buf), { header: true, skipEmptyLines: true, dynamicTyping: false });
   return { rows: res.data, cols: res.meta.fields };
 }
