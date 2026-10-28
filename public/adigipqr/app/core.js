@@ -4,7 +4,7 @@
  */
 (function (global) {
   "use strict";
-  var VERSION = "2.1.0";
+  var VERSION = "2.2.0";
   var IPC_RE = /in.?process|ipc|check|record|parameter|monitor/i;
   var PHASE_RE = /^(PRE.?LUB\w*|LUB\w*|LOT\w*|PART\w*|PREHEAT\w*|PRE\w*IPC|SPRAY\w*|DRY\w*|COOL\w*)$/i;
   var SEC_RE = /^(s|sec|secs|second|seconds)$/i;
@@ -151,7 +151,7 @@
       var single = perOrder.every(function (b) { return Math.abs(per[b].mx - per[b].mn) < 1e-9; });
       var r0 = g.rows[0];
       var meta = { key: k, stage: g.stage, section: section, param: g.param, uom: uom, lo: lo, hi: hi, target: tg,
-        cls: s(r0.PARAMETER_CLASS), batch_min: mins, batch_max: maxs };
+        cls: s(r0.PARAMETER_CLASS), critical: s(r0.PARAMETER_CRITICALITY), batch_min: mins, batch_max: maxs };
       if (single) cols.push(Col([g.stage, section, p3, lim, "Value"], mins, oos, false, meta));
       else {
         cols.push(Col([g.stage, section, p3, lim, "Min"], mins, oos, false, meta));
@@ -302,8 +302,106 @@
     return out;
   }
 
+  /* ---------------------------------------------------------------- criticality (= adigipqr/cpp.py) */
+  var CPP = "CPP", CPP_TYPICAL = "CPP (typical - confirm)", CQA = "CQA (IPQC)";
+  var CPP_RULES = [
+    ["", "uniformity|weight variation|average (weight|mass)|av\\w*\\.? (weight|mass)|(mass|weight) of \\d+|group weight|net weight|fill weight", "CQA (IPQC)", "tablet/capsule weight"],
+    ["", "hardness|crushing|breaking", "CQA (IPQC)", "hardness"],
+    ["", "thickness|length|width|diameter", "CQA (IPQC)", "dimensions"],
+    ["", "disintegrat|\\bdt\\b", "CQA (IPQC)", "disintegration"],
+    ["", "friab", "CQA (IPQC)", "friability"],
+    ["", "weight gain", "CQA (IPQC)", "coating weight gain"],
+    ["", "\\blod\\b|loss on drying|moisture|water content", "CQA (IPQC)", "drying end point (LOD)"],
+    ["", "assay|dissolution|content uniformity|related substance|impurit", "CQA (IPQC)", "analytical CQA"],
+    ["", "bulk density|tapped density|particle size|sieve analysis|\\bpsd\\b", "CQA (IPQC)", "granule properties"],
+    ["", "binder.*(add|rate|time|qty|quantity)|(water|solution|solvent).*(add|rate|qty|quantity)|addition (time|rate)", "CPP (typical - confirm)", "binder / solvent addition"],
+    ["", "wet mix|kneading|massing", "CPP (typical - confirm)", "wet massing"],
+    ["granul|rmg|mixer", "(impeller|chopper).*(amp|current|power|kw|load)|power consumption|end ?point", "CPP (typical - confirm)", "granulation end point"],
+    ["granul|rmg|mixer", "impeller|chopper", "CPP (typical - confirm)", "impeller / chopper speed"],
+    ["dry|fbd|fbe|fluid", "inlet.*temp", "CPP (typical - confirm)", "drying inlet air temperature"],
+    ["dry|fbd|fbe|fluid", "(product|bed|outlet|exhaust).*temp", "CPP (typical - confirm)", "product temperature during drying"],
+    ["dry|fbd|fbe|fluid", "drying time|^time", "CPP (typical - confirm)", "drying time"],
+    ["roll|compact|chilson", "hydraulic|roll\\w*.*(pressure|force)", "CPP (typical - confirm)", "roller pressure"],
+    ["roll|compact|chilson", "gap", "CPP (typical - confirm)", "roller gap"],
+    ["roll|compact|chilson", "roll\\w*.*(speed|rpm)|roller unit", "CPP (typical - confirm)", "roller speed"],
+    ["roll|compact|chilson", "feed|cvf|screw", "CPP (typical - confirm)", "feed screw speed"],
+    ["blend|lubric|\\bbin\\b|mix", "time|revolution", "CPP (typical - confirm)", "blending time"],
+    ["blend|lubric|\\bbin\\b|mix", "speed|rpm", "CPP (typical - confirm)", "blender speed"],
+    ["compress|tablet", "pre.?compression", "CPP (typical - confirm)", "pre-compression force"],
+    ["compress|tablet", "compression force|main.*force|\\bmcf\\b", "CPP (typical - confirm)", "main compression force"],
+    ["compress|tablet", "turret|press speed|machine speed|tablets per", "CPP (typical - confirm)", "press speed"],
+    ["compress|tablet", "feeder|paddle", "CPP (typical - confirm)", "feeder speed"],
+    ["compress|tablet", "fill(ing)? depth|depth of fill", "CPP (typical - confirm)", "fill depth"],
+    ["coat", "inlet.*air.*(flow|volume|cfm)|air ?flow", "CPP (typical - confirm)", "inlet air flow"],
+    ["coat", "inlet.*temp", "CPP (typical - confirm)", "inlet air temperature"],
+    ["coat", "(bed|product).*temp", "CPP (typical - confirm)", "product (bed) temperature"],
+    ["coat", "exhaust.*temp", "CPP (typical - confirm)", "exhaust temperature (product temperature proxy)"],
+    ["coat", "spray rate|peristaltic|pump", "CPP (typical - confirm)", "spray rate"],
+    ["coat", "atomi[sz]|pattern|spray.*air.*pressure", "CPP (typical - confirm)", "atomisation / pattern air"],
+    ["coat", "pan|drum", "CPP (typical - confirm)", "pan speed"],
+    ["coat", "distance|gun to bed|bed to gun", "CPP (typical - confirm)", "gun-to-bed distance"],
+    ["capsul|encapsul", "tamp|dosing|dosator|machine speed|capsules per", "CPP (typical - confirm)", "capsule filling settings"],
+    ["pack|blister|strip|bottl|alu", "seal\\w*.*(temp|pressure|time)|dwell|forming.*temp|induction", "CPP (typical - confirm)", "sealing temperature / pressure"]
+  ];
+  var CPP_RX = CPP_RULES.map(function (r) { return [r[0] ? new RegExp(r[0], "i") : null, new RegExp(r[1], "i"), r[2], r[3]]; });
+  var NON_CRITICAL = ["", "0", "false", "low", "minor", "n", "nan", "no", "non critical", "non-critical", "noncritical", "none", "normal", "not critical", "null", "uncritical"];
+  var CRITICAL_WORD = /crit|cpp|cqa|high|major|key/i, NOT_WORD = /\b(non|not|un)/i;
+  var CPP_NOTE = "Criticality: from QA's CPP list when given, else the PAS-X MBR criticality flag, else what is typical for the unit operation (oral solid dose risk assessment, ICH Q8). \"typical - confirm\" must be confirmed against the product's CPP list / process validation report.";
+  function cnorm(t) { return String(t === null || t === undefined ? "" : t).toLowerCase().replace(/[^a-z0-9%.]+/g, " ").trim().split(/\s+/).filter(Boolean).join(" "); }
+  function parseCppList(text) {
+    var out = [];
+    String(text || "").split(/\r\n|\r|\n/).forEach(function (line) {
+      line = line.split("#")[0].trim();
+      if (!line) return;
+      var i = line.lastIndexOf(":");
+      out.push([line, cnorm(i < 0 ? "" : line.slice(0, i)), cnorm(i < 0 ? line : line.slice(i + 1))]);
+    });
+    return out;
+  }
+  function cppBaseline(params) {
+    var vals = params.map(function (p) { return cnorm(p.critical); });
+    var coded = vals.filter(function (v) { return NON_CRITICAL.indexOf(v) < 0; });
+    if (!coded.length) return [false, null];
+    if (coded.length < vals.length) return [true, null];
+    var n = {}, order = [], best = null;                  // = Counter.most_common: ties go to the first seen
+    coded.forEach(function (v) { if (!n[v]) { n[v] = 0; order.push(v); } n[v]++; });
+    order.forEach(function (v) { if (best === null || n[v] > n[best]) best = v; });
+    return [true, best];
+  }
+  function mbrFlag(value, baseline) {
+    var v = cnorm(value);
+    if (NON_CRITICAL.indexOf(v) >= 0) return false;
+    if (CRITICAL_WORD.test(v)) return !NOT_WORD.test(v);
+    return v !== baseline;
+  }
+  function classify(params, cppList) {
+    var entries = Array.isArray(cppList) ? cppList : parseCppList(cppList), base = cppBaseline(params);
+    params.forEach(function (p) {
+      var where = [p.sheet, p.stage, p.section].map(function (v) { return v === null || v === undefined ? "" : String(v); }).join(" ");
+      var name = String(p.param || ""), cls = p.cls || "";
+      var ipqc = cls === "IPQC (multi-value)" || cls === "CQA (analytical)", other = cls === "Environment (Temp/RH)" || cls === "Yield & Rejection";
+      var crit = "", basis = "";
+      for (var i = 0; i < entries.length && !crit; i++) {
+        var e = entries[i];
+        if (e[2] && cnorm(name).indexOf(e[2]) >= 0 && (!e[1] || cnorm(where).indexOf(e[1]) >= 0)) { crit = ipqc ? CQA : CPP; basis = 'QA CPP list: "' + e[0] + '"'; }
+      }
+      if (!crit && base[0] && mbrFlag(p.critical, base[1])) { crit = ipqc ? CQA : CPP; basis = "PAS-X MBR criticality = " + p.critical; }
+      if (!crit && !other) {
+        for (var j = 0; j < CPP_RX.length; j++) {
+          var r = CPP_RX[j];
+          if (r[1].test(name) && (!r[0] || r[0].test(where))) {
+            crit = r[2]; basis = (r[2] === CQA ? "in-process quality attribute: " : "typical for the unit operation: ") + r[3]; break;
+          }
+        }
+      }
+      if (!crit && ipqc) { crit = CQA; basis = "in-process check in PAS-X"; }
+      p.crit = crit; p.crit_basis = basis;
+    });
+    return params;
+  }
+
   /* one entry per trended parameter (= extras.parameters) */
-  function parameters(model) {
+  function parameters(model, cppList) {
     var res = [], seen = {};
     model.sheets.forEach(function (item) {
       if (item.kind !== "grid") return;
@@ -316,10 +414,10 @@
         res.push({ sheet: item.name, stage: m.stage, section: m.section, param: m.param, uom: m.uom, lo: m.lo, hi: m.hi,
           batches: order, values: x, cap: cap, chart: ch, out: order.filter(function (b) { return c.oos[b]; }),
           nelson: ch ? nelson(x, ch.cl, ch.sigma, [1, 2, 3]) : [], label: c.r[4] === "Value" ? "Value" : "Batch average",
-          batchMin: m.batch_min, batchMax: m.batch_max });
+          batchMin: m.batch_min, batchMax: m.batch_max, cls: m.cls, critical: m.critical });
       });
     });
-    return res;
+    return classify(res, cppList);
   }
   function note(p) {
     var n = p.cap.n, cpk = p.cap.cpk;
@@ -333,6 +431,7 @@
   var HEAD_FILL = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDEBF0" } };
   var OOS_FILL = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8CBAD" } };
   var RED = OOS_FILL, AMBER = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCE4B6" } };
+  var CRIT_FILL = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC6E8D5" } }, CRIT_TYP_FILL = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6F4EC" } };
   var THIN = { style: "thin", color: { argb: "FFB7C4CC" } }, BORDER = { top: THIN, left: THIN, bottom: THIN, right: THIN };
   var CENTER = { wrapText: true, horizontal: "center", vertical: "middle" };
 
@@ -402,24 +501,25 @@
 
   function writeSummary(wb, params) {
     var ws = wb.addWorksheet("Summary");
-    var head = ["Sheet", "Stage", "Step", "Parameter", "UOM", "LSL", "USL", "Batches", "Min", "Max", "Mean", "SD",
-      "Cpk", "Ppk", "Capability", "Batches outside limit", "Trend signals", "Plotted value"];
+    var head = ["Sheet", "Stage", "Step", "Parameter", "Criticality", "Criticality basis", "UOM", "LSL", "USL", "Batches",
+      "Min", "Max", "Mean", "SD", "Cpk", "Ppk", "Capability", "Batches outside limit", "Trend signals", "Plotted value"];
     ws.addRow(head);
     params.forEach(function (p) {
       var c = p.cap;
       var sig = p.nelson.map(function (f) {
         return "R" + f.rule + " " + NELSON[f.rule].toLowerCase() + ": " + f.points.map(function (i) { return p.batches[i]; }).join(", ");
       }).join("; ");
-      var row = [p.sheet, p.stage, p.section, p.param, p.uom, p.lo, p.hi, c.n,
+      var row = [p.sheet, p.stage, p.section, p.param, p.crit, p.crit_basis, p.uom, p.lo, p.hi, c.n,
         p.values.length ? Math.min.apply(null, p.values) : null, p.values.length ? Math.max.apply(null, p.values) : null,
         c.mean, c.sd, c.cpk, c.ppk, note(p), p.out.join(", "), sig, p.label].map(function (v) { return v === null ? undefined : r4(v); });
       var added = ws.addRow(row);
-      if (p.out.length) added.getCell(16).fill = RED;
-      if (c.cpk !== null && c.n >= 6) { if (c.cpk < 1.0) added.getCell(13).fill = RED; else if (c.cpk < 1.33) added.getCell(13).fill = AMBER; }
-      if (sig) added.getCell(17).fill = AMBER;
+      if (p.crit) added.getCell(5).fill = p.crit === CPP ? CRIT_FILL : CRIT_TYP_FILL;
+      if (p.out.length) added.getCell(18).fill = RED;
+      if (c.cpk !== null && c.n >= 6) { if (c.cpk < 1.0) added.getCell(15).fill = RED; else if (c.cpk < 1.33) added.getCell(15).fill = AMBER; }
+      if (sig) added.getCell(19).fill = AMBER;
     });
     ws.getRow(1).eachCell(function (c) { c.font = { bold: true }; c.fill = HEAD_FILL; c.border = BORDER; c.alignment = { wrapText: true, vertical: "middle" }; });
-    [12, 22, 26, 28, 8, 9, 9, 8, 9, 9, 9, 9, 7, 7, 18, 22, 40, 13].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+    [12, 22, 26, 28, 20, 34, 8, 9, 9, 8, 9, 9, 9, 9, 7, 7, 18, 22, 40, 13].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
     ws.views = [{ state: "frozen", xSplit: 4, ySplit: 1 }];
     ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: Math.max(1, params.length + 1), column: head.length } };
     var nr = params.length + 3;
@@ -427,6 +527,8 @@
       "Ppk uses the overall standard deviation. Below 6 batches the indices are not interpreted. " +
       "Trend signals: R1 point beyond 3 sigma, R2 nine points on one side of the mean, R3 six points steadily rising or falling.";
     ws.getCell(nr, 1).font = { italic: true, size: 9 };
+    ws.getCell(nr + 1, 1).value = CPP_NOTE;
+    ws.getCell(nr + 1, 1).font = { italic: true, size: 9 };
   }
 
   /* Trend data sheet + chart specs; the charts themselves are injected into the xlsx afterwards (injectCharts) */
@@ -522,7 +624,7 @@
   /* Complete workbook: QA sheets, Summary, Trends, Trend data, [Scanned records], MES long data, Report info */
   async function workbook(rows, opts) {
     opts = opts || {};
-    var model = build(rows, opts.pivot), params = parameters(model);
+    var model = build(rows, opts.pivot), params = parameters(model, opts.cppList);
     var wb = new ExcelJS.Workbook();
     wb.creator = "AdigiPQR";
     writeQaSheets(wb, model);
@@ -562,5 +664,6 @@
 
   global.AdigiCore = { VERSION: VERSION, normalise: normalise, build: build, parameters: parameters, workbook: workbook,
     stats: { imr: imr, capability: capability, nelson: nelson, mean: mean, sd: sd }, note: note, s: s, num: num, fmt: fmt,
-    pyRound: pyRound, NELSON: NELSON, asCell: asCell };
+    pyRound: pyRound, NELSON: NELSON, asCell: asCell, classify: classify, parseCppList: parseCppList,
+    CPP_RULES: CPP_RULES, CPP: CPP, CPP_TYPICAL: CPP_TYPICAL, CQA: CQA };
 })(typeof window !== "undefined" ? window : this);

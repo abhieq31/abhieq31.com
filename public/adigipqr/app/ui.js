@@ -69,7 +69,7 @@
       $("fFrom").value = ""; $("fTo").value = "";
       $("filechip").textContent = file.name + " · " + rows.length + " rows" + (S.sha ? " · SHA-256 " + S.sha.slice(0, 12) + "…" : "");
       msg("msg", ""); $("loaded").hidden = false;
-      recompute();
+      loadCpp(); recompute();
     } catch (e) { msg("msg", "Not loaded: " + e.message, "err"); }
   }
   $("file").addEventListener("change", function (e) { if (e.target.files[0]) load(e.target.files[0]); e.target.value = ""; });
@@ -112,6 +112,10 @@
     return { rows: all, mat: mat, from: from, to: to, undated: Object.keys(undated), first: first, nScan: scanRows.length };
   }
   function opt() { return { merge: $("oMerge").checked, minutes: $("oMin").checked, inspection: $("oInsp").checked }; }
+  // QA's CPP list for the product: typed once per material, remembered in this browser (product knowledge, no batch data)
+  function cppKey() { return "apqr_cpp_" + ($("fMat").value || "all"); }
+  function cppText() { return $("oCpp").value; }
+  function loadCpp() { $("oCpp").value = store(cppKey()) || ""; }
 
   function recompute() {
     if (!S.all) return;
@@ -124,7 +128,7 @@
     }
     ["secBatches", "secParams", "secCharts", "secSheets"].forEach(function (id) { $(id).hidden = false; });
     $("dl").disabled = false; msg("msg", "");
-    S.model = C.build(sel.rows, opt()); S.params = C.parameters(S.model);
+    S.model = C.build(sel.rows, opt()); S.params = C.parameters(S.model, cppText());
     var starts = S.model.batches.map(function (b) { return sel.first[b]; }).filter(Boolean).sort();
     $("period").textContent = (starts.length ? "Manufactured " + starts[0].slice(0, 10) + " → " + starts[starts.length - 1].slice(0, 10) + ". " : "") +
       (sel.undated.length ? sel.undated.length + " batch(es) without a start date were left out by the date filter. " : "") +
@@ -134,7 +138,9 @@
     if ($("secSheets").open) renderSheet();
   }
   ["apply"].forEach(function (id) { $(id).onclick = recompute; });
+  $("fMat").addEventListener("change", loadCpp);
   ["fMat", "oMerge", "oMin", "oInsp"].forEach(function (id) { $(id).addEventListener("change", recompute); });
+  $("oCpp").addEventListener("change", function () { store(cppKey(), this.value); recompute(); });
   $("secCharts").addEventListener("toggle", function () { if (this.open) renderCharts(); });
   $("secSheets").addEventListener("toggle", function () { if (this.open) renderSheet(); });
   $("who").value = store("apqr_by") || "";
@@ -145,7 +151,10 @@
     var p = S.params, oosRows = S.model.sheets[S.model.sheets.length - 1].rows.length;
     var weak = p.filter(function (x) { return x.cap.cpk !== null && x.cap.n >= 6 && x.cap.cpk < 1.33; }).length;
     var sig = p.filter(function (x) { return x.nelson.length; }).length;
+    var cpps = p.filter(function (x) { return x.crit === C.CPP || x.crit === C.CPP_TYPICAL; });
+    var sure = cpps.filter(function (x) { return x.crit === C.CPP; }).length, cqa = p.filter(function (x) { return x.crit === C.CQA; }).length;
     var tiles = [[S.model.batches.length, "batches"], [p.length, "parameters trended"],
+      [cpps.length, "CPPs identified (" + sure + " from MBR flag / QA list)"], [cqa, "in-process CQAs (IPQC)"],
       [oosRows, "values outside MBR limit", oosRows ? "warn" : ""], [weak, "parameters with Cpk < 1.33", weak ? "amber" : ""],
       [sig, "parameters with trend signals", sig ? "amber" : ""], [S.model.sheets.filter(function (s) { return s.kind === "grid"; }).length, "QA stage sheets"]];
     $("kpis").innerHTML = tiles.map(function (t) { return '<div class="kpi ' + (t[2] || "") + '"><b>' + t[0] + "</b><span>" + esc(t[1]) + "</span></div>"; }).join("");
@@ -164,6 +173,7 @@
     $("secBatches").querySelector("summary span").textContent = "Batches (" + S.model.batches.length + ")";
   }
   function pFilter(p, mode) {
+    if (mode === "crit") return !!p.crit;
     if (mode === "out") return p.out.length > 0;
     if (mode === "cpk") return p.cap.cpk !== null && p.cap.n >= 6 && p.cap.cpk < 1.33;
     if (mode === "sig" || mode === "flag") return p.nelson.length > 0 || p.out.length > 0 || (mode === "flag" && p.cap.cpk !== null && p.cap.n >= 6 && p.cap.cpk < 1.33);
@@ -175,21 +185,27 @@
       return '<span class="pill amb" title="' + esc(C.NELSON[r]) + '">R' + r + (c[r] > 1 ? " ×" + c[r] : "") + "</span>";
     }).join(" ");
   }
+  function critPill(p) {
+    if (!p.crit) return "";
+    var t = p.crit === C.CPP ? ["ok", "CPP"] : p.crit === C.CPP_TYPICAL ? ["typ", "CPP?"] : ["cqa", "CQA"];
+    return '<span class="pill ' + t[0] + '" title="' + esc(p.crit + " – " + p.crit_basis) + '">' + t[1] + "</span>";
+  }
   function verdictPill(p) {
     var n = C.note(p), cls = n === "capable" ? "ok" : n === "not capable" ? "bad" : n === "marginal" ? "amb" : "";
     return '<span class="pill ' + cls + '">' + esc(n) + "</span>";
   }
   function renderParams() {
     var list = S.params.filter(function (p) { return pFilter(p, S.pf); });
-    var h = '<tr><th>Sheet</th><th>Stage</th><th>Parameter</th><th class="n">n</th><th class="n">LSL</th><th class="n">USL</th><th class="n">Mean</th><th class="n">SD</th>' +
+    var h = '<tr><th>Sheet</th><th>Stage</th><th>Parameter</th><th>Criticality</th><th class="n">n</th><th class="n">LSL</th><th class="n">USL</th><th class="n">Mean</th><th class="n">SD</th>' +
       '<th class="n">Cpk</th><th class="n">Ppk</th><th>Capability</th><th>Outside limit</th><th>Signals</th></tr>';
     $("tParams").innerHTML = h + list.map(function (p) {
       return '<tr class="' + (p.out.length ? "bad" : p.nelson.length ? "amb" : "") + '"><td>' + esc(p.sheet) + "</td><td>" + esc(p.stage) + "<br><span class=note>" + esc(p.section) +
-        "</span></td><td>" + esc(p.param) + (p.uom ? ' <span class="note">[' + esc(p.uom) + "]</span>" : "") + '</td><td class="n">' + p.cap.n +
+        "</span></td><td>" + esc(p.param) + (p.uom ? ' <span class="note">[' + esc(p.uom) + "]</span>" : "") + "</td><td>" + critPill(p) +
+        (p.crit ? '<br><span class="note">' + esc(p.crit_basis) + "</span>" : "") + '</td><td class="n">' + p.cap.n +
         '</td><td class="n">' + f(p.lo) + '</td><td class="n">' + f(p.hi) + '</td><td class="n">' + f(p.cap.mean) + '</td><td class="n">' + f(p.cap.sd) +
         '</td><td class="n">' + f(p.cap.cpk, 2) + '</td><td class="n">' + f(p.cap.ppk, 2) + "</td><td>" + verdictPill(p) + '</td><td class="mono">' + esc(p.out.join(", ")) +
         "</td><td>" + rulePills(p) + "</td></tr>";
-    }).join("") + (list.length ? "" : '<tr><td colspan="13" class="note">No parameter matches this filter.</td></tr>');
+    }).join("") + (list.length ? "" : '<tr><td colspan="14" class="note">No parameter matches this filter.</td></tr>');
     $("secParams").querySelector("summary span").textContent = "Parameters, capability and trend signals (" + S.params.length + ")";
   }
   chips("pFilter", function (v) { S.pf = v; renderParams(); });
@@ -233,7 +249,7 @@
     var list = S.params.filter(function (p) { return p.values.length >= 2 && pFilter(p, S.cf); });
     $("charts").innerHTML = list.map(function (p) {
       var c = p.cap;
-      return '<div class="chart"><h3>' + esc(p.param) + (p.uom ? " [" + esc(p.uom) + "]" : "") + '</h3><div class="note">' + esc(p.sheet + " · " + p.stage) + "</div>" + chartSvg(p) +
+      return '<div class="chart"><h3>' + critPill(p) + " " + esc(p.param) + (p.uom ? " [" + esc(p.uom) + "]" : "") + '</h3><div class="note">' + esc(p.sheet + " · " + p.stage) + "</div>" + chartSvg(p) +
         "<p>n " + c.n + " · mean " + f(c.mean) + " · Cpk " + f(c.cpk, 2) + " · Ppk " + f(c.ppk, 2) + " · " + verdictPill(p) +
         (p.out.length ? ' · <span class="pill bad">' + p.out.length + " outside limit</span>" : "") +
         " " + rulePills(p) + "</p></div>";
@@ -272,6 +288,63 @@
     $("tSheet").innerHTML = h;
   }
 
+  /* ------------------------------------------------------------------ check against QA's manual workbook */
+  async function loadQa(file) {
+    if (!S.all) { msg("qmsg", "Load the PAS-X export first.", "err"); return; }
+    msg("qmsg", "Comparing…"); $("qres").hidden = true;
+    try {
+      var res = await window.AdigiCompare.run(await file.arrayBuffer(), S.all, "");
+      S.qa = res; S.qaFile = file.name; S.qf = "";
+      $("qchip").textContent = file.name + " · " + res.qaValues + " values in " + res.qaBatches.length + " batch(es)";
+      if (!res.results.length) {
+        msg("qmsg", res.qaBatches.length ? "None of QA's batches are in this export (" + res.missing.slice(0, 5).join(", ") + (res.missing.length > 5 ? " …" : "") + "). Export the same batches from PAS-X." :
+          "No batch rows found. Expected sheets: " + window.AdigiCompare.SHEETS.join(", ") + ", with 10-digit batch numbers in one of the first four columns.", "err");
+        return;
+      }
+      msg("qmsg", res.missing.length ? res.missing.length + " of QA's batches are not in this export and were skipped: " + res.missing.slice(0, 8).join(", ") + (res.missing.length > 8 ? " …" : "") : "", res.missing.length ? "err" : "");
+      renderQa(); $("qres").hidden = false;
+    } catch (e) { msg("qmsg", "Could not read the workbook: " + e.message, "err"); }
+  }
+  function renderQa() {
+    var r = S.qa.results, count = function (f) { return r.filter(f).length; };
+    var typed = r.filter(function (x) { return x.STATUS !== "QA_BLANK"; });
+    var match = count(function (x) { return /^MATCH/.test(x.STATUS); }), mis = count(function (x) { return x.STATUS === "MISMATCH"; });
+    var comparable = typed.filter(function (x) { return /^MATCH|MISMATCH|AMBIGUOUS/.test(x.STATUS); }).length;
+    var tiles = [[typed.length, "values typed by QA"], [match, "match PAS-X" + (comparable ? " (" + Math.round(100 * match / comparable) + " % of comparable)" : "")],
+      [mis, "mismatch", mis ? "warn" : ""], [count(function (x) { return x.STATUS === "AMBIGUOUS"; }), "ambiguous", "amber"],
+      [count(function (x) { return x.STATUS === "NOT_IN_MES"; }), "not recorded in PAS-X"], [count(function (x) { return x.STATUS === "NO_MAPPING_RULE"; }), "columns without a mapping rule"]];
+    $("qkpis").innerHTML = tiles.map(function (t) { return '<div class="kpi ' + (t[2] && t[0] ? t[2] : "") + '"><b>' + t[0] + "</b><span>" + esc(t[1]) + "</span></div>"; }).join("");
+    var sts = [], sheets = [];
+    r.forEach(function (x) { if (sts.indexOf(x.STATUS) < 0) sts.push(x.STATUS); if (sheets.indexOf(x.QA_SHEET) < 0) sheets.push(x.QA_SHEET); });
+    sts.sort();
+    $("qsum").innerHTML = "<tr><th>QA sheet</th>" + sts.map(function (st) { return '<th class="n">' + esc(st) + "</th>"; }).join("") + "</tr>" +
+      sheets.map(function (sh) {
+        return "<tr><td>" + esc(sh) + "</td>" + sts.map(function (st) { var n = count(function (x) { return x.QA_SHEET === sh && x.STATUS === st; }); return '<td class="n">' + (n || "") + "</td>"; }).join("") + "</tr>";
+      }).join("");
+    renderQaDetail();
+  }
+  function renderQaDetail() {
+    var list = S.qa.results.filter(function (x) { return S.qf ? x.STATUS === S.qf : x.STATUS !== "QA_BLANK"; }), more = list.length > 500;
+    $("qdet").innerHTML = '<tr><th>Batch</th><th>QA sheet › column</th><th>Stat</th><th class="n">QA value</th><th class="n">PAS-X value</th><th>Status</th><th>PAS-X stage › step › parameter</th></tr>' +
+      list.slice(0, 500).map(function (x) {
+        var cls = x.STATUS === "MISMATCH" ? "bad" : x.STATUS === "AMBIGUOUS" ? "amb" : "";
+        var qv = x.QA_VALUE instanceof Date ? x.QA_VALUE.toISOString().slice(11, 19) : x.QA_VALUE;
+        return '<tr class="' + cls + '"><td class="mono">' + esc(x.BATCH_NO) + "</td><td>" + esc(x.QA_SHEET + " › " + x.QA_COLUMN) + "</td><td>" + esc(x.STAT) +
+          '</td><td class="n">' + esc(qv === null || qv === undefined ? "" : qv) + '</td><td class="n">' + esc(typeof x.MES_VALUE === "number" ? f(x.MES_VALUE, 4) : x.MES_VALUE || "") +
+          "</td><td>" + esc(x.STATUS) + "</td><td>" + esc([x.MES_STAGE, x.MES_STEP, x.MES_PARAMETER].filter(Boolean).join(" › ")) + "</td></tr>";
+      }).join("") + (more ? '<tr><td colspan="7" class="note">First 500 of ' + list.length + " shown – the download has all.</td></tr>" : "") +
+      (list.length ? "" : '<tr><td colspan="7" class="note">Nothing in this group.</td></tr>');
+  }
+  $("qfile").addEventListener("change", function (e) { if (e.target.files[0]) loadQa(e.target.files[0]); e.target.value = ""; });
+  dropZone($("qdrop"), loadQa);
+  chips("qFilter", function (v) { S.qf = v; renderQaDetail(); });
+  $("qdl").onclick = async function () {
+    if (!S.qa) return;
+    var buf = await window.AdigiCompare.workbook(S.qa, [["QA workbook", S.qaFile], ["PAS-X export", S.file + (S.sha ? " · SHA-256 " + S.sha : "")],
+      ["Generated", new Date().toISOString()], ["Tool", "AdigiPQR web app v" + C.VERSION + " (processed in the browser, nothing uploaded)"]]);
+    save(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "APQR_check_vs_QA_" + stamp() + ".xlsx");
+  };
+
   /* ------------------------------------------------------------------ download */
   function stamp() { var d = new Date(), p = function (n) { return (n < 10 ? "0" : "") + n; }; return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()); }
   function save(blob, name) {
@@ -290,7 +363,9 @@
       ["Scanned records", scans.length ? scans.length + " accepted (sheet 'Scanned records')" : "none"],
       ["Options", "merge IPC=" + o.merge + "; minutes=" + o.minutes + "; inspection=" + o.inspection],
       ["Status", "Prepared from the PAS-X MES execution record for QA review. Verify against the batch record before use in the APQR."]]);
-    var res = await C.workbook(rows, { pivot: o, info: info, scans: scans });
+    var list = C.parseCppList(cppText());
+    if (list.length) info.splice(info.length - 1, 0, ["QA CPP list", list.map(function (e) { return e[0]; }).join("; ")]);
+    var res = await C.workbook(rows, { pivot: o, info: info, scans: scans, cppList: cppText() });
     save(new Blob([res.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), nameBase + "_" + stamp() + ".xlsx");
   }
   $("dl").onclick = async function () {

@@ -106,7 +106,7 @@ tbody tr:hover td { background: var(--blue-soft); }
 td.n, th.n { text-align: right; font-family: var(--mono); font-size: 12.5px; }
 tr.bad td { background: var(--warn-bg); } tr.amb td { background: var(--amber-bg); }
 .pill { display: inline-block; font-size: 12px; padding: 1px 9px; border-radius: 999px; background: var(--head); color: var(--muted); white-space: nowrap; }
-.pill.ok { background: var(--ok-bg); color: var(--ok-ink); } .pill.bad { background: var(--warn-bg); color: var(--warn-ink); } .pill.amb { background: var(--amber-bg); color: var(--amber-ink); }
+.pill.ok { background: var(--ok-bg); color: var(--ok-ink); } .pill.typ { background: var(--surface); color: var(--ok-ink); box-shadow: inset 0 0 0 1px var(--green); } .pill.cqa { background: var(--blue-soft); color: var(--blue); } .pill.bad { background: var(--warn-bg); color: var(--warn-ink); } .pill.amb { background: var(--amber-bg); color: var(--amber-ink); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; } .chips button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 4px 12px; font: 13px var(--font); cursor: pointer; }
 .chips button[aria-pressed="true"] { background: var(--blue); color: #fff; border-color: var(--blue); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chips button[aria-pressed="true"] { color: #04121f; } }
@@ -162,7 +162,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
     <li>This page is a set of static files. It has no upload function and there is no server-side program behind it that could receive a file.</li>
     <li>Everything — reading the export, building the Excel, OCR of scans — is done by JavaScript in this browser tab; the result is saved straight to your Downloads folder.</li>
     <li>The only network traffic is the page loading its own program files (and, on the scan tab, its OCR model). You can watch this in the browser: F12 → Network.</li>
-    <li>Closing or refreshing the tab erases the data. The browser keeps only your name (for the verifier field) and the OCR language model — no batch data, no scans.</li>
+    <li>Closing or refreshing the tab erases the data. The browser keeps only your name, the CPP lists you type in Options and the OCR language model — no batch data, no scans.</li>
     <li>For a plant PC without internet, the same page runs from a local folder: <a href="adigipqr-offline.zip" id="offlineZip">offline copy (.zip)</a>.</li></ul></details>
 </div></div>
 
@@ -199,21 +199,37 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 
     <details class="sec" id="secBatches"><summary><span>Batches</span></summary><div class="body"><div class="scroll"><table id="tBatches"></table></div></div></details>
     <details class="sec" id="secParams"><summary><span>Parameters, capability and trend signals</span></summary><div class="body">
-      <div class="chips" id="pFilter"><button data-f="" aria-pressed="true">All</button><button data-f="out" aria-pressed="false">Outside MBR limit</button>
+      <div class="chips" id="pFilter"><button data-f="" aria-pressed="true">All</button><button data-f="crit" aria-pressed="false">CPP &amp; CQA</button><button data-f="out" aria-pressed="false">Outside MBR limit</button>
       <button data-f="cpk" aria-pressed="false">Cpk below 1.33</button><button data-f="sig" aria-pressed="false">Trend signals</button></div>
       <div class="scroll"><table id="tParams"></table></div>
+      <p class="note"><b>Criticality</b>: <span class="pill ok">CPP</span> from QA's CPP list (Options) or the PAS-X MBR criticality flag; <span class="pill typ">CPP?</span> typical CPP of the unit operation – confirm against the product's CPP list / process validation report; <span class="pill cqa">CQA</span> in-process quality attribute (IPQC). The reason is shown under each label and written into the Summary sheet.</p>
       <p class="note">Cpk = min(USL − mean, mean − LSL) / 3σ with σ = average moving range / 1.128 (batch-to-batch); Ppk uses the overall SD. Not interpreted below 6 batches. Signals: R1 point beyond 3σ, R2 nine points on one side, R3 six points rising or falling.</p>
     </div></details>
     <details class="sec" id="secCharts"><summary><span>Trend charts</span></summary><div class="body">
-      <div class="chips" id="cFilter"><button data-f="" aria-pressed="true">All</button><button data-f="flag" aria-pressed="false">Only flagged</button></div>
+      <div class="chips" id="cFilter"><button data-f="" aria-pressed="true">All</button><button data-f="crit" aria-pressed="false">CPP &amp; CQA</button><button data-f="flag" aria-pressed="false">Only flagged</button></div>
       <div class="legend"><span><i style="border-color:var(--series)"></i>batch value</span><span><i style="border-color:var(--limit)"></i>MBR limit (LSL/USL)</span><span><i style="border-color:var(--ctl);border-top-style:dashed"></i>control limit (3σ)</span><span><i class="dot" style="background:var(--limit)"></i>outside limit</span><span><i class="dot" style="background:var(--flag)"></i>trend signal</span></div>
       <div class="charts" id="charts"></div></div></details>
     <details class="sec" id="secSheets"><summary><span>Preview of the QA sheets</span></summary><div class="body">
       <div class="sheettabs" id="sheetTabs"></div><div class="scroll"><table class="qa" id="tSheet"></table></div></div></details>
+    <details class="sec" id="secCheck"><summary><span>Check against QA's manual workbook</span></summary><div class="body">
+      <p class="note" style="margin:0">Drop the Excel workbook QA compiled by hand for the same batches. Every value QA typed is looked up in this PAS-X export and marked <b>MATCH</b>, <b>MISMATCH</b>, <b>NOT_IN_MES</b> (QA has it, the MBR does not record it), <b>AMBIGUOUS</b> (several MES readings could be meant) or <b>NO_MAPPING_RULE</b> (column not yet mapped). This is the acceptance test before QA relies on the generated workbook.</p>
+      <label class="drop" id="qdrop"><input type="file" id="qfile" accept=".xlsx">
+        <strong>Drop QA's APQR workbook (.xlsx)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="qchip">No file yet.</span></label>
+      <div class="msg" id="qmsg"></div>
+      <div id="qres" hidden style="display:grid;gap:12px">
+        <div class="kpis" id="qkpis"></div>
+        <div class="scroll"><table id="qsum"></table></div>
+        <div class="row"><div class="chips" id="qFilter"><button data-f="" aria-pressed="true">All compared</button><button data-f="MISMATCH" aria-pressed="false">Mismatch</button><button data-f="AMBIGUOUS" aria-pressed="false">Ambiguous</button><button data-f="NOT_IN_MES" aria-pressed="false">Not in MES</button><button data-f="NO_MAPPING_RULE" aria-pressed="false">No mapping rule</button></div>
+          <span style="flex:1"></span><button class="b" id="qdl">Download comparison (Excel)</button></div>
+        <div class="scroll"><table id="qdet"></table></div>
+      </div>
+    </div></details>
     <details class="sec"><summary><span>Options</span></summary><div class="body">
       <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="oMerge" checked> Merge repeated in-process checks of a stage into one Min / Max / Avg column (QA view)</label>
       <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="oMin" checked> Show times recorded in seconds as minutes</label>
       <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="oInsp"> Include the Inspection sheet</label>
+      <label>QA's CPP list for this product (optional; one parameter per line, "stage: parameter" to limit it to a stage; remembered in this browser per material)
+        <textarea id="oCpp" rows="5" placeholder="Compression: main compression force&#10;Compression: turret speed&#10;Granulation: impeller amperage&#10;Coating: bed temperature"></textarea></label>
       <label>Your name (written into Report info)<input id="who" placeholder="optional"></label>
     </div></details>
   </div>
@@ -297,6 +313,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       "vendor/tesseract/tesseract.min.js",
       "app/core.js",
       "app/ocr.js",
+      "app/compare.js",
       "app/ui.js"
     ];
     files.forEach(function (src) {
