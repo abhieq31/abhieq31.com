@@ -25,12 +25,6 @@
   show(["apqr", "scan", "sql", "guide"].indexOf(start) >= 0 && (start !== "sql" || window.ADIGI_SQL) ? start : "apqr");
 
   /* ------------------------------------------------------------------ file intake */
-  function parseStart(t) {
-    var m = String(t || "").trim().match(/^(\d{2})[-/](\d{2})[-/](\d{4})(?:\D+(\d{2}):(\d{2}))?/);
-    if (m) return m[3] + "-" + m[2] + "-" + m[1] + " " + (m[4] || "00") + ":" + (m[5] || "00");
-    m = String(t || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:\D+(\d{2}):(\d{2}))?/);
-    return m ? m[1] + "-" + m[2] + "-" + m[3] + " " + (m[4] || "00") + ":" + (m[5] || "00") : null;
-  }
   /* ------------------------------------------------------------------ background work + live pipeline
      Heavy work runs in a Web Worker (app/worker.js): the page stays responsive and shows each real step.
      Without workers (file://, old browser) the same jobs run in the page. */
@@ -42,8 +36,12 @@
         var all = Array.prototype.map.call(document.scripts, function (x) { return x.src; }).filter(Boolean);
         var src = all.filter(function (u) { return /app\/worker\.js/.test(u); })[0];
         var deps = all.filter(function (u) { return /vendor\/(papaparse|exceljs|jszip)\.min\.js|app\/(core|compare)\.js/.test(u); });
-        if (!src || !window.Worker || location.protocol === "file:") return res(null);
-        W = new Worker(src);
+        if (!window.Worker) return res(null);
+        if (location.protocol === "file:") {     // a double-clicked index.html: the worker comes from app/worker-bundle.js
+          if (!window.ADIGI_WORKER_CODE) return res(null);
+          W = new Worker(URL.createObjectURL(new Blob([window.ADIGI_WORKER_CODE], { type: "text/javascript" }))); deps = [];
+        } else if (!src) return res(null);
+        else W = new Worker(src);
         var t = setTimeout(function () { res(null); }, 20000);
         W.onmessage = function (e) {
           var d = e.data;
@@ -77,7 +75,7 @@
   function progress(title, steps) {
     var t0 = performance.now(), cur = -1, since = t0, timer, list = $("psteps");
     $("prog").className = "prog"; $("prog").hidden = false; $("ptitle").textContent = title; $("pclose").hidden = true;
-    $("pnote").textContent = "Working in this browser tab · nothing is uploaded"; $("pnote").className = "";
+    $("pnote").textContent = "Working in this browser tab · nothing is uploaded" + (W ? "" : " · in-page mode (slower)"); $("pnote").className = "";
     list.innerHTML = steps.map(function (st) { return '<li><span class="d"></span><span>' + esc(st[1]) + "<small></small></span><span class=\"t\"></span></li>"; }).join("");
     var li = list.children, sec = function (ms) { return (ms / 1000).toFixed(1) + " s"; };
     timer = setInterval(function () { $("ptime").textContent = sec(performance.now() - t0); }, 100);
@@ -109,7 +107,11 @@
     return api;
   }
   $("pclose").onclick = function () { $("prog").hidden = true; };
-  setTimeout(worker, 0);                          // warm up the worker while the user picks a file
+  // warm up the worker while the user picks a file (file://: load its bundle first)
+  if (location.protocol === "file:") {
+    var wb = document.createElement("script"); wb.src = "app/worker-bundle.js";
+    wb.onload = wb.onerror = function () { worker(); }; document.body.appendChild(wb);
+  } else setTimeout(worker, 0);
 
   var PARSE = [["read", "Reading the file"], ["hash", "SHA-256 fingerprint"], ["parse", "Parsing PAS-X rows"], ["norm", "Normalising columns & batch numbers"],
     ["model", "Pivoting into QA stages · Cpk · trend rules"], ["view", "Drawing the overview"]];
@@ -119,24 +121,21 @@
     try {
       p.step("read", file.name + " · " + (file.size / 1048576).toFixed(1) + " MB");
       var buf = await file.arrayBuffer();
-      var t = await job("parse", { buf: buf, name: file.name }, [buf]), rows = t.rows;
-      rows.sourceColumns = t.cols; S.sha = t.sha;
-      if (!rows.length) throw new Error("The file has no rows with a BATCH_NO.");
-      S.all = rows; S.file = file.name;
-      p.step("model", rows.length.toLocaleString("en-IN") + " rows");
-      await nextFrame();
-      var mats = {};
-      rows.forEach(function (r) { var m = C.s(r.MATERIAL_CODE); if (!mats[m]) mats[m] = C.s(r.PRODUCT_NAME); r._start = parseStart(r.MFG_START); });
+      var t = await job("parse", { buf: buf, name: file.name }, [buf]);
+      if (!t.n) throw new Error("The file has no rows with a BATCH_NO.");
+      S.loaded = true; S.n = t.n; S.sha = t.sha; S.file = file.name;
       var sel = $("fMat"); sel.innerHTML = "";
-      var keys = Object.keys(mats).sort();
+      var keys = Object.keys(t.mats).sort();
       if (keys.length > 1) sel.add(new Option("All materials (" + keys.length + ")", ""));
-      keys.forEach(function (m) { sel.add(new Option((m || "(none)") + (mats[m] ? " – " + mats[m] : ""), m)); });
+      keys.forEach(function (m) { sel.add(new Option((m || "(none)") + (t.mats[m] ? " – " + t.mats[m] : ""), m)); });
       $("fFrom").value = ""; $("fTo").value = "";
       if (S.mode === "batch" && !sel.querySelector('option[value=""]')) { sel.insertBefore(new Option("Any material", ""), sel.firstChild); sel.value = ""; }
-      $("filechip").textContent = file.name + " · " + rows.length + " rows" + (S.sha ? " · SHA-256 " + S.sha.slice(0, 12) + "…" : "");
-      $("loaded").hidden = false;
-      document.body.classList.add("has-data"); loadCpp(); recompute();
+      $("filechip").textContent = file.name + " · " + t.n + " rows" + (S.sha ? " · SHA-256 " + S.sha.slice(0, 12) + "…" : "");
+      loadCpp();
+      await recompute(true);
+      $("loaded").hidden = false; document.body.classList.add("has-data");
       p.step("view");
+      await nextFrame();
       await p.done(S.model ? S.model.batches.length + " batches · " + S.params.length + " parameters ready" : "Loaded");
     } catch (e) { p.fail("Not loaded: " + e.message); msg("msg", "Not loaded: " + e.message, "err"); }
   }
@@ -167,44 +166,13 @@
   }
 
   /* ------------------------------------------------------------------ selection */
-  function scanRowsFor(batchSet, mat, lo, hi) {
-    var out = [];
-    S.scans.filter(function (r) { return r.status === "accepted"; }).forEach(function (r) {
-      var row = r.row, st = parseStart(row.FIRST_READING_ON);
-      var mine = batchSet[row.BATCH_NO] || ((!mat || row.MATERIAL_CODE === mat) && (!lo || (st && st >= lo)) && (!hi || (st && st <= hi)));
-      if (mine) out.push(row);
-    });
-    return out;
-  }
-  // QA asks in two ways: all batches of a material in a period, or a list of batch numbers (material optional)
+  // QA asks in two ways: all batches of a material in a period, or a list of batch numbers (material optional);
+  // the worker selects (app/worker.js select), this only says what was asked
   function batchList() { return uniqList($("fBatches").value.split(/[\s,;]+/).filter(Boolean)); }
   function uniqList(a) { var o = []; a.forEach(function (x) { if (o.indexOf(x) < 0) o.push(x); }); return o; }
-  function selected() {
-    var byBatch = S.mode === "batch", want = byBatch ? batchList() : [], wantSet = {};
-    want.forEach(function (b) { wantSet[b] = 1; });
-    var mat = $("fMat").value, from = byBatch ? "" : $("fFrom").value, to = byBatch ? "" : $("fTo").value, lo = from ? from + " 00:00" : null, hi = to ? to + " 23:59" : null;
-    var undated = {}, rows = (S.all || []).filter(function (r) {
-      if (byBatch && !wantSet[r.BATCH_NO]) return false;
-      if (mat && C.s(r.MATERIAL_CODE) !== mat) return false;
-      if (!lo && !hi) return true;
-      if (!r._start) { undated[r.BATCH_NO] = 1; return false; }
-      return (!lo || r._start >= lo) && (!hi || r._start <= hi);
-    });
-    var first = {};
-    rows.forEach(function (r) { if (r._start && (!first[r.BATCH_NO] || r._start < first[r.BATCH_NO])) first[r.BATCH_NO] = r._start; });
-    // manufacturing order: batch start, then batch number (same as the portal)
-    var order = Object.keys(rows.reduce(function (a, r) { a[r.BATCH_NO] = 1; return a; }, {}))
-      .sort(function (a, b) { var x = first[a] || "9999", y = first[b] || "9999"; return x < y ? -1 : x > y ? 1 : a < b ? -1 : a > b ? 1 : 0; });
-    var pos = {}; order.forEach(function (b, i) { pos[b] = i; });
-    rows = rows.slice().sort(function (a, b) { return pos[a.BATCH_NO] - pos[b.BATCH_NO]; });
-    var bs = {}; order.forEach(function (b) { bs[b] = 1; });
-    var scanRows = byBatch ? S.scans.filter(function (r) { return r.status === "accepted" && wantSet[r.row.BATCH_NO]; }).map(function (r) { return r.row; })
-      : scanRowsFor(bs, mat, lo, hi);
-    var missing = want.filter(function (b) { return !bs[b]; });
-    var all = rows.concat(scanRows.map(function (r) { var o = Object.assign({}, r); o._scan = true; return o; }));
-    all.sourceColumns = S.all.sourceColumns;
-    return { rows: all, mat: mat, from: from, to: to, undated: Object.keys(undated), first: first, nScan: scanRows.length,
-      byBatch: byBatch, want: want, missing: missing };
+  function request() {
+    return { mode: S.mode, want: S.mode === "batch" ? batchList() : [], mat: $("fMat").value, from: $("fFrom").value, to: $("fTo").value,
+      scans: S.scans.filter(function (r) { return r.status === "accepted"; }).map(function (r) { return r.row; }), pivot: opt(), cppList: cppText() };
   }
   function opt() { return { merge: $("oMerge").checked, minutes: $("oMin").checked, inspection: $("oInsp").checked }; }
   // QA's CPP list for the product: typed once per material, remembered in this browser (product knowledge, no batch data)
@@ -212,20 +180,28 @@
   function cppText() { return $("oCpp").value; }
   function loadCpp() { $("oCpp").value = store(cppKey()) || ""; }
 
-  function recompute() {
-    if (!S.all) return;
-    var sel = selected();
-    S.sel = sel; S.rows = sel.rows;
-    if (!sel.rows.length) {
-      S.model = null; $("kpis").innerHTML = "";
+  var reqN = 0;
+  async function recompute(inLoad) {
+    if (!S.loaded) return;
+    var my = ++reqN;
+    $("dl").disabled = true; $("tdl").disabled = true;
+    if (!inLoad) $("period").textContent = "Updating…";
+    var r;
+    try { r = await job("select", request()); }
+    catch (e) { msg("msg", "Could not prepare the overview: " + e.message, "err"); return; }
+    if (my !== reqN) return;                       // a newer request is on its way
+    var sel = r.meta;
+    S.sel = sel; S.nRows = r.n; S.hdr = r.hdr; S.oos = r.oos; S.oosRows = r.oosRows;
+    if (!r.n) {
+      S.model = null; S.params = null; $("kpis").innerHTML = ""; $("period").textContent = "";
       msg("msg", sel.byBatch ? (sel.want.length ? "None of the requested batch numbers are in this export" + (sel.mat ? " under material " + sel.mat : "") + ": " + sel.want.slice(0, 10).join(", ") + (sel.want.length > 10 ? " …" : "") :
         "Enter the batch numbers QA asked for, then Apply.") : "No batches of this material in this period.", "err");
       ["secBatches", "secParams", "secCharts", "secSheets"].forEach(function (id) { $(id).hidden = true; });
-      $("dl").disabled = true; $("tdl").disabled = true; return;
+      return;
     }
     ["secBatches", "secParams", "secCharts", "secSheets"].forEach(function (id) { $(id).hidden = false; });
     $("dl").disabled = false; $("tdl").disabled = !S.tpl; msg("msg", "");
-    S.model = C.build(sel.rows, opt()); S.params = C.parameters(S.model, cppText());
+    S.model = r.model; S.params = r.params;
     var starts = S.model.batches.map(function (b) { return sel.first[b]; }).filter(Boolean).sort();
     $("period").textContent = (sel.byBatch ? "Requested " + sel.want.length + " batch number(s): " + (sel.want.length - sel.missing.length) + " found" +
         (sel.missing.length ? ", not in this export" + (sel.mat ? " under material " + sel.mat : "") + ": " + sel.missing.join(", ") : "") + ". " : "") +
@@ -236,7 +212,7 @@
     if ($("secCharts").open) renderCharts(); else $("charts").innerHTML = "";
     if ($("secSheets").open) renderSheet();
   }
-  ["apply"].forEach(function (id) { $(id).onclick = recompute; });
+  $("apply").onclick = function () { recompute(); };
   S.mode = "period";
   function setMode(m) {
     S.mode = m;
@@ -249,9 +225,9 @@
     recompute();
   }
   $("reqMode").querySelectorAll("button").forEach(function (b) { b.onclick = function () { setMode(b.dataset.m); }; });
-  $("fBatches").addEventListener("change", recompute);
+  $("fBatches").addEventListener("change", function () { recompute(); });
   $("fMat").addEventListener("change", loadCpp);
-  ["fMat", "oMerge", "oMin", "oInsp"].forEach(function (id) { $(id).addEventListener("change", recompute); });
+  ["fMat", "oMerge", "oMin", "oInsp"].forEach(function (id) { $(id).addEventListener("change", function () { recompute(); }); });
   $("oCpp").addEventListener("change", function () { store(cppKey(), this.value); recompute(); });
   $("secCharts").addEventListener("toggle", function () { if (this.open) renderCharts(); });
   $("secSheets").addEventListener("toggle", function () { if (this.open) renderSheet(); });
@@ -272,8 +248,7 @@
     $("kpis").innerHTML = tiles.map(function (t) { return '<div class="kpi ' + (t[2] || "") + '"><b>' + t[0] + "</b><span>" + esc(t[1]) + "</span></div>"; }).join("");
   }
   function renderBatches() {
-    var hdr = {}; S.rows.forEach(function (r) { if (!r._scan && !hdr[r.BATCH_NO]) hdr[r.BATCH_NO] = r; });
-    var oos = {}; S.rows.forEach(function (r) { if (/^OUT/i.test(C.s(r.LIMIT_CHECK))) oos[r.BATCH_NO] = (oos[r.BATCH_NO] || 0) + 1; });
+    var hdr = S.hdr, oos = S.oos;
     var h = '<tr><th>#</th><th>Batch</th><th>Material</th><th>Started</th><th>Size</th><th>MBR</th><th>Order</th><th>Status</th><th class="n">Out of limit</th></tr>';
     $("tBatches").innerHTML = h + S.model.batches.map(function (b, i) {
       var r = hdr[b] || {};
@@ -402,14 +377,14 @@
 
   /* ------------------------------------------------------------------ check against QA's manual workbook */
   async function loadQa(file) {
-    if (!S.all) { msg("qmsg", "Load the PAS-X export first.", "err"); return; }
+    if (!S.loaded) { msg("qmsg", "Load the PAS-X export first.", "err"); return; }
     msg("qmsg", ""); $("qres").hidden = true;
     var p = progress("Checking QA's workbook against PAS-X", [["read", "Reading QA's workbook"], ["open", "Opening the .xlsx"],
       ["flat", "Reading QA's headers & batch rows"], ["match", "Matching every QA cell to PAS-X rows"], ["show", "Drawing the results"]]);
     try {
       p.step("read", file.name);
       var qb = await file.arrayBuffer();
-      var res = await job("compare", { buf: qb, rows: S.all, cols: S.all.sourceColumns }, [qb]);
+      var res = await job("compare", { buf: qb }, [qb]);
       p.step("show", res.results.length.toLocaleString("en-IN") + " cells compared");
       S.qa = res; S.qaFile = file.name; S.qf = "";
       $("qchip").textContent = file.name + " · " + res.qaValues + " values in " + res.qaBatches.length + " batch(es)";
@@ -473,12 +448,12 @@
   async function loadTpl(file) {
     S.tpl = { name: file.name, buffer: await file.arrayBuffer() };
     $("tchip").textContent = file.name + " · " + Math.round(file.size / 1024) + " KB";
-    $("tdl").disabled = !S.rows || !S.rows.length; $("tres").hidden = true; msg("tmsg", "");
+    $("tdl").disabled = !S.model; $("tres").hidden = true; msg("tmsg", "");
   }
   $("tfile").addEventListener("change", function (e) { if (e.target.files[0]) loadTpl(e.target.files[0]); e.target.value = ""; });
   dropZone($("tdrop"), loadTpl);
   $("tdl").onclick = async function () {
-    if (!S.tpl || !S.rows || !S.rows.length) return;
+    if (!S.tpl || !S.model) return;
     var btn = this; btn.disabled = true; msg("tmsg", "");
     var p = progress("Filling QA's workbook", [["open", "Opening QA's workbook"], ["fill", "Adding batches · filling empty cells"],
       ["report", "Writing the fill report sheet"], ["zip", "Compressing the .xlsx"], ["save", "Saving to Downloads"]]);
@@ -488,7 +463,7 @@
         ["Generated", new Date().toISOString()], ["Tool", "AdigiPQR web app v" + C.VERSION + " (processed in the browser, nothing uploaded)"],
         ["Status", "Prepared from the PAS-X MES execution record for QA review. Verify against the batch record before use in the APQR."]];
       var tb = S.tpl.buffer.slice(0);
-      var res = await job("fill", { buf: tb, rows: S.rows, cols: S.rows.sourceColumns || S.all.sourceColumns, opts: { leaveYellow: $("tYellow").checked, info: info } }, [tb]);
+      var res = await job("fill", { buf: tb, opts: { leaveYellow: $("tYellow").checked, info: info } }, [tb]);
       p.step("save");
       save(new Blob([res.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
         S.tpl.name.replace(/\.xlsx$/i, "") + "_filled_" + stamp() + ".xlsx");
@@ -511,14 +486,13 @@
     a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 15000);
   }
-  async function buildAndSave(rows, nameBase, sourceDesc) {
-    var o = opt(), oos = rows.filter(function (r) { return /^OUT/i.test(C.s(r.LIMIT_CHECK)); }).length;
-    var accepted = S.scans.filter(function (r) { return r.status === "accepted"; });
-    var batches = {}; rows.forEach(function (r) { batches[r.BATCH_NO] = 1; });
-    var scans = accepted.filter(function (r) { return batches[r.row.BATCH_NO]; });
+  async function buildAndSave(nameBase, sourceDesc) {
+    var o = opt(), oos = S.oosRows, batches = {};
+    S.model.batches.forEach(function (b) { batches[b] = 1; });
+    var scans = S.scans.filter(function (r) { return r.status === "accepted" && batches[r.row.BATCH_NO]; });
     var info = [["Tool", "AdigiPQR web app v" + C.VERSION + " (processed in the browser, nothing uploaded)"], ["Generated", new Date().toISOString()],
       ["Requested by", $("who").value || "-"]].concat(sourceDesc).concat([
-      ["Batches", Object.keys(batches).length], ["Rows", rows.length], ["Out-of-limit rows", oos],
+      ["Batches", Object.keys(batches).length], ["Rows", S.nRows], ["Out-of-limit rows", oos],
       ["Scanned records", scans.length ? scans.length + " accepted (sheet 'Scanned records')" : "none"],
       ["Options", "merge IPC=" + o.merge + "; minutes=" + o.minutes + "; inspection=" + o.inspection],
       ["Status", "Prepared from the PAS-X MES execution record for QA review. Verify against the batch record before use in the APQR."]]);
@@ -529,7 +503,7 @@
       ["charts", "Embedding native Excel trend charts"], ["save", "Saving to Downloads"]]);
     var res;
     try {
-      res = await job("workbook", { rows: rows, cols: rows.sourceColumns || (S.all && S.all.sourceColumns), opts: { pivot: o, info: info, scans: scans, cppList: cppText() } });
+      res = await job("workbook", { opts: { pivot: o, info: info, scans: scans, cppList: cppText() } });
     } catch (e) { p.fail("Could not build the workbook: " + e.message); throw e; }
     p.step("save");
     save(new Blob([res.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), nameBase + "_" + stamp() + ".xlsx");
@@ -543,7 +517,7 @@
       if (sel.byBatch) desc = desc.concat([["QA request", "batch numbers (" + sel.want.length + ")"], ["Batch numbers requested", sel.want.join(", ")],
         ["Requested but not in the export", sel.missing.join(", ") || "none"]]);
       else desc = desc.concat([["QA request", "material + period"], ["Manufactured from", sel.from || "any"], ["Manufactured to", sel.to || "any"]]);
-      await buildAndSave(S.rows, "APQR_" + (sel.mat || (sel.byBatch ? "batches" : "all")) + (sel.byBatch ? "_" + sel.want.length + "batches" :
+      await buildAndSave("APQR_" + (sel.mat || (sel.byBatch ? "batches" : "all")) + (sel.byBatch ? "_" + sel.want.length + "batches" :
         (sel.from || sel.to ? "_" + (sel.from || "start") + "_" + (sel.to || "end") : "")), desc);
       msg("msg", "Workbook saved.", "ok");
     } catch (e) { msg("msg", "Could not build the workbook: " + e.message, "err"); }
@@ -626,7 +600,7 @@
     } else r.note = note;
     r.status = accept ? "accepted" : "rejected"; r.acceptedBy = by; r.acceptedAt = new Date().toISOString();
     msg("sdecide", accept ? "Accepted. It is added to the APQR Excel of its batch." : "Rejected; it will not be used.", "ok");
-    renderScans(); if (S.all) recompute();
+    renderScans(); if (S.loaded) recompute();
     return true;
   }
   $("sacceptAll").onclick = function () {
@@ -634,7 +608,7 @@
     var n = 0;
     S.scans.forEach(function (r, i) { if (r.status === "pending" && r.ok && decide(i, true)) n++; });
     if (!n) { msg("sdecide", "No pending record passed every check: review the remaining ones one by one.", ""); return; }
-    msg("sdecide", n + " record(s) accepted." + (S.all ? " They are included in the APQR sheet download." : " Load the PAS-X export on the APQR sheet tab, or download the records as CSV."), n ? "ok" : "");
+    msg("sdecide", n + " record(s) accepted." + (S.loaded ? " They are included in the APQR sheet download." : " Load the PAS-X export on the APQR sheet tab, or download the records as CSV."), n ? "ok" : "");
   };
   $("scsv").onclick = function () {
     var acc = S.scans.filter(function (r) { return r.status === "accepted"; });

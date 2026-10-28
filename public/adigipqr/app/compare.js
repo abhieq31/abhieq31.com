@@ -62,7 +62,7 @@
     ["mass of 20", "(mass|weight) of 20", "compress", null, "R"],
     ["turret", "turret", "compress", null, "R"],
     ["feeder", "feeder", "compress", null, "R"],
-    ["pre- ?compression force", "pre\\s*comp", "compress", null, "R"],
+    ["pre-? ?compression force", "pre\\s*comp", "compress", null, "R"],
     ["main compression force", "main\\s*comp", "compress", null, "R"],
     ["milled granules.*lod", "lod", "granul", "mill", "R"],
     ["^coating > coating > average weight >", "final average weight", "coat", null, "R"],
@@ -294,7 +294,7 @@
     var fullParts = column.split(" > ").map(function (p) { return tokens(p).join(" "); }), lvs = new Map();
     var multi = parts.map(tokens).filter(function (t) { return t.length >= 2; });
     var c = b.filter(function (m) {
-      if (m.PARAMETER_CLASS.indexOf("Environment (Temp") === 0 || (m._sheet && m._kindS !== kindS)) return false;
+      if (m.PARAMETER_CLASS.indexOf("Environment (Temp") === 0 || (m._sheet && m._kindS && m._kindS !== kindS)) return false;   // 'Other': not excluded
       var name = m._bare, ws = m._bareTok;
       // 3: same name with its brackets ('Uniformity of Mass (Net Content)'), 2: same name, 1: all its words appear
       // in QA's header, or all words of one part of QA's header appear in it ('% Flap' -> '% Flap Position');

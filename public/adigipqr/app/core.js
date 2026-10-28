@@ -4,7 +4,7 @@
  */
 (function (global) {
   "use strict";
-  var VERSION = "2.3.0";
+  var VERSION = "2.4.0";
   var IPC_RE = /in.?process|ipc|check|record|parameter|monitor/i;
   var PHASE_RE = /^(PRE.?LUB\w*|LUB\w*|LOT\w*|PART\w*|PREHEAT\w*|PRE\w*IPC|SPRAY\w*|DRY\w*|COOL\w*)$/i;
   var SEC_RE = /^(s|sec|secs|second|seconds)$/i;
@@ -53,6 +53,12 @@
     return String(parseFloat(r.toPrecision(6)));
   }
   function cleanStage(x) { return s(x).replace(/\s*\(\s*[\d.,]+\s*kg\s*\)\s*/ig, " ").replace(/\s+/g, " ").trim() || "Stage"; }
+  function startKey(t) {                          // MFG_START -> 'YYYY-MM-DD HH:MM' or null (= pivot.start_key)
+    var m = String(t || "").trim().match(/^(\d{2})[-/](\d{2})[-/](\d{4})(?:\D+(\d{2}):(\d{2}))?/);
+    if (m) return m[3] + "-" + m[2] + "-" + m[1] + " " + (m[4] || "00") + ":" + (m[5] || "00");
+    m = String(t || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:\D+(\d{2}):(\d{2}))?/);
+    return m ? m[1] + "-" + m[2] + "-" + m[3] + " " + (m[4] || "00") + ":" + (m[5] || "00") : null;
+  }
   function phaseOf(code) {
     var t = s(code).split(">").map(function (x) { return x.trim(); });
     for (var i = t.length - 1; i >= 0; i--) if (PHASE_RE.test(t[i])) return t[i].toUpperCase();
@@ -681,6 +687,6 @@
 
   global.AdigiCore = { VERSION: VERSION, normalise: normalise, build: build, parameters: parameters, workbook: workbook,
     stats: { imr: imr, capability: capability, nelson: nelson, mean: mean, sd: sd }, note: note, s: s, num: num, fmt: fmt,
-    pyRound: pyRound, NELSON: NELSON, asCell: asCell, classify: classify, parseCppList: parseCppList,
+    pyRound: pyRound, startKey: startKey, NELSON: NELSON, asCell: asCell, classify: classify, parseCppList: parseCppList,
     CPP_RULES: CPP_RULES, CPP: CPP, CPP_TYPICAL: CPP_TYPICAL, CQA: CQA };
 })(typeof window !== "undefined" ? window : this);
