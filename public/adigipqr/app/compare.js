@@ -64,6 +64,8 @@
     ["feeder", "feeder", "compress", null, "R"],
     ["pre- ?compression force", "pre\\s*comp", "compress", null, "R"],
     ["main compression force", "main\\s*comp", "compress", null, "R"],
+    ["milled granules.*lod", "lod", "granul", "mill", "R"],
+    ["^coating > coating > average weight >", "final average weight", "coat", null, "R"],
     ["coating.*uniformity", "uniformity", "coat", null, "I"],
     ["coating.*disintegration", "disintegration", "coat", null, "I"],
     ["coating.*ave\\. weight", "average weight|av\\w*\\.?\\s*mass", "coat", null, "R"],
@@ -77,7 +79,7 @@
     ["coating parameter.*bed", "bed|product", "coat", "spray", "R"],
     ["coating parameter.*exhaust", "exhaust", "coat", "spray", "R"],
     ["pan rpm", "pan", "coat", null, "R"],
-    ["peristaltic", "peristaltic|pp\\s*rpm", "coat", "spray", "R"],
+    ["peristaltic|\\bpp rpm", "peristaltic|pp\\s*rpm", "coat", "spray", "R"],
     ["atomi", "atomi", "coat", "spray", "R"],
     ["spray rate", "spray\\s*rate", "coat", null, "R"],
     ["coating parameter.*inlet air flow", "inlet air flow|cfm", "coat", "spray", "R"],
@@ -125,7 +127,7 @@
   function str(v) { return v instanceof Date ? v.toISOString() : String(v); }
   function s(v) { return v === null || v === undefined ? "" : str(v); }
   function words(v) { return str(v).split(/\s+/).filter(Boolean).join(" "); }
-  function uniq(a) { var o = []; a.forEach(function (x) { if (o.indexOf(x) < 0) o.push(x); }); return o; }
+  function uniq(a) { var seen = new Set(), o = []; a.forEach(function (x) { if (!seen.has(x)) { seen.add(x); o.push(x); } }); return o; }
   function r4(x) { return Math.round(x * 1e4) / 1e4; }
 
   /* ---------------------------------------------------------------- cells */
@@ -229,43 +231,87 @@
         PRODUCTION_UNIT_ID: g("PRODUCTION_UNIT_ID"), _stage: g("STAGE").toLowerCase(),
         _step: (g("STEP_PATH") + " " + g("STEP_CODE_PATH")).toLowerCase(), _param: g("APQR_PARAMETER").toLowerCase(),
         _sheet: g("APQR_SHEET").toLowerCase(), _uom: g("UOM").trim().toLowerCase() };
+      // text derived once per row, not once per QA cell (by-name matching runs for thousands of cells)
+      m._kindS = m._sheet ? memo("k" + m._sheet, function () { return sheetKind(m._sheet); }) : null;
+      m._bare = memo("b" + m.APQR_PARAMETER, function () { return bare(m.APQR_PARAMETER); });
+      m._bareTok = memo("t" + m._bare, function () { return tokens(m._bare); });
+      m._fullTok = memo("f" + m.APQR_PARAMETER, function () { return tokens(m.APQR_PARAMETER).join(" "); });
+      m._pathTok = memo("p" + m.STAGE + "\u0000" + m.STEP_PATH, function () { return uniq(tokens(m.STAGE + " " + m.STEP_PATH)); });
       (by[m.BATCH_NO] = by[m.BATCH_NO] || []).push(m);
     });
     return by;
   }
+  var MEMO = {};
+  function memo(k, fn) { return k in MEMO ? MEMO[k] : (MEMO[k] = fn()); }
   function headerValue(b, field) {
     var first = function (k) { for (var i = 0; i < b.length; i++) { var v = s(b[i].row[k]).trim(); if (v) return v; } return ""; };
     if (field === "BMR_NO") {                     // QA writes PAS-X-era BMR numbers as F1M00011/00000004
       var mbr = first("MBR_ID"), ver = first("MBR_VERSION");
       return mbr + (mbr && ver ? (/^\d+$/.test(ver) ? "/" + ("00000000" + ver).slice(-Math.max(8, ver.length)) : "-" + ver) : "");
     }
+    if ((field === "SHELF_LIFE" || field === "EXP_MONTH") && num(first("SHELF_LIFE")) === 0) return "";   // no expiry (QA: NA)
     if (field === "SHELF_LIFE") { var n = first("SHELF_LIFE"); return n ? (n + " " + first("SHELF_LIFE_UOM")).trim() : ""; }
     if (field === "FG_CODE") return first("SFO_MATERIAL");
-    if (field === "BATCH_SIZE") { var v = first("BATCH_SIZE"), x = num(v); return x !== null ? x : v; }
+    if (field === "BATCH_SIZE") {
+      var v = first("BATCH_SIZE"), x = num(v);
+      if (["kg", "kgs", ""].indexOf(first("BATCH_SIZE_UOM").toLowerCase()) < 0) {   // e.g. 12000000 tablets: QA writes kg
+        var kg = stageKg(b.map(function (m) { return m.STAGE; }));
+        if (kg !== null) return kg;
+      }
+      return x !== null ? x : v;
+    }
     return first(field);
+  }
+  function stageKg(stages) {                      // 'Granulation (297.520 Kg)' -> 297.52 (= qamap.stage_kg)
+    for (var i = 0; i < stages.length; i++) {
+      var k = s(stages[i]).match(/\(\s*([\d.,]+)\s*kgs?\s*\)/i);
+      if (k) return num(k[1]);
+    }
+    return null;
+  }
+  function has(words, w, rev) {                   // w is one of words, or an abbreviation (>= 3 letters) of / by one (= qamap._has)
+    return words.indexOf(w) >= 0 || words.some(function (x) { return rev ? x.indexOf(w) === 0 && w.length >= 3 : w.indexOf(x) === 0 && x.length >= 3; });
+  }
+  /* QA's Min / Max of a spraying parameter = PAS-X's own 'Min. Inlet Air Temp.' / 'Max. Inlet Air Temp.' rows (= qamap._minmax) */
+  function minmax(c, b, column, stat) {
+    if ((stat !== "MIN" && stat !== "MAX") || !c.length) return c;
+    var want = stat.toLowerCase(), sect = tokens(bare(column.split(" > ")[0])), out = [];
+    var bases = c.map(function (m) { return tokens(m._param); });
+    var stages = {}; c.forEach(function (m) { stages[m._stage] = 1; });
+    b.forEach(function (m) {
+      var mm = m._param.match(/^(min|max)\.?\s+(.+)/);
+      if (!mm || mm[1] !== want || !stages[m._stage] || !sect.length || !sect.every(function (w) { return m._step.indexOf(w) >= 0; })) return;
+      var t = tokens(mm[2]);
+      if (t.length && bases.some(function (base) { return t.length === base.length && t.every(function (x) { return has(base, x, true); }); })) out.push(m);
+    });
+    return out.length ? out : c;
   }
   function tokens(t) { return (s(t).toLowerCase().match(/[a-z0-9%]+/g) || []).filter(function (w) { return STOP.indexOf(w) < 0; }); }
   function bare(t) { return tokens(s(t).replace(/\[[^\]]*\]|\([^)]*\)/g, " ")).join(" "); }
   /* generic match for products the rules do not know (= qamap.by_name) */
   function byName(sheet, column, b) {
-    var path = tokens(column), parts = column.split(" > ").map(bare);
-    var fullParts = column.split(" > ").map(function (p) { return tokens(p).join(" "); }), level = [];
+    var path = tokens(column), parts = column.split(" > ").map(bare), kindS = sheetKind(sheet);
+    var fullParts = column.split(" > ").map(function (p) { return tokens(p).join(" "); }), lvs = new Map();
+    var multi = parts.map(tokens).filter(function (t) { return t.length >= 2; });
     var c = b.filter(function (m) {
-      if (m.PARAMETER_CLASS.indexOf("Environment (Temp") === 0 || (m._sheet && sheetKind(m._sheet) !== sheetKind(sheet))) return false;
-      var name = bare(m.APQR_PARAMETER), ws = tokens(name);
+      if (m.PARAMETER_CLASS.indexOf("Environment (Temp") === 0 || (m._sheet && m._kindS !== kindS)) return false;
+      var name = m._bare, ws = m._bareTok;
       // 3: same name with its brackets ('Uniformity of Mass (Net Content)'), 2: same name, 1: all its words appear
-      var lv = fullParts.indexOf(tokens(m.APQR_PARAMETER).join(" ")) >= 0 ? 3 : parts.indexOf(name) >= 0 ? 2 :
-        name && ws.length >= 2 && ws.every(function (w) { return path.indexOf(w) >= 0; }) ? 1 : 0;
-      if (name && lv) { level.push([m, lv]); return true; }
+      // in QA's header, or all words of one part of QA's header appear in it ('% Flap' -> '% Flap Position');
+      // QA abbreviates: 'Bed Temp.' = 'Bed Temperature'
+      var lv = fullParts.indexOf(m._fullTok) >= 0 ? 3 : parts.indexOf(name) >= 0 ? 2 :
+        name && ((ws.length >= 2 && ws.every(function (w) { return has(path, w); })) ||
+          multi.some(function (p) { return p.every(function (w) { return has(ws, w, true); }); })) ? 1 : 0;
+      if (name && lv) { lvs.set(m, lv); return true; }
       return false;
     });
     if (c.length) {
-      var lvOf = function (m) { for (var i = 0; i < level.length; i++) if (level[i][0] === m) return level[i][1]; return 0; };
+      var lvOf = function (m) { return lvs.get(m); };
       var bestLv = Math.max.apply(null, c.map(lvOf));
       c = c.filter(function (m) { return lvOf(m) === bestLv; });
-      var nw = function (m) { return tokens(bare(m.APQR_PARAMETER)).length; }, longest = Math.max.apply(null, c.map(nw));
+      var nw = function (m) { return m._bareTok.length; }, longest = Math.max.apply(null, c.map(nw));
       c = c.filter(function (m) { return nw(m) === longest; });   // 'Milled Granules % LOD' beats '% LOD'
-      var score = function (m) { return uniq(tokens(m.STAGE + " " + m.STEP_PATH)).filter(function (w) { return path.indexOf(w) >= 0; }).length; };
+      var score = function (m) { return m._pathTok.filter(function (w) { return path.indexOf(w) >= 0; }).length; };
       var best = Math.max.apply(null, c.map(score));
       c = c.filter(function (m) { return score(m) === best; });
     }
@@ -314,7 +360,8 @@
       if (!rule) {
         var bn = byName(sheet, column, b);
         if (!bn[0].length) { res.status = "NO_MAPPING_RULE"; return res; }
-        return values(res, bn[0], ipqcKind(bn[0], "R"), stat, bn[1], column, true);
+        var cm = minmax(bn[0], b, column, stat);
+        return values(res, cm, ipqcKind(bn[0], "R"), stat, cm === bn[0] ? bn[1] : uniq(cm.map(function (m) { return m._param; })).length > 1, column, true);
       }
       kind = rule[4];
       if (kind === "E") {
@@ -328,7 +375,8 @@
         });
         res.kind = "E";
         if (!eb.length) { res.status = "NOT_IN_MES"; return res; }
-        var eq = (uniq(eb.map(function (m) { return m.EQUIPMENT_IDS; })).join(" ") + " " + uniq(eb.map(function (m) { return m.PRODUCTION_UNIT_ID; })).join(" ")).trim();
+        // equipment IDs only: the PAS-X production unit (COAT05A) is not the asset number QA writes (PD/09/COT14)
+        var eq = uniq(eb.map(function (m) { return m.EQUIPMENT_IDS; })).join(" ").trim();
         res.value = eq.slice(0, 200) || null; res.status = eq ? null : "NOT_IN_MES"; return res;
       }
       c = b.filter(function (m) { return rx(rule[1]).test(m._param); });
@@ -337,7 +385,10 @@
       if (kind === "Y") c = c.filter(function (m) { return m.PARAMETER_CLASS === "Yield & Rejection"; });
       if (!c.length && (kind === "R" || kind === "I")) {      // the rule's stage words do not fit this product: by name
         var bn2 = byName(sheet, column, b);
-        if (bn2[0].length) return values(res, bn2[0], ipqcKind(bn2[0], kind), stat, bn2[1], column, true);
+        if (bn2[0].length) {
+          var cm2 = minmax(bn2[0], b, column, stat);
+          return values(res, cm2, ipqcKind(bn2[0], kind), stat, cm2 === bn2[0] ? bn2[1] : uniq(cm2.map(function (m) { return m._param; })).length > 1, column, true);
+        }
       }
     }
     // part A / part B, lot I / lot II: if QA names a part that the PAS-X rows do not carry, do not guess
@@ -347,7 +398,7 @@
         if (cc.length) c = cc; else res.unresolved = true;
       }
     });
-    return values(res, c, kind, stat, false, column, false);
+    return values(res, kind === "R" ? minmax(c, b, column, stat) : c, kind, stat, false, column, false);
   }
   var SECONDS = ["s", "sec", "secs", "second", "seconds"], MINUTES = /\bmin(ute)?s?\b|\bmins?\./;
   function wantsMinutes(column, stat) {           // the last part is the Min/Max label, not a unit
@@ -528,24 +579,37 @@
   }
 
   /* ---------------------------------------------------------------- entry points for the page */
-  async function load(buffer) { var wb = new ExcelJS.Workbook(); await wb.xlsx.load(buffer); return wb; }
+  function step(key, detail) { if (global.AdigiProgress) global.AdigiProgress(key, detail); }   // progress for the page
+  async function load(buffer) {
+    step("open", (buffer.byteLength / 1048576).toFixed(1) + " MB");
+    var wb = new ExcelJS.Workbook(); await wb.xlsx.load(buffer); return wb;
+  }
   /* QA workbook (ArrayBuffer) + export rows -> { results, missing (QA batches not in the export), qaBatches } */
   async function run(qaBuffer, mesRows, batchPrefix) {
-    var wb = await load(qaBuffer), qa = flattenQa(wb, batchPrefix || "");
+    var wb = await load(qaBuffer);
+    step("flat", wb.worksheets.length + " sheets");
+    var qa = flattenQa(wb, batchPrefix || "");
     var inMes = {}; mesRows.forEach(function (r) { inMes[s(r.BATCH_NO).replace(/\.0$/, "")] = 1; });
     var qaBatches = uniq(qa.map(function (q) { return q.BATCH_NO; }));
     var missing = qaBatches.filter(function (b) { return !inMes[b]; }).sort();
-    var results = compare(qa.filter(function (q) { return inMes[q.BATCH_NO]; }), mesRows);
+    var mine = qa.filter(function (q) { return inMes[q.BATCH_NO]; });
+    step("match", mine.length.toLocaleString("en-IN") + " QA cells · " + (qaBatches.length - missing.length) + " batches");
+    var results = compare(mine, mesRows);
     return { results: results, missing: missing, qaBatches: qaBatches, qaValues: qa.length };
   }
   /* QA workbook (ArrayBuffer) + export rows of the requested batches -> { buffer (filled xlsx), report } */
   async function fillWorkbook(qaBuffer, mesRows, opts) {
-    var wb = await load(qaBuffer), report = fill(wb, mesRows, opts);
+    var wb = await load(qaBuffer);
+    step("fill", uniq(mesRows.map(function (r) { return r.BATCH_NO; })).length + " batches");
+    var report = fill(wb, mesRows, opts);
+    step("report", report.filter(function (r) { return r.STATUS === "FILLED"; }).length.toLocaleString("en-IN") + " values written");
     addReport(wb, report, (opts && opts.info) || []);
+    step("zip");
     return { buffer: await wb.xlsx.writeBuffer(), report: report };
   }
   /* comparison report: Summary sheet (QA sheet x status counts) + Detail sheet, like compare_apqr.py */
   async function workbook(res, info) {
+    step("zip");
     var wb = new ExcelJS.Workbook(), statuses = uniq(res.results.map(function (r) { return r.STATUS; })).sort();
     var sheets = uniq(res.results.map(function (r) { return r.QA_SHEET; })).sort();
     var sm = wb.addWorksheet("Summary");

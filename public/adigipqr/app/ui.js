@@ -31,35 +31,100 @@
     m = String(t || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:\D+(\d{2}):(\d{2}))?/);
     return m ? m[1] + "-" + m[2] + "-" + m[3] + " " + (m[4] || "00") + ":" + (m[5] || "00") : null;
   }
+  /* ------------------------------------------------------------------ background work + live pipeline
+     Heavy work runs in a Web Worker (app/worker.js): the page stays responsive and shows each real step.
+     Without workers (file://, old browser) the same jobs run in the page. */
+  var W = null, wReady = null, jobs = {}, jobN = 0, P = null;
+  function worker() {
+    if (wReady) return wReady;
+    wReady = new Promise(function (res) {
+      try {
+        var all = Array.prototype.map.call(document.scripts, function (x) { return x.src; }).filter(Boolean);
+        var src = all.filter(function (u) { return /app\/worker\.js/.test(u); })[0];
+        var deps = all.filter(function (u) { return /vendor\/(papaparse|exceljs|jszip)\.min\.js|app\/(core|compare)\.js/.test(u); });
+        if (!src || !window.Worker || location.protocol === "file:") return res(null);
+        W = new Worker(src);
+        var t = setTimeout(function () { res(null); }, 20000);
+        W.onmessage = function (e) {
+          var d = e.data;
+          if ("ready" in d) { clearTimeout(t); res(d.ready ? W : null); return; }
+          if (d.step) { if (P) P.step(d.step, d.detail); return; }
+          var j = jobs[d.id]; if (!j) return; delete jobs[d.id];
+          if (d.error) j.rej(new Error(d.error)); else j.res(d.result);
+        };
+        W.onerror = function (e) {
+          clearTimeout(t); res(null);
+          Object.keys(jobs).forEach(function (k) { jobs[k].rej(new Error((e && e.message) || "the background worker stopped")); delete jobs[k]; });
+        };
+        W.postMessage({ op: "init", scripts: deps });
+      } catch (e) { res(null); }
+    });
+    return wReady;
+  }
   async function sha256(buf) {
-    if (!(window.crypto && crypto.subtle)) return null;
+    if (!(window.crypto && crypto.subtle)) return null;   // file:// or old browser: no fingerprint
     try { var d = await crypto.subtle.digest("SHA-256", buf); return Array.prototype.map.call(new Uint8Array(d), function (x) { return (x < 16 ? "0" : "") + x.toString(16); }).join(""); }
     catch (e) { return null; }
   }
-  async function readTable(file) {
-    var buf = await file.arrayBuffer();
-    S.sha = await sha256(buf);
-    if (/\.xlsx$/i.test(file.name)) {
-      var wb = new ExcelJS.Workbook(); await wb.xlsx.load(buf);
-      var ws = wb.worksheets[0], head = [], out = [];
-      ws.eachRow({ includeEmpty: false }, function (row, i) {
-        var vals = []; for (var c = 1; c <= ws.columnCount; c++) { var v = row.getCell(c).value;
-          if (v && typeof v === "object") v = "result" in v ? v.result : v.text !== undefined ? v.text : v instanceof Date ? v.toISOString() : v;
-          vals.push(v === null || v === undefined ? "" : String(v)); }
-        if (i === 1) head = vals; else { var o = {}; head.forEach(function (h, j) { o[h] = vals[j]; }); out.push(o); }
-      });
-      return { rows: out, cols: head };
-    }
-    var text = new TextDecoder("utf-8").decode(buf);
-    var res = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: false });
-    return { rows: res.data, cols: res.meta.fields };
+  function nextFrame() { return new Promise(function (r) { requestAnimationFrame(function () { setTimeout(r, 0); }); }); }
+  async function job(op, data, transfer) {
+    var w = await worker();
+    if (w) return new Promise(function (res, rej) { var id = ++jobN; jobs[id] = { res: res, rej: rej }; data.op = op; data.id = id; w.postMessage(data, transfer || []); });
+    window.AdigiProgress = function (k, d) { if (P) P.step(k, d); };
+    try { await nextFrame(); return await window.AdigiJobs[op](data); } finally { window.AdigiProgress = null; }
   }
+  /* the overlay: steps = [[key, label], ...]; the worker reports keys as it reaches them */
+  function progress(title, steps) {
+    var t0 = performance.now(), cur = -1, since = t0, timer, list = $("psteps");
+    $("prog").className = "prog"; $("prog").hidden = false; $("ptitle").textContent = title; $("pclose").hidden = true;
+    $("pnote").textContent = "Working in this browser tab · nothing is uploaded"; $("pnote").className = "";
+    list.innerHTML = steps.map(function (st) { return '<li><span class="d"></span><span>' + esc(st[1]) + "<small></small></span><span class=\"t\"></span></li>"; }).join("");
+    var li = list.children, sec = function (ms) { return (ms / 1000).toFixed(1) + " s"; };
+    timer = setInterval(function () { $("ptime").textContent = sec(performance.now() - t0); }, 100);
+    function goTo(i, detail) {
+      var now = performance.now();
+      for (var k = Math.max(cur, 0); k < i; k++) { li[k].className = "done"; if (k === cur) li[k].querySelector(".t").textContent = sec(now - since); }
+      if (i !== cur) since = now;
+      cur = i; li[i].className = "now";
+      if (detail) li[i].querySelector("small").textContent = detail;
+    }
+    var api = {
+      step: function (key, detail) {
+        for (var i = 0; i < steps.length; i++) if (steps[i][0] === key) { if (i >= cur) goTo(i, detail); return; }
+      },
+      done: function (text) {
+        var now = performance.now();
+        if (cur >= 0) li[cur].querySelector(".t").textContent = sec(now - since);
+        for (var k = 0; k < li.length; k++) li[k].className = "done";
+        clearInterval(timer); $("ptime").textContent = sec(now - t0);
+        $("prog").className = "prog ok"; $("pnote").textContent = text || "Done";
+        return new Promise(function (r) { setTimeout(function () { if (P === api) { $("prog").hidden = true; P = null; } r(); }, 700); });
+      },
+      fail: function (text) {
+        clearInterval(timer); $("prog").className = "prog bad"; $("pnote").textContent = text; $("pnote").className = "err";
+        $("pclose").hidden = false; P = null;
+      }
+    };
+    P = api;
+    return api;
+  }
+  $("pclose").onclick = function () { $("prog").hidden = true; };
+  setTimeout(worker, 0);                          // warm up the worker while the user picks a file
+
+  var PARSE = [["read", "Reading the file"], ["hash", "SHA-256 fingerprint"], ["parse", "Parsing PAS-X rows"], ["norm", "Normalising columns & batch numbers"],
+    ["model", "Pivoting into QA stages · Cpk · trend rules"], ["view", "Drawing the overview"]];
   async function load(file) {
-    msg("msg", "Reading " + file.name + "…");
+    msg("msg", "");
+    var p = progress("Reading the PAS-X export", PARSE);
     try {
-      var t = await readTable(file), rows = C.normalise(t.rows, t.cols);
+      p.step("read", file.name + " · " + (file.size / 1048576).toFixed(1) + " MB");
+      var buf = await file.arrayBuffer();
+      var t = await job("parse", { buf: buf, name: file.name }, [buf]), rows = t.rows;
+      rows.sourceColumns = t.cols; S.sha = t.sha;
       if (!rows.length) throw new Error("The file has no rows with a BATCH_NO.");
       S.all = rows; S.file = file.name;
+      p.step("model", rows.length.toLocaleString("en-IN") + " rows");
+      await nextFrame();
       var mats = {};
       rows.forEach(function (r) { var m = C.s(r.MATERIAL_CODE); if (!mats[m]) mats[m] = C.s(r.PRODUCT_NAME); r._start = parseStart(r.MFG_START); });
       var sel = $("fMat"); sel.innerHTML = "";
@@ -69,9 +134,11 @@
       $("fFrom").value = ""; $("fTo").value = "";
       if (S.mode === "batch" && !sel.querySelector('option[value=""]')) { sel.insertBefore(new Option("Any material", ""), sel.firstChild); sel.value = ""; }
       $("filechip").textContent = file.name + " · " + rows.length + " rows" + (S.sha ? " · SHA-256 " + S.sha.slice(0, 12) + "…" : "");
-      msg("msg", ""); $("loaded").hidden = false;
+      $("loaded").hidden = false;
       document.body.classList.add("has-data"); loadCpp(); recompute();
-    } catch (e) { msg("msg", "Not loaded: " + e.message, "err"); }
+      p.step("view");
+      await p.done(S.model ? S.model.batches.length + " batches · " + S.params.length + " parameters ready" : "Loaded");
+    } catch (e) { p.fail("Not loaded: " + e.message); msg("msg", "Not loaded: " + e.message, "err"); }
   }
   $("file").addEventListener("change", function (e) { if (e.target.files[0]) load(e.target.files[0]); e.target.value = ""; });
   // invented example files shipped with the app (web/example): a download from this site, nothing is uploaded
@@ -336,19 +403,26 @@
   /* ------------------------------------------------------------------ check against QA's manual workbook */
   async function loadQa(file) {
     if (!S.all) { msg("qmsg", "Load the PAS-X export first.", "err"); return; }
-    msg("qmsg", "Comparing…"); $("qres").hidden = true;
+    msg("qmsg", ""); $("qres").hidden = true;
+    var p = progress("Checking QA's workbook against PAS-X", [["read", "Reading QA's workbook"], ["open", "Opening the .xlsx"],
+      ["flat", "Reading QA's headers & batch rows"], ["match", "Matching every QA cell to PAS-X rows"], ["show", "Drawing the results"]]);
     try {
-      var res = await window.AdigiCompare.run(await file.arrayBuffer(), S.all, "");
+      p.step("read", file.name);
+      var qb = await file.arrayBuffer();
+      var res = await job("compare", { buf: qb, rows: S.all, cols: S.all.sourceColumns }, [qb]);
+      p.step("show", res.results.length.toLocaleString("en-IN") + " cells compared");
       S.qa = res; S.qaFile = file.name; S.qf = "";
       $("qchip").textContent = file.name + " · " + res.qaValues + " values in " + res.qaBatches.length + " batch(es)";
       if (!res.results.length) {
+        p.fail("Nothing to compare");
         msg("qmsg", res.qaBatches.length ? "None of QA's batches are in this export (" + res.missing.slice(0, 5).join(", ") + (res.missing.length > 5 ? " …" : "") + "). Export the same batches from PAS-X." :
           "No batch rows found. Expected sheets: " + window.AdigiCompare.SHEETS.join(", ") + ", with 10-digit batch numbers in one of the first four columns.", "err");
         return;
       }
       msg("qmsg", res.missing.length ? res.missing.length + " of QA's batches are not in this export and were skipped: " + res.missing.slice(0, 8).join(", ") + (res.missing.length > 8 ? " …" : "") : "", res.missing.length ? "err" : "");
       renderQa(); $("qres").hidden = false;
-    } catch (e) { msg("qmsg", "Could not read the workbook: " + e.message, "err"); }
+      await p.done(res.results.filter(function (x) { return /^MATCH/.test(x.STATUS); }).length.toLocaleString("en-IN") + " values match");
+    } catch (e) { p.fail("Could not read the workbook: " + e.message); msg("qmsg", "Could not read the workbook: " + e.message, "err"); }
   }
   function renderQa() {
     var r = S.qa.results, count = function (f) { return r.filter(f).length; };
@@ -385,9 +459,14 @@
   chips("qFilter", function (v) { S.qf = v; renderQaDetail(); });
   $("qdl").onclick = async function () {
     if (!S.qa) return;
-    var buf = await window.AdigiCompare.workbook(S.qa, [["QA workbook", S.qaFile], ["PAS-X export", S.file + (S.sha ? " · SHA-256 " + S.sha : "")],
-      ["Generated", new Date().toISOString()], ["Tool", "AdigiPQR web app v" + C.VERSION + " (processed in the browser, nothing uploaded)"]]);
-    save(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "APQR_check_vs_QA_" + stamp() + ".xlsx");
+    var p = progress("Writing the comparison", [["zip", "Writing Summary + Detail sheets"], ["save", "Saving to Downloads"]]);
+    try {
+      var out = await job("qaReport", { res: S.qa, info: [["QA workbook", S.qaFile], ["PAS-X export", S.file + (S.sha ? " · SHA-256 " + S.sha : "")],
+        ["Generated", new Date().toISOString()], ["Tool", "AdigiPQR web app v" + C.VERSION + " (processed in the browser, nothing uploaded)"]] });
+      p.step("save");
+      save(new Blob([out.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "APQR_check_vs_QA_" + stamp() + ".xlsx");
+      await p.done("Saved");
+    } catch (e) { p.fail("Could not write the comparison: " + e.message); }
   };
 
   /* ------------------------------------------------------------------ QA's official workbook, filled */
@@ -400,13 +479,17 @@
   dropZone($("tdrop"), loadTpl);
   $("tdl").onclick = async function () {
     if (!S.tpl || !S.rows || !S.rows.length) return;
-    var btn = this; btn.disabled = true; msg("tmsg", "Filling QA's workbook… (a workbook with thousands of batches takes about 15 seconds)");
+    var btn = this; btn.disabled = true; msg("tmsg", "");
+    var p = progress("Filling QA's workbook", [["open", "Opening QA's workbook"], ["fill", "Adding batches · filling empty cells"],
+      ["report", "Writing the fill report sheet"], ["zip", "Compressing the .xlsx"], ["save", "Saving to Downloads"]]);
     try {
       var sel = S.sel, req = sel.byBatch ? "batch numbers: " + sel.want.join(", ") : "material " + (sel.mat || "all") + ", manufactured " + (sel.from || "any") + " to " + (sel.to || "any");
       var info = [["QA workbook", S.tpl.name], ["PAS-X export", S.file + (S.sha ? " · SHA-256 " + S.sha : "")], ["QA request", req],
         ["Generated", new Date().toISOString()], ["Tool", "AdigiPQR web app v" + C.VERSION + " (processed in the browser, nothing uploaded)"],
         ["Status", "Prepared from the PAS-X MES execution record for QA review. Verify against the batch record before use in the APQR."]];
-      var res = await window.AdigiCompare.fillWorkbook(S.tpl.buffer.slice(0), S.rows, { leaveYellow: $("tYellow").checked, info: info });
+      var tb = S.tpl.buffer.slice(0);
+      var res = await job("fill", { buf: tb, rows: S.rows, cols: S.rows.sourceColumns || S.all.sourceColumns, opts: { leaveYellow: $("tYellow").checked, info: info } }, [tb]);
+      p.step("save");
       save(new Blob([res.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
         S.tpl.name.replace(/\.xlsx$/i, "") + "_filled_" + stamp() + ".xlsx");
       var cnt = {}; res.report.forEach(function (r) { cnt[r.STATUS] = (cnt[r.STATUS] || 0) + 1; });
@@ -415,8 +498,9 @@
         return '<tr class="' + (k === "AMBIGUOUS" ? "amb" : "") + '"><td>' + esc(k) + '</td><td class="n">' + cnt[k] + "</td><td>" + esc(T[k]) + "</td></tr>";
       }).join("") + notes.map(function (r) { return '<tr><td>' + esc(r.SHEET || "–") + "</td><td></td><td>" + esc(r.STATUS + ": " + r.SOURCE) + "</td></tr>"; }).join("");
       $("tres").hidden = false;
-      msg("tmsg", (cnt.FILLED || 0) + " values written into QA's workbook. Details are in its last sheet, 'AdigiPQR fill report'.", "ok");
-    } catch (e) { msg("tmsg", "Could not fill the workbook: " + e.message, "err"); }
+      msg("tmsg", (cnt.FILLED || 0) + " values written. Every one is traced in the last sheet, 'AdigiPQR fill report'.", "ok");
+      await p.done((cnt.FILLED || 0).toLocaleString("en-IN") + " values written");
+    } catch (e) { p.fail("Could not fill the workbook: " + e.message); msg("tmsg", "Could not fill the workbook: " + e.message, "err"); }
     btn.disabled = false;
   };
 
@@ -440,11 +524,19 @@
       ["Status", "Prepared from the PAS-X MES execution record for QA review. Verify against the batch record before use in the APQR."]]);
     var list = C.parseCppList(cppText());
     if (list.length) info.splice(info.length - 1, 0, ["QA CPP list", list.map(function (e) { return e[0]; }).join("; ")]);
-    var res = await C.workbook(rows, { pivot: o, info: info, scans: scans, cppList: cppText() });
+    var p = progress("Building the APQR workbook", [["pivot", "Pivoting stages into QA sheets"], ["stats", "Cpk, control limits, Nelson trend rules"],
+      ["sheets", "Writing QA sheets, Summary & Trends"], ["long", "Adding PAS-X source rows (traceability)"], ["zip", "Compressing the .xlsx"],
+      ["charts", "Embedding native Excel trend charts"], ["save", "Saving to Downloads"]]);
+    var res;
+    try {
+      res = await job("workbook", { rows: rows, cols: rows.sourceColumns || (S.all && S.all.sourceColumns), opts: { pivot: o, info: info, scans: scans, cppList: cppText() } });
+    } catch (e) { p.fail("Could not build the workbook: " + e.message); throw e; }
+    p.step("save");
     save(new Blob([res.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), nameBase + "_" + stamp() + ".xlsx");
+    await p.done("Saved · " + Object.keys(batches).length + " batches");
   }
   $("dl").onclick = async function () {
-    var btn = this; btn.disabled = true; msg("msg", "Building the workbook…");
+    var btn = this; btn.disabled = true; msg("msg", "");
     try {
       var sel = S.sel;
       var desc = [["Source file", S.file], ["Source SHA-256", S.sha || "not available in this browser context"], ["Material", sel.mat || "all in the file"]];

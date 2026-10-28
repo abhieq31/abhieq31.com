@@ -4,7 +4,7 @@
  */
 (function (global) {
   "use strict";
-  var VERSION = "2.2.0";
+  var VERSION = "2.3.0";
   var IPC_RE = /in.?process|ipc|check|record|parameter|monitor/i;
   var PHASE_RE = /^(PRE.?LUB\w*|LUB\w*|LOT\w*|PART\w*|PREHEAT\w*|PRE\w*IPC|SPRAY\w*|DRY\w*|COOL\w*)$/i;
   var SEC_RE = /^(s|sec|secs|second|seconds)$/i;
@@ -184,7 +184,11 @@
   function build(rows, opt) {
     opt = opt || { merge: true, minutes: true, inspection: false };
     var batches = [], hdr = {};
-    rows.forEach(function (r) { if (!(r.BATCH_NO in hdr)) { hdr[r.BATCH_NO] = r; batches.push(r.BATCH_NO); } });
+    var kgOf = {};                                // batch size in kg from 'Granulation (297.520 Kg)' (= pivot.stage_kg)
+    rows.forEach(function (r) {
+      if (!(r.BATCH_NO in hdr)) { hdr[r.BATCH_NO] = r; batches.push(r.BATCH_NO); }
+      if (!(r.BATCH_NO in kgOf)) { var k = s(r.STAGE).match(/\(\s*([\d.,]+)\s*kgs?\s*\)/i), x = k ? parseFloat(k[1].replace(/,/g, "")) : NaN; if (isFinite(x)) kgOf[r.BATCH_NO] = x; }
+    });
     var g = function (b, c) { return s(hdr[b][c]); };
     var out = [];
     // QA's BMR detail columns in QA's order (empty ones are QA's), then what else PAS-X knows about the batch
@@ -192,10 +196,13 @@
       "BMR No.", "Master BMR No.", "Shelf Life", "OOS/OOT/Deviation/Change control", "Remarks", "Trend By Name",
       "Product Name", "Manufacturing Order", "MO Status"];
     out.push({ name: "BMR detail", kind: "simple", cols: bmrCols, rows: batches.map(function (b, i) {
-      var bmr = g(b, "MBR_ID") + (g(b, "MBR_VERSION") ? "-" + g(b, "MBR_VERSION") : "");
-      var uom = g(b, "BATCH_SIZE_UOM"), size = ["kg", "kgs", ""].indexOf(uom.trim().toLowerCase()) >= 0 ? g(b, "BATCH_SIZE") : (g(b, "BATCH_SIZE") + " " + uom).trim();
-      return [i + 1, b, size, g(b, "MFG_MONTH"), g(b, "EXP_MONTH"), g(b, "MATERIAL_CODE"), "", bmr, "",
-        (g(b, "SHELF_LIFE") + " " + g(b, "SHELF_LIFE_UOM")).trim(), "", "", "", g(b, "PRODUCT_NAME"), g(b, "MANUFACTURING_ORDER"), g(b, "MO_STATUS")];
+      var ver = g(b, "MBR_VERSION");             // QA writes PAS-X-era BMR numbers as F1M00011/00000004
+      var bmr = g(b, "MBR_ID") + (g(b, "MBR_ID") && ver ? (/^\d+$/.test(ver) ? "/" + ("00000000" + ver).slice(-Math.max(8, ver.length)) : "-" + ver) : "");
+      var uom = g(b, "BATCH_SIZE_UOM"), isKg = ["kg", "kgs", ""].indexOf(uom.trim().toLowerCase()) >= 0;
+      var size = isKg ? g(b, "BATCH_SIZE") : b in kgOf ? fmt(kgOf[b]) : (g(b, "BATCH_SIZE") + " " + uom).trim();
+      var noShelf = /^0+(\.0+)?$/.test(g(b, "SHELF_LIFE"));   // shelf life 0: no expiry (QA writes NA)
+      return [i + 1, b, size, g(b, "MFG_MONTH"), noShelf ? "" : g(b, "EXP_MONTH"), g(b, "MATERIAL_CODE"), "", bmr, "",
+        noShelf ? "" : (g(b, "SHELF_LIFE") + " " + g(b, "SHELF_LIFE_UOM")).trim(), "", "", "", g(b, "PRODUCT_NAME"), g(b, "MANUFACTURING_ORDER"), g(b, "MO_STATUS")];
     }) });
     function grid(name, res) {
       if (!res) return;
@@ -624,15 +631,21 @@
   }
 
   /* Complete workbook: QA sheets, Summary, Trends, Trend data, [Scanned records], MES long data, Report info */
+  function step(key, detail) { if (global.AdigiProgress) global.AdigiProgress(key, detail); }   // progress for the page
   async function workbook(rows, opts) {
     opts = opts || {};
-    var model = build(rows, opts.pivot), params = parameters(model, opts.cppList);
+    step("pivot", rows.length.toLocaleString("en-IN") + " rows");
+    var model = build(rows, opts.pivot);
+    step("stats", model.batches.length + " batches");
+    var params = parameters(model, opts.cppList);
+    step("sheets", params.length + " parameters");
     var wb = new ExcelJS.Workbook();
     wb.creator = "AdigiPQR";
     writeQaSheets(wb, model);
     writeSummary(wb, params);
     var trends = writeTrends(wb, params);
     if (opts.scans && opts.scans.length) writeScans(wb, opts.scans);
+    step("long");
     var long = wb.addWorksheet("MES long data"), keys = rows.sourceColumns || Object.keys(rows[0]);
     long.addRow(keys);
     rows.forEach(function (r) { if (!r._scan) long.addRow(keys.map(function (k) { return asCell(r[k]); })); });
@@ -641,8 +654,10 @@
     var info = wb.addWorksheet("Report info");
     (opts.info || []).forEach(function (r) { var row = info.addRow(r); row.getCell(1).font = { bold: true }; });
     info.getColumn(1).width = 24; info.getColumn(2).width = 100;
+    step("zip");
     var buf = await wb.xlsx.writeBuffer();
     if (trends) {
+      step("charts", trends.specs.length + " charts");
       var idx = wb.worksheets.indexOf(trends.sheet) + 1;
       buf = await injectCharts(buf, idx, trends.specs);
     }
