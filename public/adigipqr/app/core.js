@@ -187,13 +187,15 @@
     rows.forEach(function (r) { if (!(r.BATCH_NO in hdr)) { hdr[r.BATCH_NO] = r; batches.push(r.BATCH_NO); } });
     var g = function (b, c) { return s(hdr[b][c]); };
     var out = [];
-    var bmrCols = ["Sr. No.", "Manufacturing Batch No.", "Product Name", "Batch Size", "Mfg. Date", "Exp. Date", "SFG code",
-      "Market", "BMR No.", "Master BMR No.", "Shelf Life", "Manufacturing Order", "MO Status", "OOS/OOT/Deviation/Change control", "Remarks"];
+    // QA's BMR detail columns in QA's order (empty ones are QA's), then what else PAS-X knows about the batch
+    var bmrCols = ["Sr. No.", "Manufacturing Batch No.", "Batch Size (In Kg)", "Mfg. Date", "Exp. Date", "SFG code", "Market",
+      "BMR No.", "Master BMR No.", "Shelf Life", "OOS/OOT/Deviation/Change control", "Remarks", "Trend By Name",
+      "Product Name", "Manufacturing Order", "MO Status"];
     out.push({ name: "BMR detail", kind: "simple", cols: bmrCols, rows: batches.map(function (b, i) {
       var bmr = g(b, "MBR_ID") + (g(b, "MBR_VERSION") ? "-" + g(b, "MBR_VERSION") : "");
-      return [i + 1, b, g(b, "PRODUCT_NAME"), (g(b, "BATCH_SIZE") + " " + g(b, "BATCH_SIZE_UOM")).trim(), g(b, "MFG_MONTH"),
-        g(b, "EXP_MONTH"), g(b, "MATERIAL_CODE"), "", bmr, "", (g(b, "SHELF_LIFE") + " " + g(b, "SHELF_LIFE_UOM")).trim(),
-        g(b, "MANUFACTURING_ORDER"), g(b, "MO_STATUS"), "", ""];
+      var uom = g(b, "BATCH_SIZE_UOM"), size = ["kg", "kgs", ""].indexOf(uom.trim().toLowerCase()) >= 0 ? g(b, "BATCH_SIZE") : (g(b, "BATCH_SIZE") + " " + uom).trim();
+      return [i + 1, b, size, g(b, "MFG_MONTH"), g(b, "EXP_MONTH"), g(b, "MATERIAL_CODE"), "", bmr, "",
+        (g(b, "SHELF_LIFE") + " " + g(b, "SHELF_LIFE_UOM")).trim(), "", "", "", g(b, "PRODUCT_NAME"), g(b, "MANUFACTURING_ORDER"), g(b, "MO_STATUS")];
     }) });
     function grid(name, res) {
       if (!res) return;
@@ -217,11 +219,11 @@
       function (r) { return cleanStage(r.STAGE) + "|" + s(r.APQR_PARAMETER).toUpperCase(); },
       function (r) { return s(r.STEP) || "Yield"; }, function (r) { return s(r.APQR_PARAMETER); }, "reading", opt));
     var isT = function (r) { return /temp/i.test(s(r.APQR_PARAMETER)); };
-    grid("Temp. & RH", makeSheet(rows, batches,
+    grid("Temp. & Humidity", makeSheet(rows, batches,
       function (r) { return s(r.PARAMETER_CLASS) === "Environment (Temp/RH)" && /temp|humid|\brh\b/i.test(s(r.APQR_PARAMETER)); },
       function (r) { return cleanStage(r.STAGE) + "|" + (isT(r) ? "T" : "RH"); },
       function () { return "Line clearance"; }, function (r) { return isT(r) ? "Temp" : "RH"; }, "reading", opt));
-    grid("IP/FP-Analytical", makeSheet(rows, batches, function (r) { return s(r.PARAMETER_CLASS) === "CQA (analytical)"; },
+    grid("IP-Analytical", makeSheet(rows, batches, function (r) { return s(r.PARAMETER_CLASS) === "CQA (analytical)"; },
       function (r) { return "Analytical|" + cleanStage(r.STAGE) + "|" + s(r.APQR_PARAMETER).toUpperCase(); },
       function (r) { return s(r.STEP) || "Result"; }, function (r) { return s(r.APQR_PARAMETER); }, "reading", opt));
     var bpr = bprDetails(rows);

@@ -67,6 +67,7 @@
       if (keys.length > 1) sel.add(new Option("All materials (" + keys.length + ")", ""));
       keys.forEach(function (m) { sel.add(new Option((m || "(none)") + (mats[m] ? " – " + mats[m] : ""), m)); });
       $("fFrom").value = ""; $("fTo").value = "";
+      if (S.mode === "batch" && !sel.querySelector('option[value=""]')) { sel.insertBefore(new Option("Any material", ""), sel.firstChild); sel.value = ""; }
       $("filechip").textContent = file.name + " · " + rows.length + " rows" + (S.sha ? " · SHA-256 " + S.sha.slice(0, 12) + "…" : "");
       msg("msg", ""); $("loaded").hidden = false;
       document.body.classList.add("has-data"); loadCpp(); recompute();
@@ -82,6 +83,10 @@
   $("exLoad").onclick = async function () {
     try { await load(await example("example_pasx_export.csv", "text/csv")); S.example = true; }
     catch (e) { msg("msg", "The example file could not be opened here (" + e.message + "). It is in the folder example/ next to this page.", "err"); }
+  };
+  $("exTpl").onclick = async function () {
+    try { await loadTpl(await example("example_qa_workbook_template.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")); }
+    catch (e) { msg("tmsg", "The example file could not be opened here (" + e.message + ").", "err"); }
   };
   $("exQa").onclick = async function () {
     try { await loadQa(await example("example_qa_manual.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")); }
@@ -104,9 +109,15 @@
     });
     return out;
   }
+  // QA asks in two ways: all batches of a material in a period, or a list of batch numbers (material optional)
+  function batchList() { return uniqList($("fBatches").value.split(/[\s,;]+/).filter(Boolean)); }
+  function uniqList(a) { var o = []; a.forEach(function (x) { if (o.indexOf(x) < 0) o.push(x); }); return o; }
   function selected() {
-    var mat = $("fMat").value, from = $("fFrom").value, to = $("fTo").value, lo = from ? from + " 00:00" : null, hi = to ? to + " 23:59" : null;
+    var byBatch = S.mode === "batch", want = byBatch ? batchList() : [], wantSet = {};
+    want.forEach(function (b) { wantSet[b] = 1; });
+    var mat = $("fMat").value, from = byBatch ? "" : $("fFrom").value, to = byBatch ? "" : $("fTo").value, lo = from ? from + " 00:00" : null, hi = to ? to + " 23:59" : null;
     var undated = {}, rows = (S.all || []).filter(function (r) {
+      if (byBatch && !wantSet[r.BATCH_NO]) return false;
       if (mat && C.s(r.MATERIAL_CODE) !== mat) return false;
       if (!lo && !hi) return true;
       if (!r._start) { undated[r.BATCH_NO] = 1; return false; }
@@ -120,10 +131,13 @@
     var pos = {}; order.forEach(function (b, i) { pos[b] = i; });
     rows = rows.slice().sort(function (a, b) { return pos[a.BATCH_NO] - pos[b.BATCH_NO]; });
     var bs = {}; order.forEach(function (b) { bs[b] = 1; });
-    var scanRows = scanRowsFor(bs, mat, lo, hi);
+    var scanRows = byBatch ? S.scans.filter(function (r) { return r.status === "accepted" && wantSet[r.row.BATCH_NO]; }).map(function (r) { return r.row; })
+      : scanRowsFor(bs, mat, lo, hi);
+    var missing = want.filter(function (b) { return !bs[b]; });
     var all = rows.concat(scanRows.map(function (r) { var o = Object.assign({}, r); o._scan = true; return o; }));
     all.sourceColumns = S.all.sourceColumns;
-    return { rows: all, mat: mat, from: from, to: to, undated: Object.keys(undated), first: first, nScan: scanRows.length };
+    return { rows: all, mat: mat, from: from, to: to, undated: Object.keys(undated), first: first, nScan: scanRows.length,
+      byBatch: byBatch, want: want, missing: missing };
   }
   function opt() { return { merge: $("oMerge").checked, minutes: $("oMin").checked, inspection: $("oInsp").checked }; }
   // QA's CPP list for the product: typed once per material, remembered in this browser (product knowledge, no batch data)
@@ -136,15 +150,19 @@
     var sel = selected();
     S.sel = sel; S.rows = sel.rows;
     if (!sel.rows.length) {
-      S.model = null; $("kpis").innerHTML = ""; msg("msg", "No batches of this material in this period.", "err");
+      S.model = null; $("kpis").innerHTML = "";
+      msg("msg", sel.byBatch ? (sel.want.length ? "None of the requested batch numbers are in this export" + (sel.mat ? " under material " + sel.mat : "") + ": " + sel.want.slice(0, 10).join(", ") + (sel.want.length > 10 ? " …" : "") :
+        "Enter the batch numbers QA asked for, then Apply.") : "No batches of this material in this period.", "err");
       ["secBatches", "secParams", "secCharts", "secSheets"].forEach(function (id) { $(id).hidden = true; });
-      $("dl").disabled = true; return;
+      $("dl").disabled = true; $("tdl").disabled = true; return;
     }
     ["secBatches", "secParams", "secCharts", "secSheets"].forEach(function (id) { $(id).hidden = false; });
-    $("dl").disabled = false; msg("msg", "");
+    $("dl").disabled = false; $("tdl").disabled = !S.tpl; msg("msg", "");
     S.model = C.build(sel.rows, opt()); S.params = C.parameters(S.model, cppText());
     var starts = S.model.batches.map(function (b) { return sel.first[b]; }).filter(Boolean).sort();
-    $("period").textContent = (starts.length ? "Manufactured " + starts[0].slice(0, 10) + " → " + starts[starts.length - 1].slice(0, 10) + ". " : "") +
+    $("period").textContent = (sel.byBatch ? "Requested " + sel.want.length + " batch number(s): " + (sel.want.length - sel.missing.length) + " found" +
+        (sel.missing.length ? ", not in this export" + (sel.mat ? " under material " + sel.mat : "") + ": " + sel.missing.join(", ") : "") + ". " : "") +
+      (starts.length ? "Manufactured " + starts[0].slice(0, 10) + " → " + starts[starts.length - 1].slice(0, 10) + ". " : "") +
       (sel.undated.length ? sel.undated.length + " batch(es) without a start date were left out by the date filter. " : "") +
       (sel.nScan ? sel.nScan + " record(s) from BMR scans included." : "");
     renderKpis(); renderBatches(); renderParams();
@@ -152,6 +170,19 @@
     if ($("secSheets").open) renderSheet();
   }
   ["apply"].forEach(function (id) { $(id).onclick = recompute; });
+  S.mode = "period";
+  function setMode(m) {
+    S.mode = m;
+    $("reqMode").querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.m === m ? "true" : "false"); });
+    document.querySelectorAll(".m-period").forEach(function (el) { el.hidden = m !== "period"; });
+    document.querySelectorAll(".m-batch").forEach(function (el) { el.hidden = m !== "batch"; });
+    var any = $("fMat").querySelector('option[value=""]');
+    if (m === "batch" && !any && $("fMat").options.length) { $("fMat").insertBefore(new Option("Any material", ""), $("fMat").firstChild); $("fMat").value = ""; }
+    if (m === "batch") $("fBatches").focus();
+    recompute();
+  }
+  $("reqMode").querySelectorAll("button").forEach(function (b) { b.onclick = function () { setMode(b.dataset.m); }; });
+  $("fBatches").addEventListener("change", recompute);
   $("fMat").addEventListener("change", loadCpp);
   ["fMat", "oMerge", "oMin", "oInsp"].forEach(function (id) { $(id).addEventListener("change", recompute); });
   $("oCpp").addEventListener("change", function () { store(cppKey(), this.value); recompute(); });
@@ -359,6 +390,36 @@
     save(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "APQR_check_vs_QA_" + stamp() + ".xlsx");
   };
 
+  /* ------------------------------------------------------------------ QA's official workbook, filled */
+  async function loadTpl(file) {
+    S.tpl = { name: file.name, buffer: await file.arrayBuffer() };
+    $("tchip").textContent = file.name + " · " + Math.round(file.size / 1024) + " KB";
+    $("tdl").disabled = !S.rows || !S.rows.length; $("tres").hidden = true; msg("tmsg", "");
+  }
+  $("tfile").addEventListener("change", function (e) { if (e.target.files[0]) loadTpl(e.target.files[0]); e.target.value = ""; });
+  dropZone($("tdrop"), loadTpl);
+  $("tdl").onclick = async function () {
+    if (!S.tpl || !S.rows || !S.rows.length) return;
+    var btn = this; btn.disabled = true; msg("tmsg", "Filling QA's workbook…");
+    try {
+      var sel = S.sel, req = sel.byBatch ? "batch numbers: " + sel.want.join(", ") : "material " + (sel.mat || "all") + ", manufactured " + (sel.from || "any") + " to " + (sel.to || "any");
+      var info = [["QA workbook", S.tpl.name], ["PAS-X export", S.file + (S.sha ? " · SHA-256 " + S.sha : "")], ["QA request", req],
+        ["Generated", new Date().toISOString()], ["Tool", "AdigiPQR web app v" + C.VERSION + " (processed in the browser, nothing uploaded)"],
+        ["Status", "Prepared from the PAS-X MES execution record for QA review. Verify against the batch record before use in the APQR."]];
+      var res = await window.AdigiCompare.fillWorkbook(S.tpl.buffer.slice(0), S.rows, { leaveYellow: $("tYellow").checked, info: info });
+      save(new Blob([res.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+        S.tpl.name.replace(/\.xlsx$/i, "") + "_filled_" + stamp() + ".xlsx");
+      var cnt = {}; res.report.forEach(function (r) { cnt[r.STATUS] = (cnt[r.STATUS] || 0) + 1; });
+      var T = window.AdigiCompare.STATUS_TEXT, notes = res.report.filter(function (r) { return !r.CELL; });
+      $("tsum").innerHTML = "<tr><th>Result</th><th class=\"n\">Cells</th><th>Meaning</th></tr>" + Object.keys(T).filter(function (k) { return cnt[k]; }).map(function (k) {
+        return '<tr class="' + (k === "AMBIGUOUS" ? "amb" : "") + '"><td>' + esc(k) + '</td><td class="n">' + cnt[k] + "</td><td>" + esc(T[k]) + "</td></tr>";
+      }).join("") + notes.map(function (r) { return '<tr><td>' + esc(r.SHEET || "–") + "</td><td></td><td>" + esc(r.STATUS + ": " + r.SOURCE) + "</td></tr>"; }).join("");
+      $("tres").hidden = false;
+      msg("tmsg", (cnt.FILLED || 0) + " values written into QA's workbook. Details are in its last sheet, 'AdigiPQR fill report'.", "ok");
+    } catch (e) { msg("tmsg", "Could not fill the workbook: " + e.message, "err"); }
+    btn.disabled = false;
+  };
+
   /* ------------------------------------------------------------------ download */
   function stamp() { var d = new Date(), p = function (n) { return (n < 10 ? "0" : "") + n; }; return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()); }
   function save(blob, name) {
@@ -386,9 +447,12 @@
     var btn = this; btn.disabled = true; msg("msg", "Building the workbook…");
     try {
       var sel = S.sel;
-      await buildAndSave(S.rows, "APQR_" + (sel.mat || "all") + (sel.from || sel.to ? "_" + (sel.from || "start") + "_" + (sel.to || "end") : ""),
-        [["Source file", S.file], ["Source SHA-256", S.sha || "not available in this browser context"], ["Material", sel.mat || "all in the file"],
-          ["Manufactured from", sel.from || "any"], ["Manufactured to", sel.to || "any"]]);
+      var desc = [["Source file", S.file], ["Source SHA-256", S.sha || "not available in this browser context"], ["Material", sel.mat || "all in the file"]];
+      if (sel.byBatch) desc = desc.concat([["QA request", "batch numbers (" + sel.want.length + ")"], ["Batch numbers requested", sel.want.join(", ")],
+        ["Requested but not in the export", sel.missing.join(", ") || "none"]]);
+      else desc = desc.concat([["QA request", "material + period"], ["Manufactured from", sel.from || "any"], ["Manufactured to", sel.to || "any"]]);
+      await buildAndSave(S.rows, "APQR_" + (sel.mat || (sel.byBatch ? "batches" : "all")) + (sel.byBatch ? "_" + sel.want.length + "batches" :
+        (sel.from || sel.to ? "_" + (sel.from || "start") + "_" + (sel.to || "end") : "")), desc);
       msg("msg", "Workbook saved.", "ok");
     } catch (e) { msg("msg", "Could not build the workbook: " + e.message, "err"); }
     btn.disabled = false;
@@ -500,7 +564,7 @@
       var from = dmy($("qFrom").value), to = dmy($("qTo").value);
       if (!bats.length && (!mats.length || !from || !to)) throw new Error("Enter material code(s) and both dates, or a batch list.");
       var sql = window.ADIGI_SQL.text, subs = [
-        [/CAST\('[^']*' AS VARCHAR2\(4000\)\)(\s+AS material_list)/, "CAST(" + lit(mats.join(",")) + " AS VARCHAR2(4000))$1"],
+        [/CAST\((?:NULL|'[^']*') AS VARCHAR2\(4000\)\)(\s+AS material_list)/, (mats.length ? "CAST(" + lit(mats.join(",")) + " AS VARCHAR2(4000))" : "CAST(NULL AS VARCHAR2(4000))") + "$1"],
         [/TO_DATE\('[^']*', 'DD-MM-YYYY'\)(\s+AS from_date)/, "TO_DATE('" + (from || "01-01-2000") + "', 'DD-MM-YYYY')$1"],
         [/TO_DATE\('[^']*', 'DD-MM-YYYY'\)(\s+AS to_date)/, "TO_DATE('" + (to || "31-12-2099") + "', 'DD-MM-YYYY')$1"],
         [/CAST\((?:NULL|'[^']*') AS VARCHAR2\(4000\)\)(\s+AS batch_list)/, (bats.length ? "CAST(" + lit(bats.join(",")) + " AS VARCHAR2(4000))" : "CAST(NULL AS VARCHAR2(4000))") + "$1"],

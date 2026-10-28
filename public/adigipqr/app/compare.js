@@ -1,14 +1,28 @@
-/* AdigiPQR - check the MES export against QA's manually compiled APQR workbook, cell by cell.
-   Port of python/compare_apqr.py (same rules, same statuses; tests/test_compare.py keeps them equal).
-   Everything stays in this browser tab. */
+/* AdigiPQR - QA's own APQR workbook <-> the PAS-X export, in the browser: check every value QA typed, or fill
+   QA's workbook (new batches into BMR detail / BPR Details, values into empty cells, never over what QA typed).
+   Port of adigipqr/qamap.py (same rules, same statuses; tests/test_compare.py keeps them equal). Nothing leaves the tab. */
 (function (global) {
   "use strict";
-  var SHEETS = ["Granulation", "Compression", "Coating", "Temp. & RH", "Temp. & Humidity", "Yield data", "BMR detail",
-    "Packing Yield", "BPR Details"];
-  var BATCH_RE = /^\d{10}$/;
-  // (qa_regex, mes_param_regex, stage_regex, step_regex, value_kind) = compare_apqr.RULES
+  var SHEETS = ["Granulation", "Compression", "Coating", "Temp. & RH", "Temp. & Humidity", "Yield data", "BMR detail", "Packing Yield", "BPR Details"];
+  var BATCH_RE = /^\d{10}$/, BATCH_LABEL = /batch\s*no/i, YELLOW = "FFFFFF00";
+  // QA's own fields: nothing in PAS-X to compare or fill
+  var QA_FIELD = new RegExp("(^|> )(remarks?|trend(ing)? by( name)?|market|master b[mp]r no\\.?|oos/oot/deviation/change control|pack style|status|packing batch no\\.?|bpr no\\.?)$");
+  // batch header fields of the export: (QA column regex on 'sheet > column', field)
+  var HEADER_RULES = [
+    ["^(bmr detail|bpr details) > batch size", "BATCH_SIZE"],
+    ["^(bmr detail|bpr details) > mfg\\.? ?date", "MFG_MONTH"],
+    ["^(bmr detail|bpr details) > exp\\.? ?date", "EXP_MONTH"],
+    ["^(bmr detail|bpr details) > (sfg code|product code)", "MATERIAL_CODE"],
+    ["^(bmr detail|bpr details) > product name", "PRODUCT_NAME"],
+    ["^bmr detail > bmr no", "BMR_NO"],
+    ["^(bmr detail|bpr details) > shelf life", "SHELF_LIFE"],
+    ["^bpr details > fg code", "FG_CODE"],
+    ["^bmr detail > (manufacturing order|process order|mo no)", "MANUFACTURING_ORDER"]
+  ];
+  // (qa_regex, mes_param_regex, stage_regex, step_regex, value_kind) = adigipqr/qamap.RULES
   var RULES = [
     ["^(granulation|compression|coating|packing yield) > (equipment|granulation ?\\()", null, null, null, "E"],
+    ["^coating > dispensing$", null, null, null, "E"],
     ["cvf feed", "cvf\\s*feed", "roll|compact", null, "R"],
     ["roller gap", "roll\\w*\\s*gap", "roll|compact", null, "R"],
     ["roller unit", "roller\\s*unit", "roll|compact", null, "R"],
@@ -38,6 +52,7 @@
     ["coating.*uniformity", "uniformity", "coat", null, "I"],
     ["coating.*disintegration", "disintegration", "coat", null, "I"],
     ["coating.*ave\\. weight", "average weight|av\\w*\\.?\\s*mass", "coat", null, "R"],
+    ["coating.*wt\\.? ?of 20", "(mass|weight|wt\\.?) of 20", "coat", null, "R"],
     ["group weight", "weight of 20|mass of 20", "coat", null, "R"],
     ["preheating.*bed", "bed|product", "coat", "preheat", "R"],
     ["preheating time", "preheat\\w*\\s*time|time", "coat", "preheat", "R"],
@@ -55,207 +70,441 @@
     ["drying time", "drying time", "coat", null, "R"],
     ["cooling time", "cooling time", "coat", null, "R"],
     ["weight gain", "weight gain", "coat", null, "R"],
+    ["yield data.*(lb|lubrication) - rejection", "reject", "lub|blend", null, "Y"],
+    ["yield data.*compression - rejection", "reject", "compress", null, "Y"],
+    ["yield data.*coating - rejection", "reject", "coat", null, "Y"],
+    ["packing yield.*packing - rejection", "reject", "pack", null, "Y"],
     ["yield data.*lubrication", "actual yield|% yield", "lub|blend", null, "Y"],
     ["yield data.*compression >", "actual yield|% yield", "compress", null, "Y"],
     ["yield data.*coating >", "actual yield|% yield", "coat", null, "Y"],
     ["packing yield.*parameter > packing >", "yield", "pack", null, "Y"]
   ];
+  var ENV_STAGE = [["dispens", "dispens"], ["sifting", "sift"], ["blending", "blend|lub"], ["roll comp", "roll|compact"], ["granulation", "granul|roll|compact"], ["mixing", "mix"], ["lubrication", "lub|blend"], ["compression", "compress"], ["coating", "coat"]];
+  var PART_HINTS = [["amlo", "amlo"], ["valsartan", "vals"], ["lot-i ", "lot.?i\\b"], ["lot-ii", "lot.?ii"]];
+  var EQUIP_STAGE = [["dispens", "dispens"], ["lubrication", "lub|blend"], ["compression", "compress"], ["coating", "coat"], ["granulation", "roll|compact|granul"], ["packing", "pack|blister"]];
+  var STATUS_TEXT = {"FILLED": "written from PAS-X", "KEPT": "QA had already typed a value: left as it was", "LEFT_FOR_QA": "QA's own field, LIMS sheet or yellow column", "NOT_IN_MES": "not recorded in this PAS-X export", "AMBIGUOUS": "several PAS-X readings could be meant: left for QA", "NO_MAPPING_RULE": "column not mapped yet: left for QA", "SHEET_SKIPPED": "sheet not filled", "NOTHING_FILLED": "check these batches: no value was written for them"};
+  var STOP = ["of", "the", "and", "in", "at", "to", "for", "by", "no", "min", "max", "ave", "avg", "nlt", "nmt", "between"];
   var RX = {};
   function rx(p) { return RX[p] || (RX[p] = new RegExp(p)); }
-  var ENV_STAGE = [["sifting", "sift"], ["blending", "blend|lub"], ["roll comp", "roll|compact"], ["mixing", "mix"],
-    ["lubrication", "lub"], ["compression", "compress"], ["coating", "coat"], ["dispensing", "dispens"]];
 
-  /* ---------------------------------------------------------------- 1. flatten QA's workbook */
-  function cellValue(cell) {                       // openpyxl data_only semantics
-    if (!cell) return null;
-    if (cell.type === 1) return null;              // ExcelJS ValueType.Merge: a merged cell that is not the top-left one
+  /* ---------------------------------------------------------------- values (= qamap.num / to_num / blank) */
+  function num(v) {
+    if (v === null || v === undefined || typeof v === "boolean") return null;
+    if (typeof v === "number") return isFinite(v) ? v : null;
+    if (v instanceof Date || typeof v === "object") return null;
+    var t = String(v).replace(/,/g, "").trim();
+    return /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(t) ? Number(t) : null;
+  }
+  function toNum(v) {                             // a pure time cell (00:50) = minutes:seconds as QA types it
+    if (v instanceof Date) {
+      var serial = (v.getTime() - Date.UTC(1899, 11, 30)) / 86400000;
+      return serial >= 0 && serial < 1 ? v.getUTCHours() * 60 + v.getUTCMinutes() + v.getUTCSeconds() / 60 : null;
+    }
+    return num(v);
+  }
+  function blank(v) { return v === null || v === undefined || (typeof v === "number" && isNaN(v)) || ["", "NA", "IA", "None", "nan"].indexOf(String(v).trim()) >= 0; }
+  function str(v) { return v instanceof Date ? v.toISOString() : String(v); }
+  function s(v) { return v === null || v === undefined ? "" : str(v); }
+  function words(v) { return str(v).split(/\s+/).filter(Boolean).join(" "); }
+  function uniq(a) { var o = []; a.forEach(function (x) { if (o.indexOf(x) < 0) o.push(x); }); return o; }
+  function r4(x) { return Math.round(x * 1e4) / 1e4; }
+
+  /* ---------------------------------------------------------------- cells */
+  function cached(cell) {                          // what Excel last showed (openpyxl data_only)
+    if (!cell || cell.type === 1) return null;     // ExcelJS ValueType.Merge: hidden cell of a merged range
     var v = cell.value;
     if (v === undefined || v === null) return null;
     if (v instanceof Date || typeof v !== "object") return v;
     if (v.richText) return v.richText.map(function (t) { return t.text; }).join("");
-    if ("result" in v || "formula" in v || "sharedFormula" in v) return v.result === undefined ? null : (v.result && v.result.error ? v.result.error : v.result);
+    if ("formula" in v || "sharedFormula" in v || "result" in v) return v.result === undefined ? null : (v.result && v.result.error ? v.result.error : v.result);
     if ("text" in v) return v.text;
     if ("error" in v) return v.error;
     return String(v);
   }
-  function str(v) { return v instanceof Date ? v.toISOString() : String(v); }
-  function words(v) { return str(v).split(/\s+/).filter(Boolean).join(" "); }
+  function raw(cell) {                             // formulas as text (openpyxl without data_only)
+    if (!cell || cell.type === 1) return null;
+    var v = cell.value;
+    if (v && typeof v === "object" && !(v instanceof Date) && ("formula" in v || "sharedFormula" in v)) return "=" + (cell.formula || v.formula);
+    return cached(cell);
+  }
+  function at(ws, r, c, mode) { var row = ws.findRow(r); var cell = row ? row.findCell(c) : null; return mode === "raw" ? raw(cell) : cached(cell); }
+  function isYellow(cell) {
+    var f = cell && cell.fill;
+    return !!(f && f.type === "pattern" && f.pattern === "solid" && f.fgColor && f.fgColor.argb && String(f.fgColor.argb).toUpperCase() === YELLOW);
+  }
+  function addr(r, c) { var t = ""; while (c > 0) { var m = (c - 1) % 26; t = String.fromCharCode(65 + m) + t; c = Math.floor((c - 1) / 26); } return t + r; }
 
+  /* ---------------------------------------------------------------- layout (= qamap.layout) */
+  function layout(ws, mode) {
+    var merged = {};
+    ((ws.model && ws.model.merges) || []).forEach(function (rng) {
+      var p = rng.split(":"), a = ws.getCell(p[0]), b = ws.getCell(p[1] || p[0]), v = mode === "raw" ? raw(a) : cached(a);
+      for (var r = a.row; r <= b.row; r++) for (var c = a.col; c <= b.col; c++) merged[r + "," + c] = v;
+    });
+    var cv = function (r, c) { return at(ws, r, c, mode); };
+    var val = function (r, c) { var k = r + "," + c; return k in merged ? merged[k] : cv(r, c); };
+    var first = null, bcol = null, r, c;
+    for (r = 1; r < 40 && !first; r++) for (c = 1; c < 5; c++) { var v = cv(r, c); if (v !== null && BATCH_RE.test(str(v).trim())) { first = r; bcol = c; break; } }
+    if (!first) {                                  // empty template: below the header block
+      var label = null;
+      for (r = 1; r < 16; r++) for (c = 1; c < 5; c++) { var lv = cv(r, c); if (lv !== null && BATCH_LABEL.test(str(lv)) && (!label || r > label[0])) label = [r, c]; }
+      if (!label) return null;
+      bcol = label[1];
+      var end = label[0];
+      ((ws.model && ws.model.merges) || []).forEach(function (rng) {
+        var p = rng.split(":"), a = ws.getCell(p[0]), b = ws.getCell(p[1] || p[0]);
+        if (a.row <= 3 && b.row <= 12) end = Math.max(end, b.row);
+      });
+      first = end + 1;
+    }
+    var bl = [];
+    for (r = 1; r < first; r++) { var bv = val(r, bcol); if (bv !== null) bl.push(words(bv)); }
+    var cols = [], lastParts = null, maxCol = ws.columnCount;
+    for (c = bcol + 1; c <= maxCol; c++) {
+      var parts = [];
+      for (r = 1; r < first; r++) { var hv = val(r, c); if (hv !== null) { var t = words(hv); if (!parts.length || parts[parts.length - 1] !== t) parts.push(t); } }
+      if (!parts.length) continue;
+      var leaf = parts[parts.length - 1].toLowerCase().replace(/\.+$/, ""), stat = "VALUE";
+      if (leaf === "min" || leaf === "minimum") stat = "MIN";
+      else if (leaf === "max" || leaf === "maximum") stat = "MAX";
+      else if (leaf === "ave" || leaf === "avg" || leaf === "average") {
+        stat = "AVG";
+        if (parts.length <= 2 && lastParts) parts = lastParts.slice(0, -1).concat(["Ave"]);   // bare "Ave" column
+      }
+      if (stat === "MIN" || stat === "MAX") lastParts = parts;
+      var yellow = false;
+      for (r = 1; r < first; r++) { var row = ws.findRow(r); if (row && isYellow(row.findCell(c))) yellow = true; }
+      cols.push({ c: c, parts: parts, stat: stat, yellow: yellow });
+    }
+    var sr = bcol > 1 && /sr\.?\s*no/i.test(s(val(1, 1)));
+    return { first: first, bcol: bcol, packing: bl.join(" ").toLowerCase().indexOf("packing") >= 0, cols: cols, sr: sr };
+  }
+
+  /* ---------------------------------------------------------------- 1. flatten QA's workbook */
   function flattenQa(wb, batchPrefix) {
     var rows = [];
     wb.worksheets.forEach(function (ws) {
-      var name = ws.name;
-      if (SHEETS.indexOf(name) < 0) return;
-      var merged = {};
-      ((ws.model && ws.model.merges) || []).forEach(function (rng) {
-        var p = rng.split(":"), a = ws.getCell(p[0]), b = ws.getCell(p[1] || p[0]), v = cellValue(a);
-        for (var r = a.row; r <= b.row; r++) for (var c = a.col; c <= b.col; c++) merged[r + "," + c] = v;
-      });
-      var raw = function (r, c) { var row = ws.findRow(r); return row ? cellValue(row.findCell(c)) : null; };
-      var val = function (r, c) { var k = r + "," + c; return k in merged ? merged[k] : raw(r, c); };
-      var first = null, bcol = null;
-      for (var r = 1; r < 40 && !first; r++) {
-        for (var c = 1; c < 5; c++) {
-          var v = raw(r, c);
-          if (v !== null && BATCH_RE.test(str(v).trim())) { first = r; bcol = c; break; }
-        }
-      }
-      if (!first) return;
-      var maxCol = ws.columnCount, maxRow = ws.rowCount, headers = {};
-      for (var hc = 1; hc <= maxCol; hc++) {
-        var parts = [];
-        for (var hr = 1; hr < first; hr++) {
-          var hv = val(hr, hc);
-          if (hv !== null) { var s = words(hv); if (!parts.length || parts[parts.length - 1] !== s) parts.push(s); }
-        }
-        headers[hc] = parts;
-      }
-      for (var rr = first; rr <= maxRow; rr++) {
-        var b = raw(rr, bcol);
+      if (SHEETS.indexOf(ws.name) < 0) return;
+      var lay = layout(ws, "cached");
+      if (!lay) return;
+      for (var r = lay.first; r <= ws.rowCount; r++) {
+        var b = at(ws, r, lay.bcol);
         if (b === null || !BATCH_RE.test(str(b).trim())) continue;
         b = str(b).trim();
         if (batchPrefix && b.indexOf(batchPrefix) !== 0) continue;
-        var lastParts = null;
-        for (var cc = bcol + 1; cc <= maxCol; cc++) {
-          var ps = headers[cc];
-          if (!ps || !ps.length) continue;
-          var qv = raw(rr, cc), leaf = ps[ps.length - 1].toLowerCase().replace(/\.+$/, ""), stat = "VALUE";
-          if (leaf === "min" || leaf === "minimum") stat = "MIN";
-          else if (leaf === "max" || leaf === "maximum") stat = "MAX";
-          else if (leaf === "ave" || leaf === "avg" || leaf === "average") {
-            stat = "AVG";
-            if (ps.length <= 2 && lastParts) ps = lastParts.slice(0, -1).concat(["Ave"]);   // bare "Ave" column
-          }
-          if (stat === "MIN" || stat === "MAX") lastParts = ps;
-          rows.push({ BATCH_NO: b, QA_SHEET: name, QA_COLUMN: ps.join(" > "), STAT: stat, QA_VALUE: qv });
-        }
+        lay.cols.forEach(function (col) {
+          rows.push({ BATCH_NO: b, QA_SHEET: ws.name, QA_COLUMN: col.parts.join(" > "), STAT: col.stat, QA_VALUE: at(ws, r, col.c) });
+        });
       }
     });
     return rows;
   }
 
-  /* ---------------------------------------------------------------- 2. compare */
-  function toNum(v) {
-    if (v === null || v === undefined) return null;
-    if (v instanceof Date) {                      // a pure time cell (00:50) = minutes:seconds as QA types it
-      var serial = (v.getTime() - Date.UTC(1899, 11, 30)) / 86400000;
-      if (serial >= 0 && serial < 1) return v.getUTCHours() * 60 + v.getUTCMinutes() + v.getUTCSeconds() / 60;
-      return null;
-    }
-    if (typeof v === "number") return isFinite(v) ? v : null;
-    if (typeof v === "boolean") return null;        // float(str(True)) fails in Python too
-    var t = String(v).replace(/,/g, "").trim();
-    if (!/^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(t)) return null;
-    return Number(t);
+  /* ---------------------------------------------------------------- 2. lookup (= qamap.lookup) */
+  function prepare(rows) {
+    var by = {};
+    rows.forEach(function (r) {
+      var g = function (k) { return s(r[k]); };
+      var m = { row: r, BATCH_NO: g("BATCH_NO").replace(/\.0$/, ""), STAGE: g("STAGE"), STEP_PATH: g("STEP_PATH"),
+        APQR_PARAMETER: g("APQR_PARAMETER"), PARAMETER_CLASS: g("PARAMETER_CLASS"), EQUIPMENT_IDS: g("EQUIPMENT_IDS"),
+        PRODUCTION_UNIT_ID: g("PRODUCTION_UNIT_ID"), _stage: g("STAGE").toLowerCase(),
+        _step: (g("STEP_PATH") + " " + g("STEP_CODE_PATH")).toLowerCase(), _param: g("APQR_PARAMETER").toLowerCase(),
+        _sheet: g("APQR_SHEET").toLowerCase(), _uom: g("UOM").trim().toLowerCase() };
+      (by[m.BATCH_NO] = by[m.BATCH_NO] || []).push(m);
+    });
+    return by;
   }
-  function num(v) { var n = toNum(v); return n === null ? null : n; }
-  function blank(v) { return v === null || v === undefined || (typeof v === "number" && isNaN(v)) || ["", "NA", "IA", "None", "nan"].indexOf(String(v).trim()) >= 0; }
+  function headerValue(b, field) {
+    var first = function (k) { for (var i = 0; i < b.length; i++) { var v = s(b[i].row[k]).trim(); if (v) return v; } return ""; };
+    if (field === "BMR_NO") { var mbr = first("MBR_ID"), ver = first("MBR_VERSION"); return mbr + (mbr && ver ? "-" + ver : ""); }
+    if (field === "SHELF_LIFE") { var n = first("SHELF_LIFE"); return n ? (n + " " + first("SHELF_LIFE_UOM")).trim() : ""; }
+    if (field === "FG_CODE") return first("SFO_MATERIAL");
+    if (field === "BATCH_SIZE") { var v = first("BATCH_SIZE"), x = num(v); return x !== null ? x : v; }
+    return first(field);
+  }
+  function tokens(t) { return (s(t).toLowerCase().match(/[a-z0-9%]+/g) || []).filter(function (w) { return STOP.indexOf(w) < 0; }); }
+  function bare(t) { return tokens(s(t).replace(/\[[^\]]*\]|\([^)]*\)/g, " ")).join(" "); }
+  /* generic match for products the rules do not know (= qamap.by_name) */
+  function byName(sheet, column, b) {
+    var path = tokens(column), parts = column.split(" > ").map(bare);
+    var c = b.filter(function (m) {
+      if (m.PARAMETER_CLASS.indexOf("Environment (Temp") === 0 || (m._sheet && m._sheet !== sheet.toLowerCase())) return false;
+      var name = bare(m.APQR_PARAMETER), ws = tokens(name);
+      return name && (parts.indexOf(name) >= 0 || (ws.length >= 2 && ws.every(function (w) { return path.indexOf(w) >= 0; })));
+    });
+    if (c.length) {
+      var score = function (m) { return uniq(tokens(m.STAGE + " " + m.STEP_PATH)).filter(function (w) { return path.indexOf(w) >= 0; }).length; };
+      var best = Math.max.apply(null, c.map(score));
+      c = c.filter(function (m) { return score(m) === best; });
+    }
+    return [c, uniq(c.map(function (m) { return m._param; })).length > 1];
+  }
+  function ipqcKind(c, other) { return c.every(function (m) { return m.PARAMETER_CLASS === "IPQC (multi-value)"; }) ? "I" : other; }
   function pick(cands, kind, stat) {
     var col = { R: { MIN: "READING_MIN", MAX: "READING_MAX", AVG: "READING_AVG", VALUE: "READING_MAX" },
       I: { MIN: "INDIVIDUAL_MIN", MAX: "INDIVIDUAL_MAX", AVG: "INDIVIDUAL_AVG", VALUE: "INDIVIDUAL_AVG" },
       Y: { MIN: "READING_MIN", MAX: "READING_MAX", AVG: "READING_AVG", VALUE: "READING_MAX" } }[kind][stat];
-    if (kind === "I" && cands.every(function (r) { return num(r[col]) === null; })) col = col.replace("INDIVIDUAL", "READING");
+    if (kind === "I" && cands.every(function (m) { return num(m.row[col]) === null; })) col = col.replace("INDIVIDUAL", "READING");
     return col;
   }
-  function uniq(a) { var o = []; a.forEach(function (x) { if (o.indexOf(x) < 0) o.push(x); }); return o; }
-  function r4(x) { return Math.round(x * 1e4) / 1e4; }
-  function close(a, b) { return Math.abs(a - b) <= Math.max(0.011, Math.abs(b) * 0.005); }
-
-  function prepareMes(rows) {
-    return rows.map(function (r) {
-      var g = function (k) { var v = r[k]; return v === null || v === undefined ? "" : String(v); };
-      return { row: r, BATCH_NO: g("BATCH_NO").replace(/\.0$/, ""), STAGE: g("STAGE"), STEP_PATH: g("STEP_PATH"),
-        APQR_PARAMETER: g("APQR_PARAMETER"), PARAMETER_CLASS: g("PARAMETER_CLASS"), EQUIPMENT_IDS: g("EQUIPMENT_IDS"),
-        PRODUCTION_UNIT_ID: g("PRODUCTION_UNIT_ID"), _stage: g("STAGE").toLowerCase(),
-        _step: (g("STEP_PATH") + " " + g("STEP_CODE_PATH")).toLowerCase(), _param: g("APQR_PARAMETER").toLowerCase() };
+  function lookup(sheet, column, stat, b) {
+    var res = { kind: null, status: null, value: null, vals: [], cands: 0, top: null, unresolved: false, byName: false, minutes: false };
+    var col = column.toLowerCase(), full = (sheet + " > " + column).toLowerCase(), c, kind, i;
+    if (QA_FIELD.test(col)) { res.kind = "Q"; res.status = "QA_FIELD"; return res; }
+    for (i = 0; i < HEADER_RULES.length; i++) {
+      if (rx(HEADER_RULES[i][0]).test(full)) {
+        var hv = headerValue(b, HEADER_RULES[i][1]);
+        res.kind = "H"; res.value = hv !== "" ? hv : null; res.status = hv !== "" ? null : "NOT_IN_MES"; return res;
+      }
+    }
+    if (sheet.indexOf("Temp") === 0 || /^(temp|rh)\b/.test(col)) {
+      var pkw = col.indexOf("temp") >= 0 && col.indexOf("humid") < 0 ? "temp" : "humid|rh", skw = null;
+      for (i = 0; i < ENV_STAGE.length; i++) if (col.indexOf(ENV_STAGE[i][0]) >= 0) { skw = ENV_STAGE[i][1]; break; }
+      if (skw === null && col.indexOf("pack") >= 0) skw = "pack";
+      c = b.filter(function (m) { return m.PARAMETER_CLASS.indexOf("Environment (Temp") === 0 && rx(pkw).test(m._param); });
+      if (skw) c = c.filter(function (m) { return rx(skw).test(m._stage); });
+      // "Dispensing (Coating)": a stage named in brackets must match too, or the value is not in this export
+      (col.match(/\(([^)]*)\)/g) || []).forEach(function (qq) {
+        var q = qq.slice(1, -1), qr = null;
+        for (var k = 0; k < ENV_STAGE.length; k++) if (q.indexOf(ENV_STAGE[k][0]) >= 0 && ENV_STAGE[k][1] !== skw) { qr = ENV_STAGE[k][1]; break; }
+        if (qr) c = c.filter(function (m) { return rx(qr).test(m._stage) || rx(qr).test(m._step); });
+      });
+      kind = "R";
+    } else {
+      var rule = null;
+      for (i = 0; i < RULES.length; i++) if (rx(RULES[i][0]).test(full)) { rule = RULES[i]; break; }
+      if (!rule) {
+        var bn = byName(sheet, column, b);
+        if (!bn[0].length) { res.status = "NO_MAPPING_RULE"; return res; }
+        return values(res, bn[0], ipqcKind(bn[0], "R"), stat, bn[1], column, true);
+      }
+      kind = rule[4];
+      if (kind === "E") {
+        var eb = b;
+        for (i = 0; i < EQUIP_STAGE.length; i++) {
+          if (full.indexOf(EQUIP_STAGE[i][0]) >= 0 || (EQUIP_STAGE[i][0] === "packing" && sheet === "Packing Yield")) {   // the sheet name counts too
+            var er = EQUIP_STAGE[i][1]; eb = b.filter(function (m) { return rx(er).test(m._stage); }); break;
+          }
+        }
+        PART_HINTS.slice(0, 2).forEach(function (t) {
+          if (col.indexOf(t[0]) >= 0 && eb.some(function (m) { return rx(t[1]).test(m._stage); })) eb = eb.filter(function (m) { return rx(t[1]).test(m._stage); });
+        });
+        res.kind = "E";
+        if (!eb.length) { res.status = "NOT_IN_MES"; return res; }
+        var eq = (uniq(eb.map(function (m) { return m.EQUIPMENT_IDS; })).join(" ") + " " + uniq(eb.map(function (m) { return m.PRODUCTION_UNIT_ID; })).join(" ")).trim();
+        res.value = eq.slice(0, 200) || null; res.status = eq ? null : "NOT_IN_MES"; return res;
+      }
+      c = b.filter(function (m) { return rx(rule[1]).test(m._param); });
+      if (rule[2]) c = c.filter(function (m) { return rx(rule[2]).test(m._stage) || rx(rule[2]).test(m._step); });
+      if (rule[3]) c = c.filter(function (m) { return rx(rule[3]).test(m._step); });
+      if (kind === "Y") c = c.filter(function (m) { return m.PARAMETER_CLASS === "Yield & Rejection"; });
+      if (!c.length && (kind === "R" || kind === "I")) {      // the rule's stage words do not fit this product: by name
+        var bn2 = byName(sheet, column, b);
+        if (bn2[0].length) return values(res, bn2[0], ipqcKind(bn2[0], kind), stat, bn2[1], column, true);
+      }
+    }
+    // part A / part B, lot I / lot II: if QA names a part that the PAS-X rows do not carry, do not guess
+    PART_HINTS.forEach(function (t) {
+      if (col.indexOf(t[0]) >= 0 && c.length) {
+        var cc = c.filter(function (m) { return rx(t[1]).test(m._stage) || rx(t[1]).test(m._step); });
+        if (cc.length) c = cc; else res.unresolved = true;
+      }
     });
+    return values(res, c, kind, stat, false, column, false);
   }
+  var SECONDS = ["s", "sec", "secs", "second", "seconds"], MINUTES = /\bmin(ute)?s?\b|\bmins?\./;
+  function wantsMinutes(column, stat) {           // the last part is the Min/Max label, not a unit
+    var parts = column.split(" > ");
+    if (stat === "MIN" || stat === "MAX" || stat === "AVG") parts = parts.slice(0, -1);
+    return MINUTES.test(parts.join(" ").toLowerCase());
+  }
+  function values(res, c, kind, stat, several, column, byNm) {
+    res.kind = kind; res.cands = c.length; res.byName = byNm; res.unresolved = res.unresolved || several;
+    if (!c.length) { res.status = "NOT_IN_MES"; return res; }
+    var colname = pick(c, kind, stat), withVal = c.filter(function (m) { return num(m.row[colname]) !== null; });
+    if (!withVal.length) { res.status = "NOT_IN_MES"; return res; }
+    var vals = withVal.map(function (m) { return num(m.row[colname]); });
+    if (withVal.every(function (m) { return SECONDS.indexOf(m._uom) >= 0; }) && wantsMinutes(column, stat)) {   // PAS-X seconds, QA minutes
+      vals = vals.map(function (v) { return v / 60; }); res.minutes = true;
+    }
+    res.vals = vals; res.top = withVal[0];
+    res.value = stat === "MIN" ? Math.min.apply(null, vals) : stat === "MAX" ? Math.max.apply(null, vals) : vals[0];
+    return res;
+  }
+  function close(a, b) { return Math.abs(a - b) <= Math.max(0.011, Math.abs(b) * 0.005); }
+  function sameText(a, b) { var k = function (v) { return s(v).replace(/[\s.]+/g, "").toUpperCase(); }; return k(a) === k(b); }
 
+  /* ---------------------------------------------------------------- 3. compare (= qamap.compare) */
   function compare(qa, mesRows) {
-    var mes = prepareMes(mesRows), byBatch = {};
-    mes.forEach(function (m) { (byBatch[m.BATCH_NO] = byBatch[m.BATCH_NO] || []).push(m); });
+    var by = prepare(mesRows);
     return qa.map(function (q) {
       var rec = { BATCH_NO: q.BATCH_NO, QA_SHEET: q.QA_SHEET, QA_COLUMN: q.QA_COLUMN, STAT: q.STAT, QA_VALUE: q.QA_VALUE,
         MES_VALUE: null, STATUS: null, MES_STAGE: null, MES_STEP: null, MES_PARAMETER: null, CANDIDATES: 0 };
-      var qv = toNum(q.QA_VALUE);
       if (blank(q.QA_VALUE)) { rec.STATUS = "QA_BLANK"; return rec; }
-      var b = byBatch[q.BATCH_NO] || [];
-      if (!b.length) { rec.STATUS = "BATCH_NOT_IN_EXTRACT"; return rec; }
-      var col = q.QA_COLUMN.toLowerCase(), full = (q.QA_SHEET + " > " + q.QA_COLUMN).toLowerCase(), c, rule;
-      if (q.QA_SHEET.indexOf("Temp") === 0 || /^(temp|rh)\b/.test(col)) {
-        var segs = col.split(">"), pkw = segs[segs.length - 1].indexOf("temp") >= 0 ? "temp" : "humid|rh";
-        var skw = null;
-        for (var i = 0; i < ENV_STAGE.length; i++) if (col.indexOf(ENV_STAGE[i][0]) >= 0) { skw = ENV_STAGE[i][1]; break; }
-        if (skw === null && col.indexOf("pack") >= 0) skw = "pack";
-        c = b.filter(function (m) { return m.PARAMETER_CLASS.indexOf("Environment (Temp") === 0 && rx(pkw).test(m._param); });
-        if (skw) c = c.filter(function (m) { return rx(skw).test(m._stage); });
-        rule = [null, "R"];
-      } else {
-        var found = null;
-        for (var k = 0; k < RULES.length; k++) if (rx(RULES[k][0]).test(full)) { found = RULES[k]; break; }
-        if (!found) { rec.STATUS = "NO_MAPPING_RULE"; return rec; }
-        if (found[4] === "E") {
-          var eb = b;
-          var stages = [["dispens", "dispens"], ["lubrication", "lub|blend"], ["compression", "compress"], ["coating", "coat"],
-            ["granulation", "roll|compact|granul"], ["packing", "pack|blister"]];
-          for (var s = 0; s < stages.length; s++) {
-            if (full.indexOf(stages[s][0]) >= 0 || (stages[s][0] === "packing" && q.QA_SHEET === "Packing Yield")) {   // sheet name counts too
-              eb = b.filter(function (m) { return rx(stages[s][1]).test(m._stage); }); break;
-            }
-          }
-          [["amlo", "amlo"], ["valsartan", "vals"]].forEach(function (t) {
-            if (col.indexOf(t[0]) >= 0 && eb.some(function (m) { return rx(t[1]).test(m._stage); })) eb = eb.filter(function (m) { return rx(t[1]).test(m._stage); });
-          });
-          if (!eb.length) { rec.STATUS = "NOT_IN_MES"; return rec; }
-          var eq = (uniq(eb.map(function (m) { return m.EQUIPMENT_IDS; })).join(" ") + " " + uniq(eb.map(function (m) { return m.PRODUCTION_UNIT_ID; })).join(" ")).trim();
-          rec.MES_VALUE = eq.slice(0, 200);
-          rec.STATUS = eq.toUpperCase().indexOf(str(q.QA_VALUE).trim().toUpperCase()) >= 0 ? "MATCH" : "MISMATCH";
-          return rec;
-        }
-        c = b.filter(function (m) { return rx(found[1]).test(m._param); });
-        if (found[2]) c = c.filter(function (m) { return rx(found[2]).test(m._stage) || rx(found[2]).test(m._step); });
-        if (found[3]) c = c.filter(function (m) { return rx(found[3]).test(m._step); });
-        if (found[4] === "Y") c = c.filter(function (m) { return m.PARAMETER_CLASS === "Yield & Rejection"; });
-        rule = [null, found[4]];
+      var b = by[q.BATCH_NO];
+      if (!b) { rec.STATUS = "BATCH_NOT_IN_EXTRACT"; return rec; }
+      var lk = lookup(q.QA_SHEET, q.QA_COLUMN, q.STAT, b);
+      rec.CANDIDATES = lk.cands;
+      if (lk.status) { rec.STATUS = lk.status; return rec; }
+      if (lk.kind === "E") {
+        rec.MES_VALUE = lk.value;
+        rec.STATUS = lk.value.toUpperCase().indexOf(s(q.QA_VALUE).trim().toUpperCase()) >= 0 ? "MATCH" : "MISMATCH";
+        return rec;
       }
-      // part A / part B, lot I / lot II hints: if QA names a part that MES rows do not carry, do not guess
-      var unresolved = false;
-      [["amlo", "amlo"], ["valsartan", "vals"], ["lot-i ", "lot.?i\\b"], ["lot-ii", "lot.?ii"]].forEach(function (t) {
-        if (col.indexOf(t[0]) >= 0 && c.length) {
-          var cc = c.filter(function (m) { return rx(t[1]).test(m._stage) || rx(t[1]).test(m._step); });
-          if (cc.length) c = cc; else unresolved = true;
-        }
-      });
-      rec.CANDIDATES = c.length;
-      if (!c.length) { rec.STATUS = "NOT_IN_MES"; return rec; }
-      var colname = pick(c.map(function (m) { return m.row; }), rule[1], q.STAT);
-      var withVal = c.filter(function (m) { return num(m.row[colname]) !== null; });
-      if (!withVal.length) { rec.STATUS = "NOT_IN_MES"; return rec; }
-      var vals = withVal.map(function (m) { return num(m.row[colname]); });
-      var mv = q.STAT === "MIN" ? Math.min.apply(null, vals) : q.STAT === "MAX" ? Math.max.apply(null, vals) : vals[0];
-      var top = withVal[0];
+      if (lk.kind === "H") {
+        rec.MES_VALUE = lk.value;
+        var hq = toNum(q.QA_VALUE), hm = num(lk.value);
+        rec.STATUS = (hq !== null && hm !== null && close(hm, hq)) || sameText(q.QA_VALUE, lk.value) ? "MATCH" : "MISMATCH";
+        return rec;
+      }
+      var mv = lk.value, top = lk.top, qv = toNum(q.QA_VALUE);
       rec.MES_VALUE = mv; rec.MES_STAGE = top.STAGE; rec.MES_STEP = top.STEP_PATH; rec.MES_PARAMETER = top.APQR_PARAMETER;
       if (qv === null) rec.STATUS = "QA_NOT_NUMERIC";
-      else if (close(mv, qv)) rec.STATUS = c.length === 1 || uniq(vals.map(r4)).length === 1 ? "MATCH" : "MATCH (several MES rows)";
+      else if (close(mv, qv)) rec.STATUS = lk.cands === 1 || uniq(lk.vals.map(r4)).length === 1 ? "MATCH" : "MATCH (several MES rows)";
       else if ([1 / 60, 60].some(function (f) { return close(mv * f, qv); })) rec.STATUS = "MATCH (unit sec/min)";
-      else rec.STATUS = c.length === 1 && !unresolved ? "MISMATCH" : "AMBIGUOUS";
+      else rec.STATUS = lk.cands === 1 && !lk.unresolved ? "MISMATCH" : "AMBIGUOUS";
       return rec;
     });
   }
 
-  /* QA workbook (ArrayBuffer) + MES rows -> { results, missing (QA batches not in the export), qaBatches } */
+  /* ---------------------------------------------------------------- 4. fill QA's workbook (= qamap.fill) */
+  var LIMS_SHEETS = /analytical/i, MASTERS = ["BMR detail", "BPR Details"];
+  var REF = /^=?\(?\s*(?:'([^']+)'|([A-Za-z0-9_.]+))!\$?([A-Z]{1,3})\$?(\d+)\s*\)?$/;
+  function formulaRef(v) {
+    if (typeof v !== "string" || v.charAt(0) !== "=") return null;
+    var m = v.trim().match(REF);
+    return m ? [m[1] || m[2], m[3] + m[4]] : null;
+  }
+  function resolve(wb, ws, a, depth) {
+    var v = raw(ws.getCell(a)), ref = formulaRef(v);
+    if (ref && (depth || 0) < 3 && wb.getWorksheet(ref[0])) return resolve(wb, wb.getWorksheet(ref[0]), ref[1], (depth || 0) + 1);
+    return ref ? null : v;
+  }
+  function fill(wb, mesRows, opts) {
+    opts = opts || {};
+    var by = prepare(mesRows), order = uniq(mesRows.map(function (r) { return s(r.BATCH_NO).replace(/\.0$/, ""); })), report = [];
+    var note = function (sheet, status, text) { report.push({ SHEET: sheet, CELL: "", BATCH_NO: "", COLUMN: "", STAT: "", VALUE: null, STATUS: status, SOURCE: text }); };
+    var sheets = MASTERS.map(function (n) { return wb.getWorksheet(n); }).filter(Boolean)
+      .concat(wb.worksheets.filter(function (w) { return MASTERS.indexOf(w.name) < 0; }));
+    sheets.forEach(function (ws) {
+      var mapped = SHEETS.indexOf(ws.name) >= 0, lims = LIMS_SHEETS.test(ws.name);
+      if (!(mapped || lims)) return;
+      var lay = layout(ws, "raw");
+      if (!lay) return;
+      if (lay.packing) { note(ws.name, "SHEET_SKIPPED", "rows are packing batch numbers; the PAS-X export lists manufacturing batches"); return; }
+      if (lims && !mapped) { note(ws.name, "LEFT_FOR_QA", "LIMS results: the batch rows come from the linked batch column"); return; }
+      var bc = lay.bcol, rows = {}, last = lay.first - 1, srs = [], intBatch = false, linked = false, r, c;
+      for (r = lay.first; r <= ws.rowCount; r++) {
+        var rv = at(ws, r, bc, "raw"), isRef = formulaRef(rv) !== null;
+        linked = linked || isRef;
+        var v = resolve(wb, ws, addr(r, bc));
+        if (v !== null && v !== undefined && BATCH_RE.test(str(v).trim())) {
+          if (!(str(v).trim() in rows)) rows[str(v).trim()] = r;
+          if (!isRef) last = Math.max(last, r);
+          intBatch = intBatch || (typeof v === "number" && Number.isInteger(v));
+          if (lay.sr && num(at(ws, r, 1, "raw")) !== null) srs.push(num(at(ws, r, 1, "raw")));
+        }
+      }
+      var nSr = srs.length ? Math.floor(Math.max.apply(null, srs)) : 0;
+      var width = Math.max.apply(null, [bc].concat(lay.cols.map(function (x) { return x.c; })));
+      // batch numbers as numbers, as QA types them (text only if QA's own batch cells are text)
+      var asInt = intBatch || !Object.keys(rows).some(function (k) { return formulaRef(at(ws, rows[k], bc, "raw")) === null; });
+      order.forEach(function (bno) {
+        if (!(bno in rows)) {
+          if (linked) return;                      // the master sheet did not get this batch: nothing to fill
+          last += 1; r = rows[bno] = last;
+          if (r !== lay.first) {
+            for (c = 1; c <= width; c++) {
+              var src = ws.getCell(lay.first, c), dst = ws.getCell(r, c);
+              if (dst.type !== 1 && src.style && Object.keys(src.style).length) dst.style = JSON.parse(JSON.stringify(src.style));
+            }
+          }
+          ws.getCell(r, bc).value = asInt && /^\d+$/.test(bno) ? Number(bno) : bno;
+          if (lay.sr) {
+            if (num(raw(ws.getCell(r, 1))) === null) ws.getCell(r, 1).value = nSr + 1;
+            nSr = Math.floor(num(raw(ws.getCell(r, 1))));
+          }
+        }
+        r = rows[bno];
+        var b = by[bno] || [];
+        lay.cols.forEach(function (col) {
+          var column = col.parts.join(" > "), cell = ws.getCell(r, col.c), cur = raw(cell);
+          var rec = { SHEET: ws.name, CELL: addr(r, col.c), BATCH_NO: bno, COLUMN: column, STAT: col.stat, VALUE: null, STATUS: null, SOURCE: "" };
+          report.push(rec);
+          if (cur !== null && String(cur).trim() !== "") { rec.STATUS = "KEPT"; rec.VALUE = cur; return; }
+          if (opts.leaveYellow && col.yellow) { rec.STATUS = "LEFT_FOR_QA"; rec.SOURCE = "yellow column (LIMS / Tantra)"; return; }
+          var lk = lookup(ws.name, column, col.stat, b);
+          if (lk.status) { rec.STATUS = lk.status === "QA_FIELD" ? "LEFT_FOR_QA" : lk.status; return; }
+          var several = lk.kind !== "E" && lk.kind !== "H" && uniq(lk.vals.map(r4)).length > 1;
+          if (lk.unresolved || (several && (col.stat === "VALUE" || col.stat === "AVG"))) { rec.STATUS = "AMBIGUOUS"; rec.SOURCE = lk.cands + " PAS-X rows could be meant"; return; }
+          cell.value = lk.value; rec.VALUE = lk.value; rec.STATUS = "FILLED";
+          if (lk.kind === "E") rec.SOURCE = "equipment IDs of the stage";
+          else if (lk.kind === "H") rec.SOURCE = "batch header";
+          else rec.SOURCE = [lk.top.STAGE, lk.top.STEP_PATH, lk.top.APQR_PARAMETER].filter(Boolean).join(" > ") +
+            (several ? " (" + lk.cands + " PAS-X rows, " + col.stat.toLowerCase() + " of all)" : "") + (lk.byName ? " [matched by name]" : "") + (lk.minutes ? " [seconds → minutes]" : "");
+        });
+      });
+    });
+    var missing = order.filter(function (bno) { return !report.some(function (x) { return x.BATCH_NO === bno && x.STATUS === "FILLED"; }); });
+    if (missing.length) note("", "NOTHING_FILLED", "batches without any value written: " + missing.join(", "));
+    // linked cells (='BMR detail'!B6) keep their cached result: set it to what they now point to, so the file shows the
+    // right batch numbers even before Excel recalculates (Protected View does not)
+    wb.worksheets.forEach(function (ws) {
+      ws.eachRow(function (row) {
+        row.eachCell(function (cell) {
+          var v = cell.value;
+          if (!v || typeof v !== "object" || !("formula" in v) || !formulaRef("=" + v.formula)) return;
+          var res = resolve(wb, ws, cell.address);
+          cell.value = { formula: v.formula, result: res === null || res === undefined || res === "" ? 0 : res };
+        });
+      });
+    });
+    wb.calcProperties = wb.calcProperties || {};
+    wb.calcProperties.fullCalcOnLoad = true;      // Excel recalculates the linked batch columns on opening
+    return report;
+  }
+  var REPORT_COLS = ["SHEET", "CELL", "BATCH_NO", "COLUMN", "STAT", "VALUE", "STATUS", "SOURCE"];
+  function addReport(wb, report, info) {
+    var name = "AdigiPQR fill report", old = wb.getWorksheet(name);
+    if (old) wb.removeWorksheet(old.id);
+    var ws = wb.addWorksheet(name);
+    (info || []).forEach(function (r) { var row = ws.addRow(r); row.getCell(1).font = { bold: true }; });
+    ws.addRow([]);
+    ws.addRow(["Status", "Cells", "Meaning"]).eachCell(function (c) { c.font = { bold: true }; });
+    Object.keys(STATUS_TEXT).forEach(function (st) {
+      var n = report.filter(function (r) { return r.STATUS === st; }).length;
+      if (n) ws.addRow([st, n, STATUS_TEXT[st]]);
+    });
+    ws.addRow([]);
+    var head = ws.addRow(["Sheet", "Cell", "Batch", "QA column", "Stat", "Value", "Status", "Source in PAS-X"]);
+    head.eachCell(function (c) { c.font = { bold: true }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDEBF0" } }; });
+    report.forEach(function (r) {
+      var row = ws.addRow(REPORT_COLS.map(function (k) { return r[k] === null || r[k] === undefined ? undefined : r[k]; }));
+      if (r.STATUS === "AMBIGUOUS") row.getCell(7).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCE4B6" } };
+    });
+    [18, 8, 13, 70, 7, 16, 16, 60].forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+    ws.views = [{ state: "frozen", ySplit: head.number }];
+    return ws;
+  }
+
+  /* ---------------------------------------------------------------- entry points for the page */
+  async function load(buffer) { var wb = new ExcelJS.Workbook(); await wb.xlsx.load(buffer); return wb; }
+  /* QA workbook (ArrayBuffer) + export rows -> { results, missing (QA batches not in the export), qaBatches } */
   async function run(qaBuffer, mesRows, batchPrefix) {
-    var wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(qaBuffer);
-    var qa = flattenQa(wb, batchPrefix || "");
-    var inMes = {}; mesRows.forEach(function (r) { inMes[String(r.BATCH_NO).replace(/\.0$/, "")] = 1; });
+    var wb = await load(qaBuffer), qa = flattenQa(wb, batchPrefix || "");
+    var inMes = {}; mesRows.forEach(function (r) { inMes[s(r.BATCH_NO).replace(/\.0$/, "")] = 1; });
     var qaBatches = uniq(qa.map(function (q) { return q.BATCH_NO; }));
     var missing = qaBatches.filter(function (b) { return !inMes[b]; }).sort();
     var results = compare(qa.filter(function (q) { return inMes[q.BATCH_NO]; }), mesRows);
     return { results: results, missing: missing, qaBatches: qaBatches, qaValues: qa.length };
   }
-
-  /* Summary sheet (QA sheet x status counts) + Detail sheet, like compare_apqr.py */
+  /* QA workbook (ArrayBuffer) + export rows of the requested batches -> { buffer (filled xlsx), report } */
+  async function fillWorkbook(qaBuffer, mesRows, opts) {
+    var wb = await load(qaBuffer), report = fill(wb, mesRows, opts);
+    addReport(wb, report, (opts && opts.info) || []);
+    return { buffer: await wb.xlsx.writeBuffer(), report: report };
+  }
+  /* comparison report: Summary sheet (QA sheet x status counts) + Detail sheet, like compare_apqr.py */
   async function workbook(res, info) {
     var wb = new ExcelJS.Workbook(), statuses = uniq(res.results.map(function (r) { return r.STATUS; })).sort();
     var sheets = uniq(res.results.map(function (r) { return r.QA_SHEET; })).sort();
@@ -277,5 +526,6 @@
     return wb.xlsx.writeBuffer();
   }
 
-  global.AdigiCompare = { flattenQa: flattenQa, compare: compare, run: run, workbook: workbook, RULES: RULES, SHEETS: SHEETS };
+  global.AdigiCompare = { flattenQa: flattenQa, compare: compare, lookup: lookup, fill: fill, addReport: addReport, run: run,
+    fillWorkbook: fillWorkbook, workbook: workbook, RULES: RULES, HEADER_RULES: HEADER_RULES, SHEETS: SHEETS, STATUS_TEXT: STATUS_TEXT };
 })(typeof window !== "undefined" ? window : this);

@@ -104,6 +104,10 @@ td.n, th.n { text-align: right; font-family: var(--mono); font-size: 12.5px; }
 tr.bad td { background: var(--warn-bg); } tr.amb td { background: var(--amber-bg); }
 .pill { display: inline-block; font-size: 12px; padding: 1px 9px; border-radius: 999px; background: var(--head); color: var(--muted); white-space: nowrap; }
 .pill.ok { background: var(--ok-bg); color: var(--ok-ink); } .pill.typ { background: var(--surface); color: var(--ok-ink); box-shadow: inset 0 0 0 1px var(--green); } .pill.cqa { background: var(--blue-soft); color: var(--blue); } .pill.bad { background: var(--warn-bg); color: var(--warn-ink); } .pill.amb { background: var(--amber-bg); color: var(--amber-ink); }
+.seg { display: inline-flex; align-items: center; gap: 0; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 3px; background: var(--head); flex-wrap: wrap; }
+.seg span { font-size: 12.5px; color: var(--muted); padding: 0 10px 0 8px; }
+.seg button { border: 0; background: none; padding: 6px 14px; border-radius: 8px; font: 500 13.5px var(--font); color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--blue); box-shadow: 0 1px 3px rgba(15,34,54,.12); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; } .chips button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 4px 12px; font: 13px var(--font); cursor: pointer; }
 .chips button[aria-pressed="true"] { background: var(--blue); color: #fff; border-color: var(--blue); }
 .charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
@@ -170,7 +174,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 <!-- ============================================================== APQR -->
 <section id="tab-apqr" style="display:grid;gap:16px">
   <div><h1>APQR data sheet from PAS-X MES</h1>
-  <p class="lede">Drop the raw export of the PAS-X query. You get QA's workbook — BMR detail, stage sheets, Yield data, Temp. &amp; RH, BPR Details, Packing Yield — plus Summary (Cpk, out-of-limit batches, trend signals) and Excel trend charts.</p></div>
+  <p class="lede">Drop the raw export of the PAS-X query. You get QA's workbook — BMR detail, stage sheets, Yield data, Temp. &amp; Humidity, BPR Details, Packing Yield — plus Summary (Cpk, out-of-limit batches, trend signals) and Excel trend charts.</p></div>
   <div class="steps" id="apqrSteps">
     <div><b>Export from PAS-X</b>Run the APQR query read-only, export the grid as CSV.</div>
     <div><b>Drop the file here</b>Pick material and manufacturing period; check the overview.</div>
@@ -187,14 +191,28 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
   <div class="msg" id="msg"></div>
 
   <div id="loaded" hidden style="display:grid;gap:16px">
-    <div class="card"><div class="row">
+    <div class="card"><div class="seg" id="reqMode"><span>QA request</span><button data-m="period" aria-pressed="true">Material + period</button><button data-m="batch" aria-pressed="false">Batch numbers</button></div>
+      <div class="row">
       <label>Material<select id="fMat"></select></label>
-      <label>Manufactured from<input type="date" id="fFrom"></label>
-      <label>Manufactured to<input type="date" id="fTo"></label>
+      <label class="m-period">Manufactured from<input type="date" id="fFrom"></label>
+      <label class="m-period">Manufactured to<input type="date" id="fTo"></label>
+      <label class="m-batch" hidden style="flex:1 1 340px">Batch numbers (comma, space or one per line)<textarea id="fBatches" rows="2" placeholder="2105013021, 2105013022"></textarea></label>
       <button class="b" id="apply">Apply</button>
       <span style="flex:1"></span>
       <button class="b go" id="dl">Download APQR Excel</button>
     </div><div class="note" id="period" style="margin-top:8px"></div></div>
+
+    <div class="card" id="fillCard" style="display:grid;gap:12px">
+      <div><h2 style="margin:0">Output in QA's official workbook <span class="tag">QA format</span></h2>
+      <p class="note" style="margin:6px 0 0">Drop QA's APQR workbook for this product: their running file, or an empty copy of the template. The batches selected above are added to <i>BMR detail</i> (the other sheets follow through QA's own formulas) and every empty cell PAS-X has a value for is filled. Nothing QA typed is overwritten; QA's own fields and the LIMS sheets stay for QA. A report sheet lists every value with its PAS-X stage › step › parameter.</p></div>
+      <label class="drop" id="tdrop"><input type="file" id="tfile" accept=".xlsx">
+        <strong>Drop QA's APQR workbook (.xlsx)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="tchip">No file yet.</span></label>
+      <div class="row" style="align-items:center"><label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="tYellow"> Leave the yellow columns empty (QA enters them from LIMS / Tantra)</label>
+        <span style="flex:1"></span><button class="b go" id="tdl" disabled>Fill and download QA's workbook</button></div>
+      <div class="row" style="align-items:center;margin-top:-4px"><span class="note">With the example data loaded:</span><button class="b" id="exTpl">Use the example QA workbook</button><span class="note">empty, in QA's layout, for the invented product</span></div>
+      <div class="msg" id="tmsg"></div>
+      <div id="tres" hidden class="scroll" style="max-height:none"><table id="tsum"></table></div>
+    </div>
 
     <div class="kpis" id="kpis"></div>
 
@@ -271,11 +289,11 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 <!-- ============================================================== SQL -->
 <section id="tab-sql" hidden style="display:grid;gap:16px">
   <div><h1>SQL for the MES team</h1>
-  <p class="lede">Fills the parameter block of the APQR extraction query. Run it read-only with the MES reporting account (see the project README), export the grid as CSV, and drop the file on the APQR sheet tab.</p></div>
+  <p class="lede">Fills the parameter block of the APQR extraction query: material + period, material + batch numbers, or batch numbers only (leave the material empty). Run it read-only with the MES reporting account (see the project README), export the grid as CSV, and drop the file on the APQR sheet tab.</p></div>
   <div class="card"><div class="row">
     <label>Material code(s)<input id="qMat" placeholder="e.g. 30001234 or 30001234,30005678"></label>
     <label>Batch start from<input type="date" id="qFrom"></label><label>to<input type="date" id="qTo"></label>
-    <label>Batch list (optional, overrides material + dates)<input id="qBatches" placeholder="e.g. 2600001001,2600001002"></label>
+    <label>Batch numbers (optional: with a material code = those batches of that material; without = those batches, any material; dates are then ignored)<input id="qBatches" placeholder="e.g. 2600001001,2600001002"></label>
     <label>Rows<select id="qOnly"><option value="Y">APQR rows only</option><option value="N">Everything</option></select></label>
   </div>
   <div class="row" style="margin-top:12px"><button class="b primary" id="qCopy">Copy SQL</button><button class="b" id="qSave">Download .sql</button><span class="msg" id="qMsg"></span></div></div>
@@ -291,14 +309,16 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
     <div class="card"><h2>3 · Command line</h2><p class="note"><code>python python/apqr_pivot.py export.csv</code> or drag the export onto <code>build_apqr.bat</code>. Same workbook.</p></div>
     <div class="card"><h2>4 · Automatic data sync</h2><p class="note">Step-by-step in <a href="guide-fabric.html">Data sync and Microsoft Fabric</a>: scheduled read-only pull first (no licence, data stays on-prem), Fabric pipeline + Lakehouse when the company wants one data platform.</p></div>
     <div class="card"><h2>Which parameters are CPPs</h2><p class="note">Every parameter is labelled <span class="pill ok">CPP</span>, <span class="pill typ">CPP?</span> or <span class="pill cqa">CQA</span> with its reason: QA's CPP list for the product (Options) first, then the PAS-X MBR criticality flag, then what is typical for the unit operation (to be confirmed by QA). Labels never change a value.</p></div>
+    <div class="card"><h2>QA's official workbook</h2><p class="note">Drop QA's own workbook in <i>Output in QA's official workbook</i>: new batches go into BMR detail, QA's formulas carry them to the other sheets, empty cells are filled from PAS-X, nothing QA typed is overwritten, yellow (LIMS / Tantra) columns can be left for QA, and a report sheet traces every value.</p></div>
+    <div class="card"><h2>Two kinds of request</h2><p class="note"><i>Material + period</i> ("all batches of material X from Y to Z") or <i>Batch numbers</i> ("with respect to each batch no.", material optional). The SQL query takes the same two forms.</p></div>
     <div class="card"><h2>Proving the workbook</h2><p class="note">APQR sheet → <i>Check against QA's manual workbook</i>: drop QA's hand-made Excel for the same batches; every value QA typed is marked MATCH / MISMATCH / NOT_IN_MES. Try it with <i>Load example data</i> and <i>Use the example QA workbook</i>.</p></div>
   </div>
   <div class="card"><h2>What the workbook contains</h2><table>
     <tr><th>Sheet</th><th>Content</th></tr>
     <tr><td>BMR detail</td><td>One row per batch: batch no., product, size, mfg./exp. month, SFG code, MBR, order, status. Market and master BMR no. stay for QA.</td></tr>
     <tr><td>Granulation, Compression, Coating, Capsule, Packing</td><td>Batches as rows; stage › step › parameter › limit › Min/Max/Avg as columns; values outside the MBR limit shaded; equipment IDs.</td></tr>
-    <tr><td>Yield data, Temp. &amp; RH</td><td>Manufacturing yields; line-clearance temperature and RH per stage.</td></tr>
-    <tr><td>IP/FP-Analytical</td><td>Analytical results when they are part of the input (LIMS template in the portal).</td></tr>
+    <tr><td>Yield data, Temp. &amp; Humidity</td><td>Manufacturing yields; line-clearance temperature and RH per stage.</td></tr>
+    <tr><td>IP-Analytical</td><td>Analytical results when they are part of the input (LIMS template in the portal).</td></tr>
     <tr><td>BPR Details, Packing Yield</td><td>One row per packing order; packing yields with equipment.</td></tr>
     <tr><td>Out of limit</td><td>Every recorded value outside its limit, with superseded (corrected) entries.</td></tr>
     <tr><td>Summary, Trends, Trend data</td><td>Per parameter: criticality (CPP / CQA) and its basis, n, mean, SD, Cpk, Ppk, batches outside limit, trend signals; native Excel line charts against LSL/USL.</td></tr>
@@ -315,10 +335,10 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       "vendor/exceljs.min.js?v=7e49da6858",
       "vendor/jszip.min.js?v=7f839b2d46",
       "vendor/tesseract/tesseract.min.js?v=000c27d9cd",
-      "app/core.js?v=d784b655d1",
+      "app/core.js?v=532bc089b7",
       "app/ocr.js?v=0a9472933d",
-      "app/compare.js?v=e042811489",
-      "app/ui.js?v=ad366ede70"
+      "app/compare.js?v=8cc1bbf3e8",
+      "app/ui.js?v=3bbd560e2f"
     ];
     files.forEach(function (src) {
       var s = document.createElement("script");
