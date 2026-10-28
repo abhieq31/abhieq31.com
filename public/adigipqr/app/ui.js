@@ -69,10 +69,24 @@
       $("fFrom").value = ""; $("fTo").value = "";
       $("filechip").textContent = file.name + " · " + rows.length + " rows" + (S.sha ? " · SHA-256 " + S.sha.slice(0, 12) + "…" : "");
       msg("msg", ""); $("loaded").hidden = false;
-      loadCpp(); recompute();
+      document.body.classList.add("has-data"); loadCpp(); recompute();
     } catch (e) { msg("msg", "Not loaded: " + e.message, "err"); }
   }
   $("file").addEventListener("change", function (e) { if (e.target.files[0]) load(e.target.files[0]); e.target.value = ""; });
+  // invented example files shipped with the app (web/example): a download from this site, nothing is uploaded
+  async function example(name, type) {
+    var r = await fetch("example/" + name);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return new File([await r.blob()], name, { type: type });
+  }
+  $("exLoad").onclick = async function () {
+    try { await load(await example("example_pasx_export.csv", "text/csv")); S.example = true; }
+    catch (e) { msg("msg", "The example file could not be opened here (" + e.message + "). It is in the folder example/ next to this page.", "err"); }
+  };
+  $("exQa").onclick = async function () {
+    try { await loadQa(await example("example_qa_manual.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")); }
+    catch (e) { msg("qmsg", "The example file could not be opened here (" + e.message + ").", "err"); }
+  };
   dropZone($("drop"), load);
   function dropZone(el, fn) {
     ["dragenter", "dragover"].forEach(function (ev) { el.addEventListener(ev, function (e) { e.preventDefault(); el.classList.add("over"); }); });
@@ -154,7 +168,7 @@
     var cpps = p.filter(function (x) { return x.crit === C.CPP || x.crit === C.CPP_TYPICAL; });
     var sure = cpps.filter(function (x) { return x.crit === C.CPP; }).length, cqa = p.filter(function (x) { return x.crit === C.CQA; }).length;
     var tiles = [[S.model.batches.length, "batches"], [p.length, "parameters trended"],
-      [cpps.length, "CPPs identified (" + sure + " from MBR flag / QA list)"], [cqa, "in-process CQAs (IPQC)"],
+      [cpps.length, "CPPs identified · " + sure + " confirmed"], [cqa, "in-process CQAs (IPQC)"],
       [oosRows, "values outside MBR limit", oosRows ? "warn" : ""], [weak, "parameters with Cpk < 1.33", weak ? "amber" : ""],
       [sig, "parameters with trend signals", sig ? "amber" : ""], [S.model.sheets.filter(function (s) { return s.kind === "grid"; }).length, "QA stage sheets"]];
     $("kpis").innerHTML = tiles.map(function (t) { return '<div class="kpi ' + (t[2] || "") + '"><b>' + t[0] + "</b><span>" + esc(t[1]) + "</span></div>"; }).join("");
@@ -227,13 +241,13 @@
     var out = {}; p.out.forEach(function (b) { out[b] = 1; });
     var g = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' + esc(p.param) + ' trend">';
     [0, 0.5, 1].forEach(function (t) { var v = lo + t * (hi - lo); g += '<text x="' + (L - 6) + '" y="' + (Y(v) + 4) + '" font-size="10" text-anchor="end" fill="currentColor" opacity=".6">' + f(v, 2) + "</text>"; });
-    function hl(v, color, dash, label) {
+    function hl(v, color, dash, label, left) {
       if (v === null || v === undefined || !isFinite(v)) return "";
       return '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" style="stroke:' + color + '" stroke-width="1.2"' + (dash ? ' stroke-dasharray="' + dash + '"' : "") +
-        '/><text x="' + (W - R) + '" y="' + (Y(v) - 3) + '" font-size="9.5" text-anchor="end" style="fill:' + color + '">' + label + "</text>";
+        '/><text x="' + (left ? L + 3 : W - R) + '" y="' + (Y(v) - 3) + '" font-size="9.5" text-anchor="' + (left ? "start" : "end") + '" style="fill:' + color + '">' + label + "</text>";
     }
     g += hl(p.hi, "var(--limit)", "", "USL " + f(p.hi)) + hl(p.lo, "var(--limit)", "", "LSL " + f(p.lo));
-    if (ch.ucl) g += hl(ch.ucl, "var(--ctl)", "4 3", "UCL") + hl(ch.lcl, "var(--ctl)", "4 3", "LCL");
+    if (ch.ucl) g += hl(ch.ucl, "var(--ctl)", "4 3", "UCL", true) + hl(ch.lcl, "var(--ctl)", "4 3", "LCL", true);
     if (ch.cl !== undefined) g += hl(ch.cl, "var(--ctl)", "1 3", "");
     g += '<polyline fill="none" style="stroke:var(--series)" stroke-width="1.6" points="' + x.map(function (v, i) { return X(i) + "," + Y(v); }).join(" ") + '"/>';
     x.forEach(function (v, i) {
@@ -440,7 +454,7 @@
   }
   function decide(i, accept) {
     var r = S.scans[i], by = $("sby").value.trim();
-    if (!by) { msg("sdecide", "Enter your name first: it is recorded as the verifier.", "err"); $("sby").focus(); return; }
+    if (!by) { msg("sdecide", "Enter your name first: it is recorded as the verifier.", "err"); $("sby").focus(); return false; }
     store("apqr_by", by);
     var note = ($("srecs").querySelector('[data-note="' + i + '"]') || {}).value || "", changed = {};
     if (accept) {
@@ -449,7 +463,7 @@
         var k = inp.dataset.k, nv = C.num(inp.value);
         if (nv !== null && nv !== v[k]) { changed[k] = [v[k], nv]; v[k] = nv; }
       });
-      if (!r.ok && !note.trim()) { msg("sdecide", "This record did not pass every check: compare it with the page and write what you checked in the note.", "err"); return; }
+      if (!r.ok && !note.trim()) { msg("sdecide", "This record did not pass every check: compare it with the page and write what you checked in the note.", "err"); return false; }
       r.note = (note + (Object.keys(changed).length ? " | corrected: " + JSON.stringify(changed) : "")).replace(/^ \| /, "");
       r.values = v;
       r.row = AdigiOCR.contractRow(v, r.pages, r.ok && !Object.keys(changed).length, r.file, by, new Date().toISOString(), Object.keys(changed).length > 0);
@@ -457,10 +471,13 @@
     r.status = accept ? "accepted" : "rejected"; r.acceptedBy = by; r.acceptedAt = new Date().toISOString();
     msg("sdecide", accept ? "Accepted. It is added to the APQR Excel of its batch." : "Rejected; it will not be used.", "ok");
     renderScans(); if (S.all) recompute();
+    return true;
   }
   $("sacceptAll").onclick = function () {
+    if (!$("sby").value.trim()) { msg("sdecide", "Enter your name first: it is recorded as the verifier.", "err"); $("sby").focus(); return; }
     var n = 0;
-    S.scans.forEach(function (r, i) { if (r.status === "pending" && r.ok) { decide(i, true); n++; } });
+    S.scans.forEach(function (r, i) { if (r.status === "pending" && r.ok && decide(i, true)) n++; });
+    if (!n) { msg("sdecide", "No pending record passed every check: review the remaining ones one by one.", ""); return; }
     msg("sdecide", n + " record(s) accepted." + (S.all ? " They are included in the APQR sheet download." : " Load the PAS-X export on the APQR sheet tab, or download the records as CSV."), n ? "ok" : "");
   };
   $("scsv").onclick = function () {

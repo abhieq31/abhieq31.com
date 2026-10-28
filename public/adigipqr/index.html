@@ -12,6 +12,7 @@
     }
   })();
 </script>
+<meta name="color-scheme" content="light">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>AdigiPQR – APQR data sheet</title>
@@ -19,18 +20,15 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' role='img' aria-label='AdigiPQR'> <defs> <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'> <stop offset='0' stop-color='%230b4f8a'/> <stop offset='1' stop-color='%2314a06c'/> </linearGradient> </defs> <rect width='64' height='64' rx='15' fill='url(%23g)'/> <%21-- a control chart: every batch between the two limits --> <path d='M12 18H52M12 46H52' stroke='%23fff' stroke-opacity='.55' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='4 4'/> <path d='M13 36L22 29L30 34L39 25L47 28' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/> <circle cx='47' cy='28' r='4.6' fill='%23fff'/> </svg>" type="image/svg+xml">
 <meta name="theme-color" content="#0b4f8a">
 <style>
-:root { --bg:#f3f7fb; --surface:#fff; --ink:#0f2236; --muted:#55687c; --line:#d6e1ec; --head:#edf3f9;
+:root { color-scheme: light; --bg:#f3f7fb; --surface:#fff; --ink:#0f2236; --muted:#55687c; --line:#d6e1ec; --head:#edf3f9;
   --blue:#0b4f8a; --blue-deep:#0a3560; --blue-soft:#e7f0fa; --green:#12805c; --green-bright:#14a06c; --green-soft:#e2f4ec;
   --accent:var(--blue); --accent-soft:var(--blue-soft); --series:#0b4f8a; --limit:#c0392b; --ctl:#8395a7; --flag:#d68910;
   --warn-bg:#fbe7dc; --warn-ink:#8a3412; --ok-bg:var(--green-soft); --ok-ink:#0f6b4c; --amber-bg:#fdf1d8; --amber-ink:#7a5205;
   --shadow: 0 1px 2px rgba(15,34,54,.05), 0 4px 14px rgba(15,34,54,.05);
   --font: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0b1622; --surface:#112131; --ink:#e4edf5; --muted:#93a6b8;
-  --line:#22384c; --head:#17293b; --blue:#5aa9e6; --blue-deep:#0a2440; --blue-soft:#13304a; --green:#4cc38a; --green-bright:#4cc38a; --green-soft:#123528;
-  --series:#6fb6ee; --limit:#ff7a6b; --ctl:#7f93a6; --flag:#f0b44c; --warn-bg:#4a2618; --warn-ink:#f4b896; --ok-ink:#8fe0b5;
-  --amber-bg:#3d3010; --amber-ink:#f0cf7e; --shadow:none; color-scheme: dark; } }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font); min-height: 100vh; display: flex; flex-direction: column; }
+main.in { flex: 1 0 auto; width: 100%; }
 a { color: var(--accent); }
 .in { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
 /* header: blue to green band */
@@ -44,7 +42,6 @@ nav { display: flex; flex-wrap: wrap; gap: 2px; align-self: end; margin-left: au
 nav button { border: 0; background: none; color: rgba(255,255,255,.78); padding: 9px 14px 11px; font: 500 14.5px var(--font); cursor: pointer; border-radius: 9px 9px 0 0; }
 nav button:hover { color: #fff; background: rgba(255,255,255,.08); }
 nav button[aria-selected="true"] { color: var(--blue-deep); background: var(--bg); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) nav button[aria-selected="true"] { color: var(--ink); } }
 /* privacy strip */
 .private { background: var(--green-soft); border-bottom: 1px solid var(--line); color: var(--ok-ink); }
 .private .in { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding-top: 9px; padding-bottom: 9px; font-size: 14px; }
@@ -52,21 +49,24 @@ nav button[aria-selected="true"] { color: var(--blue-deep); background: var(--bg
 .private details { margin-left: auto; } .private summary { cursor: pointer; color: var(--green); font-weight: 600; font-size: 13.5px; }
 .private details[open] { flex-basis: 100%; margin-left: 0; }
 .private details ul { margin: 6px 0 2px; padding-left: 20px; color: var(--ink); font-size: 13.5px; display: grid; gap: 3px; }
-main { padding-top: 24px; padding-bottom: 48px; display: grid; gap: 16px; }
-main > *, section > * { min-width: 0; }
-h1 { font-size: 26px; line-height: 1.2; margin: 0; color: var(--blue-deep); letter-spacing: -.2px; } h2 { font-size: 17px; margin: 0 0 10px; color: var(--ink); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) h1 { color: var(--ink); } }
-.lede { color: var(--muted); margin: 6px 0 0; max-width: 80ch; }
+main.in { padding-top: 34px; padding-bottom: 56px; display: grid; gap: 18px; align-content: start; }
+section { gap: 18px !important; }
+main > *, section > *, #loaded > *, #sresult > *, #qres > *, .row > * { min-width: 0; }
+select { max-width: 100%; text-overflow: ellipsis; }
+h1 { font-size: 28px; line-height: 1.2; margin: 0; color: var(--blue-deep); letter-spacing: -.3px; } h2 { font-size: 17px; margin: 0 0 10px; color: var(--ink); }
+.lede { color: var(--muted); margin: 8px 0 0; max-width: 78ch; font-size: 15.5px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; box-shadow: var(--shadow); }
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; counter-reset: s; }
 .steps div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px 11px 50px; position: relative; font-size: 13.5px; color: var(--muted); }
 .steps div::before { counter-increment: s; content: counter(s); position: absolute; left: 13px; top: 12px; width: 26px; height: 26px; border-radius: 50%;
   background: linear-gradient(135deg, var(--blue), var(--green-bright)); color: #fff; font: 600 13px/26px var(--font); text-align: center; }
 .steps b { display: block; color: var(--ink); font-size: 14px; }
-.drop { border: 2px dashed #a9c2da; border-radius: 14px; background: var(--surface); padding: 24px; display: grid; gap: 6px; cursor: pointer; text-align: left; transition: border-color .15s, background .15s; }
+.drop { border: 2px dashed #a9c2da; border-radius: 16px; background: linear-gradient(180deg, #fff, #f7fafd); padding: 26px 26px 26px 96px; display: grid; gap: 6px; cursor: pointer; text-align: left; transition: border-color .15s, background .15s; position: relative; min-height: 120px; align-content: center; }
+.drop::before { content: ""; position: absolute; left: 26px; top: 50%; width: 48px; height: 48px; margin-top: -24px; border-radius: 14px;
+  background: var(--blue-soft) no-repeat center/26px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230b4f8a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3'/%3E%3C/svg%3E"); }
+.drop:hover::before, .drop.over::before { background-color: #fff; }
 .drop:hover, .drop.over { border-color: var(--green); background: var(--green-soft); }
 .drop strong { font-size: 18px; color: var(--blue); } .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .drop { border-color: var(--line); } }
 .lock { display: inline-flex; align-items: center; gap: 5px; color: var(--ok-ink); font-size: 13px; font-weight: 600; }
 .row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; }
 label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
@@ -80,18 +80,15 @@ button.primary { background: var(--blue); border-color: var(--blue); color: #fff
 button.primary:hover:not(:disabled) { background: var(--blue-deep); }
 button.go { background: var(--green); border-color: var(--green); color: #fff; padding: 10px 20px; font-weight: 600; }
 button.go:hover:not(:disabled) { background: #0e6a4c; border-color: #0e6a4c; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.primary, :root:not([data-theme="light"]) button.go { color: #04121f; } }
 button:disabled { opacity: .5; cursor: default; }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-.kpi { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--blue); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow); }
-.kpi:nth-child(even) { border-top-color: var(--green-bright); }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; } @media (max-width: 820px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 12px 17px; box-shadow: var(--shadow), inset 4px 0 0 var(--blue); }
+.kpi:nth-child(even) { box-shadow: var(--shadow), inset 4px 0 0 var(--green-bright); }
 .kpi b { display: block; font-size: 25px; font-variant-numeric: tabular-nums; line-height: 1.2; color: var(--blue-deep); } .kpi span { color: var(--muted); font-size: 12.5px; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .kpi b { color: var(--ink); } }
-.kpi.warn { background: var(--warn-bg); border-color: transparent; border-top-color: var(--limit); color: var(--warn-ink); } .kpi.warn b, .kpi.warn span { color: inherit; }
-.kpi.amber { background: var(--amber-bg); border-color: transparent; border-top-color: var(--flag); color: var(--amber-ink); } .kpi.amber b, .kpi.amber span { color: inherit; }
+.kpi.warn { background: var(--warn-bg); border-color: transparent; box-shadow: inset 4px 0 0 var(--limit); color: var(--warn-ink); } .kpi.warn b, .kpi.warn span { color: inherit; }
+.kpi.amber { background: var(--amber-bg); border-color: transparent; box-shadow: inset 4px 0 0 var(--flag); color: var(--amber-ink); } .kpi.amber b, .kpi.amber span { color: inherit; }
 details.sec { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
 details.sec > summary { cursor: pointer; padding: 14px 18px; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; color: var(--blue-deep); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) details.sec > summary { color: var(--ink); } }
 details.sec > summary::-webkit-details-marker { display: none; }
 details.sec > summary::after { content: "Show ▾"; color: var(--green); font-weight: 600; font-size: 13px; }
 details.sec[open] > summary::after { content: "Hide ▴"; }
@@ -101,15 +98,14 @@ details.sec > .body { padding: 0 18px 18px; display: grid; gap: 12px; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
 th, td { border-bottom: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
 th { background: var(--head); font-weight: 600; position: sticky; top: 0; z-index: 1; color: var(--blue-deep); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) th { color: var(--ink); } }
 tbody tr:hover td { background: var(--blue-soft); }
 td.n, th.n { text-align: right; font-family: var(--mono); font-size: 12.5px; }
+.scroll td.n, .scroll td.mono, .scroll th, #tBatches td { white-space: nowrap; }
 tr.bad td { background: var(--warn-bg); } tr.amb td { background: var(--amber-bg); }
 .pill { display: inline-block; font-size: 12px; padding: 1px 9px; border-radius: 999px; background: var(--head); color: var(--muted); white-space: nowrap; }
 .pill.ok { background: var(--ok-bg); color: var(--ok-ink); } .pill.typ { background: var(--surface); color: var(--ok-ink); box-shadow: inset 0 0 0 1px var(--green); } .pill.cqa { background: var(--blue-soft); color: var(--blue); } .pill.bad { background: var(--warn-bg); color: var(--warn-ink); } .pill.amb { background: var(--amber-bg); color: var(--amber-ink); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; } .chips button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 4px 12px; font: 13px var(--font); cursor: pointer; }
 .chips button[aria-pressed="true"] { background: var(--blue); color: #fff; border-color: var(--blue); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chips button[aria-pressed="true"] { color: #04121f; } }
 .charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
 .chart { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--surface); }
 .chart h3 { font-size: 13.5px; margin: 0 0 2px; color: var(--ink); } .chart p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
@@ -127,11 +123,15 @@ tr.bad td { background: var(--warn-bg); } tr.amb td { background: var(--amber-bg
 .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; } @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
 .card h2 .tag { font-size: 11.5px; font-weight: 600; color: var(--green); background: var(--green-soft); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
 [hidden] { display: none !important; }
+.has-data #apqrSteps, .has-data #exRow { display: none; }
+.has-data #drop { min-height: 0; padding-top: 14px; padding-bottom: 14px; } .has-data #drop strong { font-size: 16px; }
+.has-data #drop::before { width: 40px; height: 40px; margin-top: -20px; background-size: 22px; }
+.msg:empty { display: none; }
 footer { border-top: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 12.5px; }
 footer .in { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; padding-top: 14px; padding-bottom: 18px; }
 footer .logo { vertical-align: -4px; margin-right: 6px; }
 code, .mono { font-family: var(--mono); font-size: 12.5px; }
-@media (max-width: 640px) { nav { margin-left: 0; } nav button { padding: 8px 10px 10px; font-size: 14px; } h1 { font-size: 22px; } .private details { margin-left: 0; } }
+@media (max-width: 640px) { .drop { padding: 20px 18px 20px 82px; } .drop::before { left: 18px; } main.in { padding-top: 24px; } nav { margin-left: 0; } nav button { padding: 8px 10px 10px; font-size: 14px; } h1 { font-size: 22px; } .private details { margin-left: 0; } }
 </style>
 </head>
 <body>
@@ -171,7 +171,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 <section id="tab-apqr" style="display:grid;gap:16px">
   <div><h1>APQR data sheet from PAS-X MES</h1>
   <p class="lede">Drop the raw export of the PAS-X query. You get QA's workbook — BMR detail, stage sheets, Yield data, Temp. &amp; RH, BPR Details, Packing Yield — plus Summary (Cpk, out-of-limit batches, trend signals) and Excel trend charts.</p></div>
-  <div class="steps">
+  <div class="steps" id="apqrSteps">
     <div><b>Export from PAS-X</b>Run the APQR query read-only, export the grid as CSV.</div>
     <div><b>Drop the file here</b>Pick material and manufacturing period; check the overview.</div>
     <div><b>Download the APQR Excel</b>QA layout, Summary, trend charts, source traceability.</div>
@@ -183,6 +183,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
     <span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span>
     <span class="mono" id="filechip">No file yet.</span>
   </label>
+  <div class="row" id="exRow" style="align-items:center;margin-top:-6px"><span class="note">No export at hand?</span><button class="b" id="exLoad">Load example data</button><span class="note">invented values, 24 batches – for demonstration only</span></div>
   <div class="msg" id="msg"></div>
 
   <div id="loaded" hidden style="display:grid;gap:16px">
@@ -215,6 +216,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       <p class="note" style="margin:0">Drop the Excel workbook QA compiled by hand for the same batches. Every value QA typed is looked up in this PAS-X export and marked <b>MATCH</b>, <b>MISMATCH</b>, <b>NOT_IN_MES</b> (QA has it, the MBR does not record it), <b>AMBIGUOUS</b> (several MES readings could be meant) or <b>NO_MAPPING_RULE</b> (column not yet mapped). This is the acceptance test before QA relies on the generated workbook.</p>
       <label class="drop" id="qdrop"><input type="file" id="qfile" accept=".xlsx">
         <strong>Drop QA's APQR workbook (.xlsx)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="qchip">No file yet.</span></label>
+      <div class="row" style="align-items:center;margin-top:-4px"><span class="note">With the example data loaded:</span><button class="b" id="exQa">Use the example QA workbook</button><span class="note">invented, with two deliberate typing errors</span></div>
       <div class="msg" id="qmsg"></div>
       <div id="qres" hidden style="display:grid;gap:12px">
         <div class="kpis" id="qkpis"></div>
@@ -284,10 +286,12 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 <section id="tab-guide" hidden style="display:grid;gap:16px">
   <div><h1>Guides</h1><p class="lede">Three ways to run the same conversion, and the path from manual exports to an automatic data sync.</p></div>
   <div class="grid2">
-    <div class="card"><h2>1 · This page (online or offline)</h2><p class="note">Everything runs in the browser. Offline: copy the <code>web</code> folder to a PC or share and run <code>start_web_app.bat</code> (a local web server on 127.0.0.1); the APQR sheet tab also works by double-clicking <code>index.html</code>.</p></div>
+    <div class="card"><h2>1 · This page (online or offline)</h2><p class="note">Everything runs in the browser. Offline: unzip the offline copy (link under "How is that ensured?") on a PC and double-click <code>index.html</code> for the APQR sheet; for reading scans run <code>start_web_app.bat</code> (a local web server on 127.0.0.1, needs Python).</p></div>
     <div class="card"><h2>2 · Plant portal (shared store)</h2><p class="note"><code>start_portal.bat</code> on one plant server: the MES team loads exports once, QA picks a material and dates and downloads. Adds server-side BMR scan reading (RapidOCR) and an optional read-only nightly pull from PAS-X.</p></div>
     <div class="card"><h2>3 · Command line</h2><p class="note"><code>python python/apqr_pivot.py export.csv</code> or drag the export onto <code>build_apqr.bat</code>. Same workbook.</p></div>
     <div class="card"><h2>4 · Automatic data sync</h2><p class="note">Step-by-step in <a href="guide-fabric.html">Data sync and Microsoft Fabric</a>: scheduled read-only pull first (no licence, data stays on-prem), Fabric pipeline + Lakehouse when the company wants one data platform.</p></div>
+    <div class="card"><h2>Which parameters are CPPs</h2><p class="note">Every parameter is labelled <span class="pill ok">CPP</span>, <span class="pill typ">CPP?</span> or <span class="pill cqa">CQA</span> with its reason: QA's CPP list for the product (Options) first, then the PAS-X MBR criticality flag, then what is typical for the unit operation (to be confirmed by QA). Labels never change a value.</p></div>
+    <div class="card"><h2>Proving the workbook</h2><p class="note">APQR sheet → <i>Check against QA's manual workbook</i>: drop QA's hand-made Excel for the same batches; every value QA typed is marked MATCH / MISMATCH / NOT_IN_MES. Try it with <i>Load example data</i> and <i>Use the example QA workbook</i>.</p></div>
   </div>
   <div class="card"><h2>What the workbook contains</h2><table>
     <tr><th>Sheet</th><th>Content</th></tr>
@@ -297,7 +301,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
     <tr><td>IP/FP-Analytical</td><td>Analytical results when they are part of the input (LIMS template in the portal).</td></tr>
     <tr><td>BPR Details, Packing Yield</td><td>One row per packing order; packing yields with equipment.</td></tr>
     <tr><td>Out of limit</td><td>Every recorded value outside its limit, with superseded (corrected) entries.</td></tr>
-    <tr><td>Summary, Trends, Trend data</td><td>Statistics per parameter and native Excel line charts against LSL/USL.</td></tr>
+    <tr><td>Summary, Trends, Trend data</td><td>Per parameter: criticality (CPP / CQA) and its basis, n, mean, SD, Cpk, Ppk, batches outside limit, trend signals; native Excel line charts against LSL/USL.</td></tr>
     <tr><td>Scanned records</td><td>Values read from BMR scans and accepted by a person, with page numbers.</td></tr>
     <tr><td>MES long data, Report info</td><td>The source rows, and which file (SHA-256) they came from.</td></tr></table></div>
 </section>
@@ -307,14 +311,14 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 <script>
   (function () {
     var files = [
-      "vendor/papaparse.min.js",
-      "vendor/exceljs.min.js",
-      "vendor/jszip.min.js",
-      "vendor/tesseract/tesseract.min.js",
-      "app/core.js",
-      "app/ocr.js",
-      "app/compare.js",
-      "app/ui.js"
+      "vendor/papaparse.min.js?v=b8e870c5d2",
+      "vendor/exceljs.min.js?v=7e49da6858",
+      "vendor/jszip.min.js?v=7f839b2d46",
+      "vendor/tesseract/tesseract.min.js?v=000c27d9cd",
+      "app/core.js?v=d784b655d1",
+      "app/ocr.js?v=0a9472933d",
+      "app/compare.js?v=e042811489",
+      "app/ui.js?v=ad366ede70"
     ];
     files.forEach(function (src) {
       var s = document.createElement("script");
