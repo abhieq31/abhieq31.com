@@ -400,7 +400,7 @@
   dropZone($("tdrop"), loadTpl);
   $("tdl").onclick = async function () {
     if (!S.tpl || !S.rows || !S.rows.length) return;
-    var btn = this; btn.disabled = true; msg("tmsg", "Filling QA's workbook…");
+    var btn = this; btn.disabled = true; msg("tmsg", "Filling QA's workbook… (a workbook with thousands of batches takes about 15 seconds)");
     try {
       var sel = S.sel, req = sel.byBatch ? "batch numbers: " + sel.want.join(", ") : "material " + (sel.mat || "all") + ", manufactured " + (sel.from || "any") + " to " + (sel.to || "any");
       var info = [["QA workbook", S.tpl.name], ["PAS-X export", S.file + (S.sha ? " · SHA-256 " + S.sha : "")], ["QA request", req],

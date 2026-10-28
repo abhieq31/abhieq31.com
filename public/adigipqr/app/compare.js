@@ -3,16 +3,31 @@
    Port of adigipqr/qamap.py (same rules, same statuses; tests/test_compare.py keeps them equal). Nothing leaves the tab. */
 (function (global) {
   "use strict";
-  var SHEETS = ["Granulation", "Compression", "Coating", "Temp. & RH", "Temp. & Humidity", "Yield data", "BMR detail", "Packing Yield", "BPR Details"];
+  // QA names sheets differently per product: the rules work on the kind of sheet (= qamap.SHEET_KINDS)
+  var SHEET_KINDS = [
+    ["analytical|\\bcoa\\b", "LIMS"],
+    ["packing\\s*yield", "Packing Yield"],
+    ["^\\s*bpr", "BPR Details"],
+    ["bmr", "BMR detail"],
+    ["yield", "Yield data"],
+    ["temp|humid|\\brh\\b", "Temp. & Humidity"],
+    ["granul", "Granulation"],
+    ["compress", "Compression"],
+    ["coat", "Coating"],
+    ["capsul", "Capsule"],
+    ["^\\s*pack", "Packing"]
+  ];
+  var SHEETS = ["BMR detail", "Granulation", "Compression", "Coating", "Capsule", "Temp. & Humidity", "Yield data", "BPR Details", "Packing Yield", "Packing"];
   var BATCH_RE = /^\d{10}$/, BATCH_LABEL = /batch\s*no/i, YELLOW = "FFFFFF00";
   // QA's own fields: nothing in PAS-X to compare or fill
-  var QA_FIELD = new RegExp("(^|> )(remarks?|trend(ing)? by( name)?|market|master b[mp]r no\\.?|oos/oot/deviation/change control|pack style|status|packing batch no\\.?|bpr no\\.?)$");
-  // batch header fields of the export: (QA column regex on 'sheet > column', field)
+  var QA_FIELD = new RegExp("(^|> )(remarks?|trend(ing)? by( name)?|market|master b[mp]r no\\.?|oos\\s*/\\s*oot\\s*/\\s*deviation\\s*/\\s*change\\s*control|pack style|status|packing batch no\\.?|bpr no\\.?|ref\\.?\\s*doc\\.?\\s*no\\.?|verified by|esta\\w*lished control limits?|control limits? esta\\w*lished|specification no\\.?)$");
+  // batch header fields of the export: (QA column regex on 'sheet kind > column', field)
   var HEADER_RULES = [
     ["^(bmr detail|bpr details) > batch size", "BATCH_SIZE"],
     ["^(bmr detail|bpr details) > mfg\\.? ?date", "MFG_MONTH"],
     ["^(bmr detail|bpr details) > exp\\.? ?date", "EXP_MONTH"],
-    ["^(bmr detail|bpr details) > (sfg code|product code)", "MATERIAL_CODE"],
+    ["^(bmr detail|bpr details) > (sfg( product)? code|product code)", "MATERIAL_CODE"],
+    ["^bmr detail > (mini tablet|input|sfg|intermediate)\\s*batch", "INPUT_SFG_BATCHES"],
     ["^(bmr detail|bpr details) > product name", "PRODUCT_NAME"],
     ["^bmr detail > bmr no", "BMR_NO"],
     ["^(bmr detail|bpr details) > shelf life", "SHELF_LIFE"],
@@ -21,8 +36,8 @@
   ];
   // (qa_regex, mes_param_regex, stage_regex, step_regex, value_kind) = adigipqr/qamap.RULES
   var RULES = [
-    ["^(granulation|compression|coating|packing yield) > (equipment|granulation ?\\()", null, null, null, "E"],
-    ["^coating > dispensing$", null, null, null, "E"],
+    ["^(granulation|compression|coating|capsule|packing yield) > (equipment|granulation ?\\()", null, null, null, "E"],
+    ["^(granulation|compression|coating|capsule) > (dispensing|blending|lubrication|granulation|compression|coating|capsule filling)$", null, null, null, "E"],
     ["cvf feed", "cvf\\s*feed", "roll|compact", null, "R"],
     ["roller gap", "roll\\w*\\s*gap", "roll|compact", null, "R"],
     ["roller unit", "roller\\s*unit", "roll|compact", null, "R"],
@@ -70,22 +85,26 @@
     ["drying time", "drying time", "coat", null, "R"],
     ["cooling time", "cooling time", "coat", null, "R"],
     ["weight gain", "weight gain", "coat", null, "R"],
-    ["yield data.*(lb|lubrication) - rejection", "reject", "lub|blend", null, "Y"],
-    ["yield data.*compression - rejection", "reject", "compress", null, "Y"],
-    ["yield data.*coating - rejection", "reject", "coat", null, "Y"],
-    ["packing yield.*packing - rejection", "reject", "pack", null, "Y"],
+    ["yield data.*(lb|lubrication)\\s*-?\\s*rejection", "reject", "lub|blend", null, "Y"],
+    ["yield data.*compression\\s*-?\\s*rejection", "reject", "compress", null, "Y"],
+    ["yield data.*coating\\s*-?\\s*rejection", "reject", "coat", null, "Y"],
+    ["yield data.*capsul\\w*\\s*-?\\s*rejection", "reject", "capsul|fill", null, "Y"],
+    ["packing yield.*packing\\s*-?\\s*rejection", "reject", "pack", null, "Y"],
     ["yield data.*lubrication", "actual yield|% yield", "lub|blend", null, "Y"],
     ["yield data.*compression >", "actual yield|% yield", "compress", null, "Y"],
     ["yield data.*coating >", "actual yield|% yield", "coat", null, "Y"],
+    ["yield data.*capsul", "actual yield|% yield|yield", "capsul|fill", null, "Y"],
     ["packing yield.*parameter > packing >", "yield", "pack", null, "Y"]
   ];
-  var ENV_STAGE = [["dispens", "dispens"], ["sifting", "sift"], ["blending", "blend|lub"], ["roll comp", "roll|compact"], ["granulation", "granul|roll|compact"], ["mixing", "mix"], ["lubrication", "lub|blend"], ["compression", "compress"], ["coating", "coat"]];
+  var ENV_STAGE = [["dispens", "dispens"], ["sift", "sift"], ["blend|lubric", "blend|lub"], ["roll ?comp", "roll|compact"], ["gran", "granul|roll|compact"], ["mix", "mix"], ["capsul", "capsul|encapsul|fill"], ["\\bcomp\\b|compress", "compress"], ["coat", "coat"]];
   var PART_HINTS = [["amlo", "amlo"], ["valsartan", "vals"], ["lot-i ", "lot.?i\\b"], ["lot-ii", "lot.?ii"]];
-  var EQUIP_STAGE = [["dispens", "dispens"], ["lubrication", "lub|blend"], ["compression", "compress"], ["coating", "coat"], ["granulation", "roll|compact|granul"], ["packing", "pack|blister"]];
-  var STATUS_TEXT = {"FILLED": "written from PAS-X", "KEPT": "QA had already typed a value: left as it was", "LEFT_FOR_QA": "QA's own field, LIMS sheet or yellow column", "NOT_IN_MES": "not recorded in this PAS-X export", "AMBIGUOUS": "several PAS-X readings could be meant: left for QA", "NO_MAPPING_RULE": "column not mapped yet: left for QA", "SHEET_SKIPPED": "sheet not filled", "NOTHING_FILLED": "check these batches: no value was written for them"};
+  var EQUIP_STAGE = [["dispens", "dispens"], ["lubrication", "lub|blend"], ["blend", "blend|lub"], ["compression", "compress"], ["coating", "coat"], ["granulation", "roll|compact|granul"], ["capsul", "capsul|encapsul|fill"], ["packing", "pack|blister"]];
+  var EQUIP_TOKEN = new RegExp("(?:[A-Z]{2}/\\d{2})?/[A-Z]{2,5}\\d{2,3}\\b", "g");
+  var STATUS_TEXT = {"FILLED": "written from PAS-X", "KEPT": "QA had already typed a value: left as it was", "LEFT_FOR_QA": "QA's own field, LIMS sheet or yellow column", "NOT_IN_MES": "not recorded in this PAS-X export", "AMBIGUOUS": "several PAS-X readings could be meant: left for QA", "NO_MAPPING_RULE": "column not mapped yet: left for QA", "OTHER_EQUIPMENT": "column of another machine than the batch was made on: left empty", "SHEET_SKIPPED": "sheet not filled", "NOTHING_FILLED": "check these batches: no value was written for them"};
   var STOP = ["of", "the", "and", "in", "at", "to", "for", "by", "no", "min", "max", "ave", "avg", "nlt", "nmt", "between"];
   var RX = {};
   function rx(p) { return RX[p] || (RX[p] = new RegExp(p)); }
+  function sheetKind(name) { var t = s(name).toLowerCase(); for (var i = 0; i < SHEET_KINDS.length; i++) if (rx(SHEET_KINDS[i][0]).test(t)) return SHEET_KINDS[i][1]; return null; }
 
   /* ---------------------------------------------------------------- values (= qamap.num / to_num / blank) */
   function num(v) {
@@ -184,7 +203,7 @@
   function flattenQa(wb, batchPrefix) {
     var rows = [];
     wb.worksheets.forEach(function (ws) {
-      if (SHEETS.indexOf(ws.name) < 0) return;
+      if (SHEETS.indexOf(sheetKind(ws.name)) < 0) return;
       var lay = layout(ws, "cached");
       if (!lay) return;
       for (var r = lay.first; r <= ws.rowCount; r++) {
@@ -216,7 +235,10 @@
   }
   function headerValue(b, field) {
     var first = function (k) { for (var i = 0; i < b.length; i++) { var v = s(b[i].row[k]).trim(); if (v) return v; } return ""; };
-    if (field === "BMR_NO") { var mbr = first("MBR_ID"), ver = first("MBR_VERSION"); return mbr + (mbr && ver ? "-" + ver : ""); }
+    if (field === "BMR_NO") {                     // QA writes PAS-X-era BMR numbers as F1M00011/00000004
+      var mbr = first("MBR_ID"), ver = first("MBR_VERSION");
+      return mbr + (mbr && ver ? (/^\d+$/.test(ver) ? "/" + ("00000000" + ver).slice(-Math.max(8, ver.length)) : "-" + ver) : "");
+    }
     if (field === "SHELF_LIFE") { var n = first("SHELF_LIFE"); return n ? (n + " " + first("SHELF_LIFE_UOM")).trim() : ""; }
     if (field === "FG_CODE") return first("SFO_MATERIAL");
     if (field === "BATCH_SIZE") { var v = first("BATCH_SIZE"), x = num(v); return x !== null ? x : v; }
@@ -227,12 +249,22 @@
   /* generic match for products the rules do not know (= qamap.by_name) */
   function byName(sheet, column, b) {
     var path = tokens(column), parts = column.split(" > ").map(bare);
+    var fullParts = column.split(" > ").map(function (p) { return tokens(p).join(" "); }), level = [];
     var c = b.filter(function (m) {
-      if (m.PARAMETER_CLASS.indexOf("Environment (Temp") === 0 || (m._sheet && m._sheet !== sheet.toLowerCase())) return false;
+      if (m.PARAMETER_CLASS.indexOf("Environment (Temp") === 0 || (m._sheet && sheetKind(m._sheet) !== sheetKind(sheet))) return false;
       var name = bare(m.APQR_PARAMETER), ws = tokens(name);
-      return name && (parts.indexOf(name) >= 0 || (ws.length >= 2 && ws.every(function (w) { return path.indexOf(w) >= 0; })));
+      // 3: same name with its brackets ('Uniformity of Mass (Net Content)'), 2: same name, 1: all its words appear
+      var lv = fullParts.indexOf(tokens(m.APQR_PARAMETER).join(" ")) >= 0 ? 3 : parts.indexOf(name) >= 0 ? 2 :
+        name && ws.length >= 2 && ws.every(function (w) { return path.indexOf(w) >= 0; }) ? 1 : 0;
+      if (name && lv) { level.push([m, lv]); return true; }
+      return false;
     });
     if (c.length) {
+      var lvOf = function (m) { for (var i = 0; i < level.length; i++) if (level[i][0] === m) return level[i][1]; return 0; };
+      var bestLv = Math.max.apply(null, c.map(lvOf));
+      c = c.filter(function (m) { return lvOf(m) === bestLv; });
+      var nw = function (m) { return tokens(bare(m.APQR_PARAMETER)).length; }, longest = Math.max.apply(null, c.map(nw));
+      c = c.filter(function (m) { return nw(m) === longest; });   // 'Milled Granules % LOD' beats '% LOD'
       var score = function (m) { return uniq(tokens(m.STAGE + " " + m.STEP_PATH)).filter(function (w) { return path.indexOf(w) >= 0; }).length; };
       var best = Math.max.apply(null, c.map(score));
       c = c.filter(function (m) { return score(m) === best; });
@@ -249,7 +281,7 @@
   }
   function lookup(sheet, column, stat, b) {
     var res = { kind: null, status: null, value: null, vals: [], cands: 0, top: null, unresolved: false, byName: false, minutes: false };
-    var col = column.toLowerCase(), full = (sheet + " > " + column).toLowerCase(), c, kind, i;
+    var kindS = sheetKind(sheet) || sheet, col = column.toLowerCase(), full = (kindS + " > " + column).toLowerCase(), c, kind, i;
     if (QA_FIELD.test(col)) { res.kind = "Q"; res.status = "QA_FIELD"; return res; }
     for (i = 0; i < HEADER_RULES.length; i++) {
       if (rx(HEADER_RULES[i][0]).test(full)) {
@@ -257,16 +289,22 @@
         res.kind = "H"; res.value = hv !== "" ? hv : null; res.status = hv !== "" ? null : "NOT_IN_MES"; return res;
       }
     }
-    if (sheet.indexOf("Temp") === 0 || /^(temp|rh)\b/.test(col)) {
+    var machines = column.toUpperCase().match(EQUIP_TOKEN) || [];
+    if (machines.length) {
+      var used = b.map(function (m) { return m.EQUIPMENT_IDS; }).join(" ").toUpperCase();
+      if (!used.trim()) res.unresolved = true;     // no equipment in the export: cannot tell the machine
+      else if (!machines.some(function (t) { return used.indexOf(t) >= 0; })) { res.status = "OTHER_EQUIPMENT"; return res; }
+    }
+    if (kindS === "Temp. & Humidity" || /^(temp|rh)\b/.test(col)) {
       var pkw = col.indexOf("temp") >= 0 && col.indexOf("humid") < 0 ? "temp" : "humid|rh", skw = null;
-      for (i = 0; i < ENV_STAGE.length; i++) if (col.indexOf(ENV_STAGE[i][0]) >= 0) { skw = ENV_STAGE[i][1]; break; }
+      for (i = 0; i < ENV_STAGE.length; i++) if (rx(ENV_STAGE[i][0]).test(col)) { skw = ENV_STAGE[i][1]; break; }
       if (skw === null && col.indexOf("pack") >= 0) skw = "pack";
       c = b.filter(function (m) { return m.PARAMETER_CLASS.indexOf("Environment (Temp") === 0 && rx(pkw).test(m._param); });
       if (skw) c = c.filter(function (m) { return rx(skw).test(m._stage); });
       // "Dispensing (Coating)": a stage named in brackets must match too, or the value is not in this export
       (col.match(/\(([^)]*)\)/g) || []).forEach(function (qq) {
         var q = qq.slice(1, -1), qr = null;
-        for (var k = 0; k < ENV_STAGE.length; k++) if (q.indexOf(ENV_STAGE[k][0]) >= 0 && ENV_STAGE[k][1] !== skw) { qr = ENV_STAGE[k][1]; break; }
+        for (var k = 0; k < ENV_STAGE.length; k++) if (rx(ENV_STAGE[k][0]).test(q) && ENV_STAGE[k][1] !== skw) { qr = ENV_STAGE[k][1]; break; }
         if (qr) c = c.filter(function (m) { return rx(qr).test(m._stage) || rx(qr).test(m._step); });
       });
       kind = "R";
@@ -280,12 +318,11 @@
       }
       kind = rule[4];
       if (kind === "E") {
-        var eb = b;
-        for (i = 0; i < EQUIP_STAGE.length; i++) {
-          if (full.indexOf(EQUIP_STAGE[i][0]) >= 0 || (EQUIP_STAGE[i][0] === "packing" && sheet === "Packing Yield")) {   // the sheet name counts too
-            var er = EQUIP_STAGE[i][1]; eb = b.filter(function (m) { return rx(er).test(m._stage); }); break;
-          }
-        }
+        var eb = b, er = null;                     // the column's own words first, then the sheet kind
+        for (i = 0; i < EQUIP_STAGE.length && er === null; i++) if (col.indexOf(EQUIP_STAGE[i][0]) >= 0) er = EQUIP_STAGE[i][1];
+        for (i = 0; i < EQUIP_STAGE.length && er === null; i++)
+          if (full.indexOf(EQUIP_STAGE[i][0]) >= 0 || (EQUIP_STAGE[i][0] === "packing" && kindS === "Packing Yield")) er = EQUIP_STAGE[i][1];
+        if (er !== null) eb = b.filter(function (m) { return rx(er).test(m._stage); });
         PART_HINTS.slice(0, 2).forEach(function (t) {
           if (col.indexOf(t[0]) >= 0 && eb.some(function (m) { return rx(t[1]).test(m._stage); })) eb = eb.filter(function (m) { return rx(t[1]).test(m._stage); });
         });
@@ -332,7 +369,10 @@
     return res;
   }
   function close(a, b) { return Math.abs(a - b) <= Math.max(0.011, Math.abs(b) * 0.005); }
-  function sameText(a, b) { var k = function (v) { return s(v).replace(/[\s.]+/g, "").toUpperCase(); }; return k(a) === k(b); }
+  function sameText(a, b) {                       // 'F1M00011/00000004' = 'F1M00011/4', 'JAN.2026' = 'Jan 2026'
+    var k = function (v) { return (s(v).toUpperCase().match(/[A-Z0-9]+/g) || []).map(function (ch) { return ch.replace(/^0+(?=\d)/, ""); }).join("/"); };
+    return k(a) === k(b);
+  }
 
   /* ---------------------------------------------------------------- 3. compare (= qamap.compare) */
   function compare(qa, mesRows) {
@@ -368,7 +408,7 @@
   }
 
   /* ---------------------------------------------------------------- 4. fill QA's workbook (= qamap.fill) */
-  var LIMS_SHEETS = /analytical/i, MASTERS = ["BMR detail", "BPR Details"];
+  var MASTERS = ["BMR detail", "BPR Details"];
   var REF = /^=?\(?\s*(?:'([^']+)'|([A-Za-z0-9_.]+))!\$?([A-Z]{1,3})\$?(\d+)\s*\)?$/;
   function formulaRef(v) {
     if (typeof v !== "string" || v.charAt(0) !== "=") return null;
@@ -384,10 +424,10 @@
     opts = opts || {};
     var by = prepare(mesRows), order = uniq(mesRows.map(function (r) { return s(r.BATCH_NO).replace(/\.0$/, ""); })), report = [];
     var note = function (sheet, status, text) { report.push({ SHEET: sheet, CELL: "", BATCH_NO: "", COLUMN: "", STAT: "", VALUE: null, STATUS: status, SOURCE: text }); };
-    var sheets = MASTERS.map(function (n) { return wb.getWorksheet(n); }).filter(Boolean)
-      .concat(wb.worksheets.filter(function (w) { return MASTERS.indexOf(w.name) < 0; }));
+    var masters = MASTERS.map(function (k) { return wb.worksheets.filter(function (w) { return sheetKind(w.name) === k; })[0]; }).filter(Boolean);
+    var sheets = masters.concat(wb.worksheets.filter(function (w) { return masters.indexOf(w) < 0; }));
     sheets.forEach(function (ws) {
-      var mapped = SHEETS.indexOf(ws.name) >= 0, lims = LIMS_SHEETS.test(ws.name);
+      var kindW = sheetKind(ws.name), mapped = SHEETS.indexOf(kindW) >= 0, lims = kindW === "LIMS";
       if (!(mapped || lims)) return;
       var lay = layout(ws, "raw");
       if (!lay) return;

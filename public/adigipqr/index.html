@@ -176,9 +176,9 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
   <div><h1>APQR data sheet from PAS-X MES</h1>
   <p class="lede">Drop the raw export of the PAS-X query. You get QA's workbook — BMR detail, stage sheets, Yield data, Temp. &amp; Humidity, BPR Details, Packing Yield — plus Summary (Cpk, out-of-limit batches, trend signals) and Excel trend charts.</p></div>
   <div class="steps" id="apqrSteps">
-    <div><b>Export from PAS-X</b>Run the APQR query read-only, export the grid as CSV.</div>
-    <div><b>Drop the file here</b>Pick material and manufacturing period; check the overview.</div>
-    <div><b>Download the APQR Excel</b>QA layout, Summary, trend charts, source traceability.</div>
+    <div><b>Export from PAS-X</b>QA's request: material number and manufacturing period. Run the query read-only, export as CSV.</div>
+    <div><b>Drop the export here</b>Check batches, CPPs, trends and out-of-limit values in the overview.</div>
+    <div><b>Drop QA's workbook</b>Download it filled in QA's own format, with a report of every value's PAS-X source.</div>
   </div>
   <label class="drop" id="drop">
     <input type="file" id="file" accept=".csv,.txt,.xlsx">
@@ -337,8 +337,8 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       "vendor/tesseract/tesseract.min.js?v=000c27d9cd",
       "app/core.js?v=532bc089b7",
       "app/ocr.js?v=0a9472933d",
-      "app/compare.js?v=8cc1bbf3e8",
-      "app/ui.js?v=3bbd560e2f"
+      "app/compare.js?v=005af1c7bf",
+      "app/ui.js?v=eed6162ecd"
     ];
     files.forEach(function (src) {
       var s = document.createElement("script");
