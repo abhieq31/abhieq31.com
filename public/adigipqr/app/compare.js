@@ -35,6 +35,8 @@
     ["^bmr detail > (manufacturing order|process order|mo no)", "MANUFACTURING_ORDER"]
   ];
   // (qa_regex, mes_param_regex, stage_regex, step_regex, value_kind) = adigipqr/qamap.RULES
+  // X = READING_*_AFTER_FIRST (all repetitions but the first; SQL v6), READING_* for older exports
+  var DRYING_IPC = "(?<!air )(?<!air)drying in\\s*-?\\s*process";
   var RULES = [
     ["^(granulation|compression|coating|capsule|packing yield) > (equipment|granulation ?\\()", null, null, null, "E"],
     ["^(granulation|compression|coating|capsule) > (dispensing|blending|lubrication|granulation|compression|coating|capsule filling)$", null, null, null, "E"],
@@ -64,6 +66,11 @@
     ["feeder", "feeder", "compress", null, "R"],
     ["pre-? ?compression force", "pre\\s*comp", "compress", null, "R"],
     ["main compression force", "main\\s*comp", "compress", null, "R"],
+    // granulation drying: QA's Min / Max = the 'Drying Inprocess' repetitions without the first (start-up) reading
+    ["^granulation > .*inlet temp", "^inlet temp", "granul", DRYING_IPC, "X"],
+    ["^granulation > .*product temp", "^product temp", "granul", DRYING_IPC, "X"],
+    ["^granulation > .*exhaust temp", "^exhaust temp", "granul", DRYING_IPC, "X"],
+    ["^granulation > .*% ?flap", "flap", "granul", DRYING_IPC, "X"],
     ["milled granules.*lod", "lod", "granul", "mill", "R"],
     ["^coating > coating > average weight >", "final average weight", "coat", null, "R"],
     ["coating.*uniformity", "uniformity", "coat", null, "I"],
@@ -321,8 +328,10 @@
   function pick(cands, kind, stat) {
     var col = { R: { MIN: "READING_MIN", MAX: "READING_MAX", AVG: "READING_AVG", VALUE: "READING_MAX" },
       I: { MIN: "INDIVIDUAL_MIN", MAX: "INDIVIDUAL_MAX", AVG: "INDIVIDUAL_AVG", VALUE: "INDIVIDUAL_AVG" },
-      Y: { MIN: "READING_MIN", MAX: "READING_MAX", AVG: "READING_AVG", VALUE: "READING_MAX" } }[kind][stat];
+      Y: { MIN: "READING_MIN", MAX: "READING_MAX", AVG: "READING_AVG", VALUE: "READING_MAX" },
+      X: { MIN: "READING_MIN_AFTER_FIRST", MAX: "READING_MAX_AFTER_FIRST", AVG: "READING_AVG_AFTER_FIRST", VALUE: "READING_MAX" } }[kind][stat];
     if (kind === "I" && cands.every(function (m) { return num(m.row[col]) === null; })) col = col.replace("INDIVIDUAL", "READING");
+    if (kind === "X" && cands.every(function (m) { return num(m.row[col]) === null; })) col = col.replace("_AFTER_FIRST", "");
     return col;
   }
   function lookup(sheet, column, stat, b) {
@@ -383,7 +392,7 @@
       if (rule[2]) c = c.filter(function (m) { return rx(rule[2]).test(m._stage) || rx(rule[2]).test(m._step); });
       if (rule[3]) c = c.filter(function (m) { return rx(rule[3]).test(m._step); });
       if (kind === "Y") c = c.filter(function (m) { return m.PARAMETER_CLASS === "Yield & Rejection"; });
-      if (!c.length && (kind === "R" || kind === "I")) {      // the rule's stage words do not fit this product: by name
+      if (!c.length && (kind === "R" || kind === "I" || kind === "X")) {      // the rule's stage words do not fit this product: by name
         var bn2 = byName(sheet, column, b);
         if (bn2[0].length) {
           var cm2 = minmax(bn2[0], b, column, stat);
