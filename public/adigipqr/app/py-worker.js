@@ -1,7 +1,7 @@
 /* AdigiPQR - runs final/apqr_curate.py (the same file as the command line and the plant portal) in this browser tab.
    Python 3.12 = Pyodide, served from this site (vendor/pyodide); openpyxl from its wheel. Nothing is uploaded.
-   The page sends files; this runs  python apqr_curate.py <export> [--template T] [--rules R] [--validate QA] [--batches ..]
-   exactly as on a PC, and returns the workbook, the printed log and the APQR_Exceptions sheet. */
+   The page sends files; this runs  python apqr_curate.py <export> [--qa QA] [--template T] [--rules R] [--batches ..]
+   exactly as on a PC, and returns the workbook, the printed log, the exceptions and the preview of the sheets. */
 "use strict";
 var base = self.location.href.replace(/app\/py-worker\.js.*$/, ""), py = null;
 
@@ -29,7 +29,7 @@ async function start() {
 
 // runs main() of apqr_curate.py with the same arguments as the command line; what it prints is the log
 var GLUE = [
-  "import contextlib, glob, io, os, shutil, sys, importlib",
+  "import contextlib, glob, importlib, io, os, shutil, sys",
   "sys.path.insert(0, '/work/lib')",
   "def adigi_run(argv):",
   "    for d in ('/work/in', '/work/qa', '/work/out'):",
@@ -44,6 +44,7 @@ var GLUE = [
   "        except SystemExit as e:",
   "            stop = e.code if isinstance(e.code, str) else ('' if not e.code else 'stopped (exit %s)' % e.code)",
   "    out = sorted(glob.glob('/work/out/*.xlsx'))",
+  "    prev = open('/work/out/preview.json', encoding='utf-8').read() if os.path.exists('/work/out/preview.json') else ''",
   "    exc = []",
   "    if out:",
   "        import openpyxl",
@@ -51,7 +52,7 @@ var GLUE = [
   "        if A.EXC_SHEET in wb.sheetnames:",
   "            exc = [[('' if v is None else str(v)) for v in r] for r in wb[A.EXC_SHEET].iter_rows(values_only=True)]",
   "        wb.close()",
-  "    return dict(log=log.getvalue(), stop=stop, out=out[0] if out else '', exceptions=exc, version=A.VERSION)",
+  "    return dict(log=log.getvalue(), stop=stop, out=out[0] if out else '', exceptions=exc, version=A.VERSION, preview=prev)",
 ].join("\n");
 
 async function run(d) {
@@ -63,13 +64,15 @@ async function run(d) {
   ["/work/in", "/work/qa", "/work/out"].forEach(function (x) { p.FS.mkdirTree(x); });
   var argv = [], put = function (dir, f) { var path = dir + "/" + f.name.replace(/[\/\\]/g, "_"); p.FS.writeFile(path, new Uint8Array(f.buffer)); return path; };
   argv.push(put("/work/in", d.files.export));
+  if (d.files.qa) argv.push("--qa", put("/work/qa", d.files.qa));       // checks every value; teaches a new product's layout
   if (d.files.template) argv.push("--template", put("/work/in", d.files.template));
   if (d.files.rules) argv.push("--rules", put("/work/in", d.files.rules));
-  if (d.files.qa) argv.push("--validate", put("/work/qa", d.files.qa));
   if (d.batches && d.batches.length) argv.push("--batches", d.batches.join(","));
   step("curate", "apqr_curate.py " + argv.map(function (a) { return a.replace(/^\/work\/\w+\//, ""); }).join(" "));
+  argv.push("--preview-json", "/work/out/preview.json");
   var res = p.globals.get("adigi_run")(p.toPy(argv)).toJs({ dict_converter: Object.fromEntries });
-  var out = { log: res.log, stop: res.stop, exceptions: res.exceptions, version: res.version, sha: await sha(code), argv: argv };
+  var out = { log: res.log, stop: res.stop, exceptions: res.exceptions, version: res.version, sha: await sha(code),
+    preview: res.preview ? JSON.parse(res.preview) : null };
   if (res.out) {
     step("save");
     var b = p.FS.readFile(res.out);

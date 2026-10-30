@@ -4,6 +4,7 @@
                           [--batches 2605012278,...] [--validate "QA's own workbook.xlsx"]
     python apqr_curate.py --export-rules rules_F1M00011.csv          (the rule registry, for QA review)
     python apqr_curate.py EXPORT.xlsx --template T.xlsx --rules rules_F1M00011.csv   (QA's edited registry)
+    python apqr_curate.py EXPORT.xlsx --learn "QA's workbook of the product.xlsx"      (new product: learn QA's layout)
 
 Input   the export of sql/APQR_FINAL_QUERY.sql (v6.2: every repetition of a step, formula / text / list activities).
 Output  the template workbook exactly as it is (headers, sample rows, colours, formulas), the batches added below its
@@ -22,11 +23,13 @@ Principles (QA 30-Oct-2026):
   - Coating Min / Max = PAS-X's own 'Spraying Min & Max' record, cross-checked against the 15-minute readings; a
     disagreement leaves the cell blank with an exception.
   - Nothing is invented: no constants, no guessed sources. Blank + reason beats a plausible wrong value.
-  - An MBR without an approved rule set is refused (no generic layout).
+  - An MBR without an approved rule set: AUTO layout from the export's exact codes, or (--learn) QA's own layout with
+    rules learned from QA's values for batches both files have. Marked FILLED_AUTO / FILLED_LEARNED: QA to approve.
 Needs   Python 3.8+ and openpyxl (pip install openpyxl). This file is self-contained.
 Same file as adigipqr/curate.py (portal backend); tests/test_curate.py keeps them identical.
 Prototype for QA review: verify against the batch record before use in a GMP APQR."""
 import argparse
+import bisect
 import copy
 import csv
 import io
@@ -35,9 +38,10 @@ import re
 import sys
 from collections import OrderedDict
 
-VERSION = '2.0.0'
+VERSION = '2.1.0'
 TRACE_SHEET, EXC_SHEET, RULE_SHEET, VALID_SHEET = 'APQR_Source_Trace', 'APQR_Exceptions', 'APQR_Rules', 'APQR_Validation'
-OWN_SHEETS = (TRACE_SHEET, EXC_SHEET, RULE_SHEET, VALID_SHEET, 'AdigiPQR source')
+LEARN_SHEET, UNMAPPED_SHEET = 'APQR_Learning', 'APQR_Unmapped_PASX'
+OWN_SHEETS = (TRACE_SHEET, EXC_SHEET, RULE_SHEET, VALID_SHEET, LEARN_SHEET, UNMAPPED_SHEET, 'AdigiPQR source')
 
 
 # ------------------------------------------------------------------------------------------------ reading
@@ -160,11 +164,11 @@ RULESET_VERSION = {'F1M00011': 'F1M00011-R2 (30-Oct-2026)'}
 
 
 def _rule(rid, sheet, col, kind, sources='', stat='', require='ANY', scale='', uom='', machine='', zero='',
-          check='', status='VERIFIED', evidence=''):
-    return OrderedDict(RULE_ID=rid, LAYOUT='F1M00011', SHEET=sheet, COLUMN=col, KIND=kind, SOURCES=sources,
+          check='', status='VERIFIED', evidence='', layout='F1M00011'):
+    return OrderedDict(RULE_ID=rid, LAYOUT=layout, SHEET=sheet, COLUMN=col, KIND=kind, SOURCES=sources,
                        STATISTIC=stat, REQUIRE=require, SCALE=s(scale), EXPECTED_UOM=uom, MACHINE=s(machine),
                        ZERO_AS=zero, CHECK=check, STATUS=status if kind in ('PASX', 'HEADER', 'FORMULA') else '',
-                       EVIDENCE=evidence, VERSION=RULESET_VERSION['F1M00011'])
+                       EVIDENCE=evidence, VERSION=RULESET_VERSION.get(layout, layout))
 
 
 def f1m00011_rules():
@@ -483,6 +487,9 @@ REPEATED_STATS = ('MIN', 'MAX', 'AVG', 'MIN_AFTER_FIRST', 'MAX_AFTER_FIRST', 'IM
 def evaluate(rule, b):
     """Result of one rule for one batch (b = export rows of the batch)."""
     kind = rule['KIND']
+    if kind == 'HEADER' and rule.get('STATUS') in ('AUTO', 'LEARNED'):
+        v, how = header(b, rule['SOURCES'])
+        return Result(v, 'FILLED_' + rule['STATUS'] if v not in (None, '') else 'NO_SOURCE_IN_EXPORT', calc=how)
     if kind in ('QA_ENTRY', 'PRINTOUT', 'NOT_IN_MBR', 'NO_PASX_SOURCE'):
         return Result(None, kind, calc=rule.get('EVIDENCE', ''))
     if kind == 'HEADER':
@@ -534,7 +541,8 @@ def evaluate(rule, b):
             calc += '; check skipped (one reading only: export before v6)'
     if isinstance(v, float) and v == 0 and rule.get('ZERO_AS'):
         v, calc = rule['ZERO_AS'], calc + '; 0 -> %s' % rule['ZERO_AS']
-    status = 'FILLED' if rule.get('STATUS', 'VERIFIED') == 'VERIFIED' else 'FILLED_PROVISIONAL'
+    status = {'VERIFIED': 'FILLED', 'AUTO': 'FILLED_AUTO', 'LEARNED': 'FILLED_LEARNED'}.get(rule.get('STATUS') or
+                                                                                           'VERIFIED', 'FILLED_PROVISIONAL')
     res = Result(clean(v), status, rows, calc)
     if corr:
         res.problem = 'source has corrected entries (%s): review' % '; '.join(s(r.get('SUPERSEDED_VALUES')) for r in corr)
@@ -702,10 +710,10 @@ def fill_sheet(wb, ws, sh, rules, batches, order, trace, exc, master_rows, from_
                     trace.append(trace_row(b, batches[b], sh, rule, cell.coordinate, cell.value,
                                            Result(cell.value, 'KEPT', calc='template cell already filled: not overwritten')))
                     continue
-            if res.value is not None and res.status in ('FILLED', 'FILLED_PROVISIONAL', 'FORMULA', 'NA_OTHER_MACHINE'):
+            if res.value is not None and res.status in ('FILLED', 'FILLED_PROVISIONAL', 'FILLED_AUTO', 'FILLED_LEARNED', 'FORMULA', 'NA_OTHER_MACHINE'):
                 cell.value = res.value
             trace.append(trace_row(b, batches[b], sh, rule, cell.coordinate, cell.value if res.value is not None else None, res))
-            if res.status == 'EXCEPTION' or (res.problem and res.status in ('FILLED', 'FILLED_PROVISIONAL')) or \
+            if res.status == 'EXCEPTION' or (res.problem and res.status in ('FILLED', 'FILLED_PROVISIONAL', 'FILLED_AUTO', 'FILLED_LEARNED')) or \
                     (res.status == 'NO_SOURCE_IN_EXPORT' and rule.get('STATUS') == 'VERIFIED' and rule['KIND'] == 'PASX'):
                 exc.append([b, sh['name'], cell.coordinate, field_name(sh, rule['COLUMN']), rule['RULE_ID'],
                             res.status, res.problem or 'expected source not in the export'])
@@ -743,7 +751,7 @@ def _table(ws, head, rows, widths):
     ws.auto_filter.ref = ws.dimensions
 
 
-def own_sheets(wb, trace, exc, rules, info, validation=None):
+def own_sheets(wb, trace, exc, rules, info, validation=None, learned=None, unmapped_rows=None):
     for n in OWN_SHEETS:
         if n in wb.sheetnames:
             del wb[n]
@@ -756,6 +764,14 @@ def own_sheets(wb, trace, exc, rules, info, validation=None):
         ws = wb.create_sheet(VALID_SHEET)
         _table(ws, ['BATCH_NO', 'APQR_SHEET', 'CELL', 'APQR_FIELD', 'QA_VALUE', 'CURATED_VALUE', 'RESULT', 'RULE_ID'],
                validation, [12, 24, 8, 50, 14, 14, 12, 22])
+    if learned is not None:
+        ws = wb.create_sheet(LEARN_SHEET)
+        _table(ws, ['QA_SHEET', 'COLUMN', 'QA_HEADER', 'RESULT', 'PASX_SOURCE_STATISTIC', 'AGREED', 'OF_QA_VALUES'],
+               learned, [24, 8, 60, 14, 60, 8, 8])
+    if unmapped_rows:
+        ws = wb.create_sheet(UNMAPPED_SHEET)
+        _table(ws, ['APQR_SHEET', 'STAGE', 'STEP_PATH', 'PARAMETER', 'UOM', 'STEP_CODE_PATH', 'PARAMETER_CODE',
+                    'BATCHES_WITH_DATA', 'EXAMPLE'], unmapped_rows, [18, 22, 40, 30, 8, 34, 14, 8, 30])
     ws = wb.create_sheet(RULE_SHEET)
     for k, v in info:
         ws.append([k, v])
@@ -769,6 +785,440 @@ def own_sheets(wb, trace, exc, rules, info, validation=None):
         ws.cell(start, c).font = Font(bold=True)
     for i, w in enumerate([22, 10, 24, 8, 14, 60, 16, 8, 6, 8, 8, 6, 40, 12, 70, 26], 1):
         ws.column_dimensions[chr(64 + i)].width = w
+
+
+# ------------------------------------------------------------------------------------------------ any product
+# A product without an approved rule set is no longer refused. Two ways, both from exact PAS-X codes only:
+#   AUTO     the layout is built from the export itself: one sheet per APQR sheet of the SQL, one column group per
+#            STEP_CODE_PATH|PARAMETER_CODE, QA's header style (step > parameter > limit > Min / Max / Ave).
+#   LEARNED  QA's own workbook for the product is given (--learn): every QA column gets the one PAS-X series and
+#            statistic that reproduces QA's values in the batches both files have (>= 80 %, tolerance 0.1 %);
+#            the output is QA's exact header block with the requested batches. Where several sources would write
+#            different values the column stays blank (AMBIGUOUS); where none reproduces QA, NOT_LEARNED.
+# Values are never estimated: only where they are written differs. Both are marked in every trace row.
+SHEET_ORDER = ('dispens', 'sift', 'granul', 'blend', 'lubric', 'compress', 'capsul', 'coat', 'yield', 'temp', 'ip',
+               'bpr', 'pack', 'fp')
+STAT_LABEL = OrderedDict([('VALUE', 'Value'), ('MIN', 'Min'), ('MAX', 'Max'), ('AVG', 'Ave'), ('TEXT', 'Entry'),
+                          ('IMIN', 'Unit Min'), ('IMAX', 'Unit Max'), ('IAVG', 'Unit Ave')])
+HEAD_FILL = ('8EB4E3', 'DDD9C3', 'DBEEF4', 'F2F2F2', 'FFFFFF')
+MASTER_FIELDS = [('Batch Size (In Kg)', 'BATCH_SIZE'), ('Mfg. Date', 'MFG_MONTH'), ('Exp. Date', 'EXP_MONTH'),
+                 ('BMR No.', 'BMR_NO'), ('Material code', 'MATERIAL_CODE'), ('Product', 'PRODUCT_NAME'),
+                 ('Mfg. order', 'MANUFACTURING_ORDER'), ('Mfg. start', 'MFG_START')]
+
+
+def series(batches):
+    """Every PAS-X series of the export: {(code path, parameter code or @description): facts}, in step order."""
+    out = OrderedDict()
+    for rows in sorted(batches.values(), key=len, reverse=True):          # the fullest batch sets the order
+        for r in rows:
+            path = code(r.get('STEP_CODE_PATH'))
+            par = s(r.get('PARAMETER_CODE')) or '@' + ' '.join(s(r.get('APQR_PARAMETER')).split())
+            if not path or par == '@':
+                continue
+            f = out.setdefault((path, par), dict(sheet=s(r.get('APQR_SHEET')) or s(r.get('STAGE')) or 'Other',
+                                                 stage=s(r.get('STAGE')), step=s(r.get('STEP_PATH')) or s(r.get('STEP')),
+                                                 param=s(r.get('APQR_PARAMETER')) or par.lstrip('@'), uom=s(r.get('UOM')),
+                                                 lo=s(r.get('SPEC_MIN')), hi=s(r.get('SPEC_MAX')),
+                                                 target=s(r.get('TARGET_SET_VALUE')), numeric=False, text=False,
+                                                 repeated=False, units=False))
+            f['numeric'] |= num(r.get('READING_MAX')) is not None
+            f['text'] |= bool(s(r.get('ACTUAL_TEXT')))
+            f['repeated'] |= (num(r.get('READING_COUNT')) or 0) > 1
+            f['units'] |= (num(r.get('INDIVIDUAL_COUNT')) or 0) > 0
+            for k, fld in (('lo', 'SPEC_MIN'), ('hi', 'SPEC_MAX'), ('uom', 'UOM')):
+                f[k] = f[k] or s(r.get(fld))
+    return out
+
+
+def series_stats(f):
+    st = (['MIN', 'MAX', 'AVG'] if f['repeated'] else ['VALUE']) if f['numeric'] else ['TEXT'] if f['text'] else []
+    return st + (['IMIN', 'IMAX', 'IAVG'] if f['units'] else [])
+
+
+def _source(path, par):
+    return '%s|%s' % (path, par)
+
+
+def _limit_text(f):
+    lo, hi = clean(num(f['lo'])) if num(f['lo']) is not None else f['lo'], clean(num(f['hi'])) if num(f['hi']) is not None else f['hi']
+    t = '%s - %s' % (lo, hi) if lo != '' and hi != '' else 'NLT %s' % lo if lo != '' else 'NMT %s' % hi if hi != '' else ''
+    if f['target'] and not t:
+        t = 'Set %s' % f['target']
+    return (t + (' ' + f['uom'] if t and f['uom'] else '')).strip() or (f['uom'] or '-')
+
+
+def _sheet_rank(name):
+    low = name.lower()
+    return next((i for i, k in enumerate(SHEET_ORDER) if k in low), len(SHEET_ORDER))
+
+
+def auto_layout(batches, mbr='AUTO'):
+    """(layout, rules) of a QA-style workbook for any product, built from the export's own step and parameter codes."""
+    from openpyxl.utils import get_column_letter as cl
+    lname = 'AUTO-' + (mbr or 'unknown')
+    RULESET_VERSION.setdefault(lname, 'AUTO layout from the export (%s, curator %s) - not approved by QA' % (mbr, VERSION))
+    ser = series(batches)
+    groups = OrderedDict()
+    for key, f in ser.items():
+        if series_stats(f):
+            groups.setdefault(f['sheet'], []).append((key, f))
+    names = sorted(groups, key=lambda n: (_sheet_rank(n), list(groups).index(n)))
+    lay, rules, used = [], [], set()
+
+    def sheet(name, cols, title):
+        nm = re.sub(r'[\[\]:*?/\\]', ' ', name)[:31].strip() or 'Sheet'
+        while nm.lower() in used:
+            nm = nm[:28] + '~%d' % len(used)
+        used.add(nm.lower())
+        n = 2 + len(cols)
+        cells = [('A1', title, HEAD_FILL[0])] + [('A2', 'Sr. No.', HEAD_FILL[1]), ('B2', 'Batch No.', HEAD_FILL[1])]
+        merges = ['A1:%s1' % cl(max(n, 2)), 'A2:A5', 'B2:B5']
+        widths = {'A': 7, 'B': 13}
+        return nm, n, cells, merges, widths
+
+    nm, n, cells, merges, widths = sheet('BMR DETAILS', MASTER_FIELDS, 'BMR details - %s' % mbr)
+    for i, (label, field) in enumerate(MASTER_FIELDS):
+        c = cl(3 + i)
+        cells.append(('%s2' % c, label, HEAD_FILL[1]))
+        merges.append('%s2:%s5' % (c, c))
+        widths[c] = 14
+        rules.append(_rule('AUTO-BMR-%s' % field, nm, c, 'HEADER', field, status='AUTO', layout=lname,
+                           evidence='batch header field of the export'))
+    lay.append(dict(name=nm, first=6, bcol=2, ncols=n, cells=cells, merges=merges, widths=widths, heights={1: 20}))
+    for g in names:
+        cols = [(key, f, st) for key, f in groups[g] for st in series_stats(f)]
+        nm, n, cells, merges, widths = sheet(g, cols, g)
+        c = 3
+        last_step = None
+        for key, f in groups[g]:
+            stats = series_stats(f)
+            a, z = cl(c), cl(c + len(stats) - 1)
+            if f['step'] != last_step:                          # one step heading over its parameters
+                span = sum(len(series_stats(x)) for k2, x in groups[g][groups[g].index((key, f)):]
+                           if x['step'] == f['step'])
+                cells.append(('%s2' % a, f['step'], HEAD_FILL[1]))
+                if span > 1:
+                    merges.append('%s2:%s2' % (a, cl(c + span - 1)))
+                last_step = f['step']
+            cells += [('%s3' % a, f['param'], HEAD_FILL[2]), ('%s4' % a, _limit_text(f), HEAD_FILL[3])]
+            if len(stats) > 1:
+                merges += ['%s3:%s3' % (a, z), '%s4:%s4' % (a, z)]
+            for i, st in enumerate(stats):
+                col = cl(c + i)
+                cells.append(('%s5' % col, STAT_LABEL[st], HEAD_FILL[4]))
+                widths[col] = 10 if st != 'TEXT' else 18
+                rules.append(_rule('AUTO-%s-%s-%s' % (re.sub(r'\W+', '', nm)[:10], col, st), nm, col, 'PASX',
+                                   _source(*key), st, status='AUTO', layout=lname,
+                                   evidence='automatic: exact series of the export (%s)' % f['param']))
+            c += len(stats)
+        lay.append(dict(name=nm, first=6, bcol=2, ncols=n, cells=cells, merges=merges, widths=widths,
+                        heights={2: 45, 3: 45, 4: 30}))
+    return lay, rules
+
+
+# ------------------------------------------------------------------------------------------------ learning
+LEARN_STATS = ('VALUE', 'MIN', 'MAX', 'AVG', 'MIN_AFTER_FIRST', 'MAX_AFTER_FIRST', 'IMIN', 'IMAX', 'IAVG', 'TEXT')
+LEARN_HEADERS = ('BATCH_SIZE', 'MFG_MONTH', 'EXP_MONTH', 'BMR_NO', 'MATERIAL_CODE', 'PRODUCT_NAME',
+                 'MANUFACTURING_ORDER', 'MFG_START')
+LEARN_MIN_RATE = 0.8
+
+
+def _close(a, b):
+    return abs(a - b) <= max(0.011, abs(b) * 0.001)
+
+
+def _theme(wb):
+    xml = wb.loaded_theme.decode('utf-8', 'replace') if isinstance(wb.loaded_theme, bytes) else (wb.loaded_theme or '')
+    out = []
+    for n in ['lt1', 'dk1', 'lt2', 'dk2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6']:
+        m = re.search(r'<a:%s>.*?(?:srgbClr val="([0-9A-Fa-f]{6})"|lastClr="([0-9A-Fa-f]{6})").*?</a:%s>' % (n, n), xml, re.S)
+        out.append((m.group(1) or m.group(2)).upper() if m else 'FFFFFF')
+    return out
+
+
+def _fill(cell, theme):
+    import colorsys
+    f = cell.fill
+    if f is None or f.fill_type != 'solid' or f.fgColor is None:
+        return None
+    c = f.fgColor
+    if c.type == 'rgb' and isinstance(c.rgb, str):
+        return c.rgb[-6:].upper()
+    if c.type == 'theme' and c.theme is not None and c.theme < len(theme):
+        r, g, b = (int(theme[c.theme][i:i + 2], 16) / 255 for i in (0, 2, 4))
+        h, l, sat = colorsys.rgb_to_hls(r, g, b)
+        t = c.tint or 0
+        l = l * (1 + t) if t < 0 else l * (1 - t) + t
+        return ''.join('%02X' % round(x * 255) for x in colorsys.hls_to_rgb(h, l, sat))
+    return None
+
+
+def qa_sheet(wb, ws, known, theme):
+    """Layout of one sheet of QA's workbook: dict like LAYOUTS + rows {batch: row}; None when it holds no batches."""
+    best = None
+    for c in range(1, 7):                                    # the batch column: most batches of the export
+        hits = {}
+        for (r, cc), cell in ws._cells.items():
+            if cc == c and type(cell).__name__ != 'MergedCell' and cell.value is not None:
+                b = batch_no(resolved(wb, cell.value))
+                if b in known and b not in hits:
+                    hits[b] = r
+        if hits and (best is None or len(hits) > len(best[1])):
+            best = (c, hits)
+    if not best:
+        return None
+    bcol, rows = best
+    first = None                                             # first batch-like row: the header block ends above
+    for r in range(1, min(rows.values()) + 1):
+        v = s(resolved(wb, ws.cell(r, bcol).value))
+        if re.fullmatch(r'[A-Z0-9/-]*\d{5,}[A-Z0-9/-]*', batch_no(v)):
+            first = r
+            break
+    first = first or min(rows.values())
+    cells, maxc = [], bcol
+    for (r, c), cell in sorted(ws._cells.items()):
+        if r >= first or type(cell).__name__ == 'MergedCell':
+            continue
+        f = _fill(cell, theme)
+        if cell.value is None and f is None:
+            continue
+        maxc = max(maxc, c) if cell.value is not None else maxc
+        cells.append((cell.coordinate, cell.value, f))
+    merges = [str(m) for m in ws.merged_cells.ranges if m.max_row < first]
+    maxc = max([maxc] + [m.max_col for m in ws.merged_cells.ranges if m.max_row < first])
+    from openpyxl.utils import get_column_letter as cl
+    widths = {cl(c): round(ws.column_dimensions[cl(c)].width, 2) for c in range(1, maxc + 1)
+              if ws.column_dimensions[cl(c)].width}
+    heights = {r: round(ws.row_dimensions[r].height, 2) for r in range(1, first) if ws.row_dimensions[r].height}
+    from openpyxl.utils.cell import column_index_from_string, coordinate_from_string
+    cells = [x for x in cells if column_index_from_string(coordinate_from_string(x[0])[0]) <= maxc]
+    return dict(name=ws.title, first=first, bcol=bcol, ncols=maxc, cells=cells, merges=merges, widths=widths,
+                heights=heights), rows
+
+
+def _qa_value(v):
+    """QA cell -> number, or normalised texts it may equal (dates as QA and PAS-X write them)."""
+    import datetime as _dt
+    if isinstance(v, (_dt.datetime, _dt.date)):
+        return None, {x.lower().replace(' ', '') for x in (v.strftime('%b.%Y'), v.strftime('%d-%m-%Y'), v.strftime('%b-%Y'),
+                                                            v.strftime('%m/%Y'), v.strftime('%d-%m-%Y %H:%M'))}
+    n = num(v)
+    t = _norm(v).replace(' ', '')
+    return n, {t} if t else set()
+
+
+ROMAN = {'i': '1', 'ii': '2', 'iii': '3', 'iv': '4', 'v': '5'}
+
+
+def _tokens(text):
+    """Words of a header or a PAS-X name for breaking ties (LOT-II = LOT2 = Lot 2); never used to find a value."""
+    out = set()
+    for w in re.findall(r'[a-z]+|\d+', s(text).lower().replace('-', ' ')):
+        out.add(ROMAN.get(w, w))
+    for a, b in re.findall(r'([a-z]+)\s*-?\s*(i{1,3}|iv|v|\d)\b', s(text).lower()):
+        out.add(a + ROMAN.get(b, b))
+    return out - {'of', 'the', 'and', 'in', 'to', 'for', 'min', 'max', 'ave', 'avg', 'nlt', 'nmt', 'kg', 'no'}
+
+
+def learn(qa_path, batches, name='LEARNED'):
+    """(layout, rules, report) learned from QA's own workbook: each QA column -> the exact PAS-X source that gives
+    QA's values in the batches both have. report rows = [sheet, column, header path, result, rule source, agreed, of]."""
+    import openpyxl
+    from openpyxl.utils import get_column_letter as cl
+    wb = openpyxl.load_workbook(qa_path) if isinstance(qa_path, str) else openpyxl.load_workbook(io.BytesIO(qa_path))
+    theme = _theme(wb)
+    lname = 'LEARNED-' + name
+    RULESET_VERSION.setdefault(lname, "learned from QA's workbook (curator %s) - QA to approve" % VERSION)
+    ser = series(batches)
+    rows_of = {}
+    for b, rows in batches.items():                          # rows of each series per batch
+        d = rows_of.setdefault(b, {})
+        for r in rows:
+            par = s(r.get('PARAMETER_CODE')) or '@' + ' '.join(s(r.get('APQR_PARAMETER')).split())
+            d.setdefault((code(r.get('STEP_CODE_PATH')), par), []).append(r)
+    # candidate values: (kind, source, statistic, scale) -> {batch: value}
+    cand = OrderedDict()
+    for fld in LEARN_HEADERS:
+        cand[('HEADER', fld, '', 1)] = {b: header(rows, fld)[0] for b, rows in batches.items()}
+    for key, f in ser.items():
+        for st in LEARN_STATS:
+            if st == 'TEXT' and not f['text']:
+                continue
+            if st != 'TEXT' and not f['numeric']:
+                continue
+            if st in ('IMIN', 'IMAX', 'IAVG') and not f['units']:
+                continue
+            if st in ('MIN_AFTER_FIRST', 'MAX_AFTER_FIRST') and not f['repeated']:
+                continue
+            vals = {}
+            for b in batches:
+                rs = rows_of[b].get(key)
+                if rs:
+                    v = statistic(rs, st)[0]
+                    if v is not None:
+                        vals[b] = v
+            if vals:
+                for fac in ((1, 1 / 60.0, 60) if st != 'TEXT' else (1,)):
+                    cand[('PASX', _source(*key), st, fac)] = {b: (v * fac if fac != 1 else v) for b, v in vals.items()}
+    keys = list(cand)
+    idx = {}
+
+    def index(b):
+        """Candidate values of one batch: sorted numbers (bisect) and normalised texts."""
+        if b not in idx:
+            nl, td = [], {}
+            for i, k in enumerate(keys):
+                v = cand[k].get(b)
+                if v is None:
+                    continue
+                if isinstance(v, (int, float)) and not isinstance(v, bool):
+                    nl.append((float(v), i))
+                t = _norm(v).replace(' ', '')
+                if t:
+                    td.setdefault(t, []).append(i)
+            nl.sort()
+            idx[b] = (([x for x, _ in nl], [i for _, i in nl]), td)
+        return idx[b]
+    pref = {st: i for i, st in enumerate(LEARN_STATS)}
+    lay, rules, report = [], [], []
+    for ws in wb.worksheets:
+        got = qa_sheet(wb, ws, set(batches), theme)
+        if not got:
+            report.append([ws.title, '', '', 'NO_COMMON_BATCH', '', 0, 0])
+            continue
+        sh, qrows = got
+        lay.append(sh)
+        paths = layout_paths(sh)
+        under = {}                                           # merged group headings (LOT-II ...) over every column
+        for m in ws.merged_cells.ranges:
+            if m.max_row < sh['first']:
+                v = ws.cell(m.min_row, m.min_col).value
+                for c in range(m.min_col, m.max_col + 1):
+                    under.setdefault(cl(c), []).append(s(v))
+        for c in range(sh['bcol'] + 1, sh['ncols'] + 1):
+            col = cl(c)
+            if col not in paths:
+                continue
+            path = ' > '.join(paths[col])
+            qv, formulas = {}, []
+            for b, r in qrows.items():
+                v = ws.cell(r, c).value
+                if isinstance(v, str) and v.startswith('='):
+                    formulas.append(re.sub(r'(?<=[A-Z])%d\b' % r, '{r}', v))
+                elif v not in (None, '') and s(v) not in ('-', 'NA', 'N/A', 'na'):
+                    qv[b] = v
+            rid = 'L-%s-%s' % (re.sub(r'\W+', '', ws.title)[:12], col)
+            if formulas and len(set(formulas)) == 1 and len(formulas) >= len(qv):
+                rules.append(_rule(rid, sh['name'], col, 'FORMULA', formulas[0], layout=lname, status='LEARNED',
+                                   evidence="QA's own formula in %d batch row(s)" % len(formulas)))
+                report.append([sh['name'], col, path, 'FORMULA', formulas[0], len(formulas), len(formulas)])
+                continue
+            if not qv:
+                rules.append(_rule(rid, sh['name'], col, 'QA_ENTRY', layout=lname,
+                                   evidence='QA leaves it empty in the %d common batch(es)' % len(qrows)))
+                report.append([sh['name'], col, path, 'QA_EMPTY', '', 0, 0])
+                continue
+            parsed = {b: _qa_value(v) for b, v in qv.items()}
+            n = len(parsed)
+            need = n if n < 3 else max(3, int(LEARN_MIN_RATE * n + 0.9999))
+            agree = []
+            refs = list(parsed)[:5]                      # sources that match QA in one of 5 batches, then all batches
+            pool = set()
+            for b in refs:
+                (vals_sorted, ids), td = index(b)
+                qn, qt = parsed[b]
+                if qn is not None:
+                    tol = max(0.011, abs(qn) * 0.001)
+                    pool.update(ids[bisect.bisect_left(vals_sorted, qn - tol):bisect.bisect_right(vals_sorted, qn + tol)])
+                for t in qt:
+                    pool.update(td.get(t, ()))
+            for i in pool:
+                k = keys[i]
+                vals = cand[k]
+                a = 0
+                for b, (qn, qt) in parsed.items():
+                    v = vals.get(b)
+                    if v is None:
+                        continue
+                    if qn is not None and isinstance(v, (int, float)) and _close(float(v), qn):
+                        a += 1
+                    elif qt and _norm(v).replace(' ', '') in qt:
+                        a += 1
+                if a >= need:
+                    agree.append((a, k))
+            if not agree:
+                rules.append(_rule(rid, sh['name'], col, 'NO_PASX_SOURCE', layout=lname, evidence=
+                                   'no PAS-X series reproduces QA\'s %d value(s) (e.g. %s)' % (n, s(list(qv.values())[0])[:40])))
+                report.append([sh['name'], col, path, 'NOT_LEARNED', '', 0, n])
+                continue
+            varies = len({round(qn, 3) if qn is not None else tuple(sorted(qt)) for qn, qt in parsed.values()}) > 1
+            if varies:                                   # a constant PAS-X series cannot stand in for QA's varying values
+                agree = [(a, k) for a, k in agree if len({clean(v) if isinstance(v, float) else v for b, v in
+                                                          cand[k].items() if b in parsed}) > 1]
+            if not agree:
+                rules.append(_rule(rid, sh['name'], col, 'NO_PASX_SOURCE', layout=lname, evidence=
+                                   "only constant PAS-X series match QA's varying values"))
+                report.append([sh['name'], col, path, 'NOT_LEARNED', '', 0, n])
+                continue
+            want_words = _tokens(path) | _tokens(sh['name']) | _tokens(' '.join(under.get(col, [])))
+
+            def fit(k):                                  # name affinity: a tie-breaker between equally good sources
+                if k[0] == 'HEADER':
+                    return 0
+                f = ser.get(tuple(k[1].split('|', 1)), {})
+                have = _tokens(' '.join([f.get('sheet', ''), f.get('stage', ''), f.get('step', ''), f.get('param', ''),
+                                         k[1].replace('>', ' ')]))
+                return len(want_words & have)
+            top = max(a for a, _ in agree)
+            best = [k for a, k in agree if a == top]
+            if len(best) > 1:
+                hi = max(fit(k) for k in best)
+                best = [k for k in best if fit(k) == hi]
+            # different sources that would write different values in the other batches: not decidable from QA's data
+            vec = lambda k: tuple((b, clean(cand[k][b]) if isinstance(cand[k][b], float) else cand[k][b])
+                                  for b in batches if b in cand[k])
+            distinct = {vec(k) for k in best}
+            best.sort(key=lambda k: (k[0] != 'HEADER', k[3] != 1, -fit(k), pref.get(k[2], 99), k[1]))
+            k = best[0]
+            if len(distinct) > 1:
+                rules.append(_rule(rid, sh['name'], col, 'NO_PASX_SOURCE', layout=lname, evidence=
+                                   'AMBIGUOUS: %d sources match QA (%d/%d) but differ elsewhere: %s' % (
+                                       len(best), top, n, '; '.join('%s %s' % (x[1], x[2]) for x in best[:4]))))
+                report.append([sh['name'], col, path, 'AMBIGUOUS', ' ; '.join('%s %s' % (x[1], x[2]) for x in best[:6]), top, n])
+                continue
+            ev = 'agrees with QA in %d of %d common batch(es)%s' % (top, n, '' if n >= 3 else ' - few batches, QA to confirm')
+            if k[0] == 'HEADER':
+                rules.append(_rule(rid, sh['name'], col, 'HEADER', k[1], layout=lname, status='LEARNED', evidence=ev))
+            else:
+                rules.append(_rule(rid, sh['name'], col, 'PASX', k[1], k[2], scale='' if k[3] == 1 else repr(k[3]),
+                                   layout=lname, status='LEARNED', evidence=ev))
+            report.append([sh['name'], col, path, 'LEARNED', '%s %s%s' % (k[1], k[2], '' if k[3] == 1 else ' x%g' % k[3]), top, n])
+    if not lay:
+        raise ValueError("QA's workbook has none of the export's batches: nothing to learn from (give an export that "
+                         "includes batches QA already has)")
+    return lay, rules, report
+
+
+MODE_TEXT = {'APPROVED': 'approved rule set (exact codes, verified against QA)',
+             'LEARNED': "learned from QA's own workbook: QA to approve the rules (sheet APQR_Learning)",
+             'AUTO': 'AUTO layout from the export: QA to review the layout before use'}
+
+
+def unmapped(batches, rules):
+    """PAS-X series of the export that no rule uses: candidates for QA's next rule (sheet APQR_Unmapped_PASX)."""
+    srcs = [(p, q) for r in rules if r['KIND'] == 'PASX' for p, q in parse_sources(r['SOURCES'])]
+    out = []
+    for (path, par), f in series(batches).items():
+        hit = any((p == path or (p.endswith('> *') and path.startswith(p[:-3].strip() + ' >'))) and
+                  (q == par or (q.startswith('@') and par.startswith('@') and q.lower() == par.lower())) for p, q in srcs)
+        if hit:
+            continue
+        rows = [r for b in batches.values() for r in b if code(r.get('STEP_CODE_PATH')) == path and
+                (s(r.get('PARAMETER_CODE')) or '@' + ' '.join(s(r.get('APQR_PARAMETER')).split())) == par]
+        ex = next((s(r.get('READING_VALUES')) or s(r.get('READING_MAX')) or s(r.get('ACTUAL_TEXT')) for r in rows), '')
+        out.append([f['sheet'], f['stage'], f['step'], f['param'], f['uom'], path, par,
+                    len({batch_no(r.get('BATCH_NO')) for r in rows}), ex[:60]])
+    return out
 
 
 # ------------------------------------------------------------------------------------------------ which rule set
@@ -828,10 +1278,13 @@ def validate(wb, qa_path, layout, rules, order):
 
 
 # ------------------------------------------------------------------------------------------------ main entry
-def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, validate_with=None, extra_info=()):
+def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, validate_with=None, extra_info=(),
+           learn_from=None, strict=False):
     """rows = export rows (dicts); template = path / bytes of the approved template workbook (None = built-in header
     copy); layout = force a rule set ('F1M00011'); rules = rule list (default: the built-in approved set);
-    validate_with = QA's own workbook to compare with. Returns (workbook, trace, exceptions, summary)."""
+    validate_with = QA's own workbook to compare with; learn_from = QA's own workbook to learn the layout and rules
+    from (a product without an approved rule set); strict = refuse a product without an approved rule set instead of
+    the AUTO layout. Returns (workbook, trace, exceptions, summary)."""
     import openpyxl
     batches = by_batch(rows)
     if batches_wanted:
@@ -840,25 +1293,42 @@ def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, va
     if not batches:
         raise ValueError('No batches in the export' + (' for the requested batch numbers' if batches_wanted else ''))
     mbrs = sorted({first(b, 'MBR_ID') for b in batches.values()} - {''})
-    if layout:
-        if layout not in RULESETS:
-            raise ValueError('No approved rule set for %r (known: %s)' % (layout, ', '.join(RULESETS)))
-        mbr, why = layout, 'chosen with --layout'
+    mats = sorted({first(b, 'MATERIAL_CODE') for b in batches.values()} - {''})
+    learned, notes = None, []
+    if learn_from is not None:
+        name = '_'.join(mbrs) or '_'.join(mats) or 'product'
+        lay, lrules, learned = learn(learn_from, by_batch(rows), name)     # all export batches teach, not only the asked
+        mbr, mode, why = 'LEARNED-' + name, 'LEARNED', "layout and rules learned from QA's own workbook"
+        rules = rules if rules is not None else lrules
     else:
-        mbr, why = detect_layout(batches)
-    if not mbr:
-        raise ValueError(why + '. A new product needs its own rule set (rules CSV, approved by QA) and template; '
-                         'nothing is filled by guessing.')
-    rules = rules if rules is not None else RULESETS[mbr]()
-    lay = LAYOUTS[mbr]
-    other = {m for m in mbrs if m != mbr}
+        if layout:
+            if layout not in RULESETS:
+                raise ValueError('No approved rule set for %r (known: %s)' % (layout, ', '.join(RULESETS)))
+            mbr, why = layout, 'chosen with --layout'
+        else:
+            mbr, why = detect_layout(batches)
+        if mbr:
+            mode, lay = 'APPROVED', LAYOUTS[mbr]
+            rules = rules if rules is not None else RULESETS[mbr]()
+        elif strict:
+            raise ValueError(why + '. A new product needs its own rule set (rules CSV, approved by QA) and template; '
+                             'nothing is filled by guessing.')
+        else:
+            lay, arules = auto_layout(batches, '_'.join(mbrs) or '_'.join(mats) or 'unknown')
+            mbr, mode = arules[0]['LAYOUT'], 'AUTO'
+            why += ': AUTO layout built from the export (exact step and parameter codes; QA to review the layout)'
+            rules = rules if rules is not None else arules
+            if template is not None:
+                notes.append('template not used: it belongs to an approved rule set, this product has none')
+                template = None
+    other = {m for m in mbrs if m != mbr} if mode == 'APPROVED' else set()
     use = OrderedDict((b, r) for b, r in batches.items() if first(r, 'MBR_ID') not in other)
     skipped = [b for b in batches if b not in use]
     order = sorted(use, key=lambda b: (start_key(first(use[b], 'MFG_START')), b))
     from_template = template is not None
     wb = openpyxl.load_workbook(template if isinstance(template, str) else io.BytesIO(template)) if from_template \
         else builtin_workbook(lay)
-    trace, exc, notes = [], [], []
+    trace, exc = [], []
     names = {n.lower().strip(): n for n in wb.sheetnames}
     master_rows = {}
     for sh in lay:
@@ -889,7 +1359,7 @@ def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, va
         have = fill_sheet(wb, ws, sh, srules, use, order, trace, exc, master_rows, from_template)
         if sh['name'].upper().startswith('BMR'):
             master_rows = dict(have)
-    filled = sum(1 for t in trace if t[8] in ('FILLED', 'FILLED_PROVISIONAL'))
+    filled = sum(1 for t in trace if t[8] in ('FILLED', 'FILLED_PROVISIONAL', 'FILLED_AUTO', 'FILLED_LEARNED'))
     counts = OrderedDict()
     for t in trace:
         counts[t[8]] = counts.get(t[8], 0) + 1
@@ -897,7 +1367,8 @@ def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, va
     vc = OrderedDict()
     for v in validation or []:
         vc[v[6]] = vc.get(v[6], 0) + 1
-    info = list(extra_info) + [('Tool', 'AdigiPQR curator v' + VERSION), ('Rule set', RULESET_VERSION.get(mbr, mbr)),
+    info = list(extra_info) + [('Tool', 'AdigiPQR curator v' + VERSION), ('Mode', MODE_TEXT[mode]),
+            ('Rule set', RULESET_VERSION.get(mbr, mbr)),
             ('Rule set chosen because', why), ('Template', 'given workbook' if from_template else
                                                'built-in copy of QA header rows'),
             ('MBR(s) in export', ', '.join(mbrs) or '?'), ('Batches', len(order)),
@@ -906,10 +1377,58 @@ def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, va
         [('Validation ' + k, v) for k, v in vc.items()] + [('Template check', n) for n in notes] + \
         [('Principle', 'Every filled cell comes from an exact PAS-X step code path + parameter code named in a rule; '
                        'blank + exception instead of a guess. Prototype for QA review: verify against the batch record.')]
-    own_sheets(wb, trace, exc, rules, info, validation)
-    summ = dict(batches=len(order), order=order, filled=filled, exceptions=len(exc), counts=counts, mbr=mbr, why=why,
+    own_sheets(wb, trace, exc, rules, info, validation, learned, None if mode == 'AUTO' else unmapped(use, rules))
+    summ = dict(mode=mode, learned=learned, preview=lambda: preview(wb, lay, trace), batches=len(order), order=order, filled=filled, exceptions=len(exc), counts=counts, mbr=mbr, why=why,
                 skipped=skipped, notes=notes, validation=vc, template=from_template)
     return wb, trace, exc, summ
+
+
+def preview(wb, lay, trace, max_rows=400, max_cols=700):
+    """The curated sheets as the web page shows them: header rows (merged, coloured) + the rows of this run's batches,
+    each written cell with its status and PAS-X source (for QA to verify without opening the file)."""
+    import datetime as _dt
+    from openpyxl.utils import column_index_from_string as ci
+    from openpyxl.utils.cell import coordinate_from_string
+    info = {}
+    for t in trace:
+        col, row = coordinate_from_string(t[5])
+        src = ' ; '.join(x for x in (t[11] and '%s | %s' % (t[11], t[12]), t[14], t[20], t[21]) if x)
+        info[(t[4], row, ci(col))] = (t[8], src[:400])
+
+    def show(v):
+        if v is None:
+            return ''
+        if isinstance(v, float):
+            return str(clean(v))
+        if isinstance(v, (_dt.datetime, _dt.date)):
+            return v.strftime('%d-%m-%Y')
+        return str(v)
+    out = []
+    for sh in lay:
+        if sh['name'] not in wb.sheetnames or not sh.get('bcol'):
+            continue
+        ws = wb[sh['name']]
+        rows = sorted({r for (n, r, _c) in info if n == sh['name']})[:max_rows]
+        if not rows:
+            continue
+        ncol = min(max(sh['ncols'], max(c for (n, _r, c) in info if n == sh['name'])), max_cols)
+        fills = {coordinate_from_string(c)[1] * 100000 + ci(coordinate_from_string(c)[0]): f for c, _v, f in sh['cells'] if f}
+        head = [[show(ws.cell(r, c).value) if type(ws.cell(r, c)).__name__ != 'MergedCell' else None
+                 for c in range(1, ncol + 1)] for r in range(1, sh['first'])]
+        merges = []
+        for m in ws.merged_cells.ranges:
+            if m.max_row < sh['first'] and m.min_col <= ncol:
+                merges.append([m.min_row, m.min_col, m.max_row, min(m.max_col, ncol)])
+        body = []
+        for r in rows:
+            line = []
+            for c in range(1, ncol + 1):
+                st, src = info.get((sh['name'], r, c), ('', ''))
+                line.append([show(resolved(wb, ws.cell(r, c).value)), st, src])
+            body.append(line)
+        out.append(dict(name=sh['name'], head=head, merges=merges, body=body,
+                        fills={str(k): v for k, v in fills.items() if k // 100000 < sh['first']}))
+    return out
 
 
 def find_template(paths, mbr):
@@ -936,6 +1455,12 @@ def main(argv=None):
     ap.add_argument('--rules', help='rule registry CSV (QA-edited copy of --export-rules)')
     ap.add_argument('--export-rules', metavar='CSV', help='write the built-in rule registry to CSV and stop')
     ap.add_argument('--validate', metavar='QA_WORKBOOK', help="compare the result with QA's own workbook")
+    ap.add_argument('--learn', metavar='QA_WORKBOOK', help="learn layout and rules from QA's own workbook (a product "
+                                                           "without an approved rule set; the export must share batches)")
+    ap.add_argument('--qa', metavar='QA_WORKBOOK', help="QA's own workbook of the product: --validate when the product has "
+                                                       'an approved rule set, else --learn and --validate')
+    ap.add_argument('--preview-json', metavar='JSON', help='also write the sheets as the web page shows them')
+    ap.add_argument('--strict', action='store_true', help='refuse a product without an approved rule set (no AUTO layout)')
     a = ap.parse_args(argv)
     if a.export_rules:
         write_rules(a.export_rules, RULESETS[a.layout or 'F1M00011']())
@@ -950,18 +1475,31 @@ def main(argv=None):
         sys.exit('No rows with a BATCH_NO column in %s - is this the export of APQR_FINAL_QUERY.sql?' % ', '.join(a.exports))
     wanted = [x for x in re.split(r'[,\s]+', a.batches or '') if x]
     mbr, _ = (a.layout, '') if a.layout else detect_layout(by_batch(rows))
-    template = a.template or (find_template(a.exports, mbr) if mbr else None)
+    if a.qa:
+        a.validate = a.validate or a.qa
+        if not mbr:
+            a.learn = a.learn or a.qa
+    template = a.template or (find_template(a.exports, mbr) if mbr and not a.learn else None)
     try:
         wb, trace, exc, summ = curate(rows, wanted or None, template=template, layout=a.layout,
-                                      rules=read_rules(a.rules) if a.rules else None, validate_with=a.validate)
+                                      rules=read_rules(a.rules) if a.rules else None, validate_with=a.validate,
+                                      learn_from=a.learn, strict=a.strict)
     except ValueError as e:
         sys.exit('STOPPED: %s' % e)
     mat = '_'.join(sorted({s(r.get('MATERIAL_CODE')) for r in rows} - {''})) or 'export'
     out = a.out or 'APQR_%s.xlsx' % mat
     wb.save(out)
     print('AdigiPQR curator %s - %s' % (VERSION, RULESET_VERSION.get(summ['mbr'], summ['mbr'])))
+    print('Mode: %s' % MODE_TEXT[summ['mode']])
     print('Rule set: %s  (%s)' % (summ['mbr'], summ['why']))
-    print('Template: %s' % (template or 'built-in copy of QA header rows (no template file found)'))
+    print('Template: %s' % (template if summ['template'] else 'built-in copy of QA header rows' if summ['mode'] ==
+                            'APPROVED' else "QA's workbook header rows" if summ['mode'] == 'LEARNED' else
+                            'AUTO layout (from the export)'))
+    if summ['learned'] is not None:
+        lc = OrderedDict()
+        for x in summ['learned']:
+            lc[x[3]] = lc.get(x[3], 0) + 1
+        print("Learned from QA's workbook: " + ', '.join('%s %d' % kv for kv in lc.items()) + ' (sheet %s)' % LEARN_SHEET)
     for n in summ['notes']:
         print('  ' + n)
     print('%d export rows, %d batches: %s' % (len(rows), summ['batches'],
@@ -975,6 +1513,11 @@ def main(argv=None):
     if summ['skipped']:
         print('Batches of another MBR left out: ' + ', '.join(summ['skipped']))
     print('Saved: ' + os.path.abspath(out))
+    if a.preview_json:
+        import json
+        with open(a.preview_json, 'w', encoding='utf-8') as fh:
+            json.dump(dict(sheets=summ['preview'](), mode=summ['mode'], counts=summ['counts'], batches=summ['order'],
+                           exceptions=summ['exceptions'], validation=summ['validation']), fh)
 
 
 # ------------------------------------------------------------------------------------------------ QA layouts

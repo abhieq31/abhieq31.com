@@ -152,6 +152,18 @@ tr.bad td { background: var(--warn-bg); } tr.amb td { background: var(--amber-bg
 .pfoot .err { color: var(--warn-ink); flex: 1; } .pfoot button { margin-left: auto; }
 @media (prefers-reduced-motion: reduce) { .pflow i { animation: none; } .psteps li.now .d { animation: none; } }
 .recs td { white-space: nowrap; } .thumb { width: 100%; max-width: 520px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.pvwrap { max-height: 560px; } table.pv { width: auto; border-collapse: separate; border-spacing: 0; font: 12.5px/1.35 "Times New Roman", Georgia, serif; }
+table.pv th, table.pv td { border-right: 1px solid #c9d6e3; border-bottom: 1px solid #c9d6e3; padding: 4px 7px; min-width: 64px; max-width: 220px; white-space: normal; text-align: center; vertical-align: middle; }
+table.pv thead th { position: static; background: #f3f6f9; color: #10263b; font-weight: 700; }
+table.pv thead tr:last-child th { position: sticky; top: 0; }
+table.pv td { cursor: pointer; font-variant-numeric: tabular-nums; }
+table.pv td.ok { background: #fff; } table.pv td.auto { background: #e8f1fb; } table.pv td.prov { background: #fdf1d8; }
+table.pv td.exc { background: #fbe7dc; box-shadow: inset 0 0 0 2px #c0392b; } table.pv td.qa { background: #f4f4f4; color: #8a96a3; }
+table.pv td.miss { background: #fafafa; } table.pv td.sel { outline: 2px solid var(--green); outline-offset: -2px; }
+.legend .sw { width: 14px; height: 12px; border: 1px solid #c9d6e3; border-top-width: 1px; border-radius: 2px; vertical-align: -1px; }
+.legend .sw.ok { background: #fff; } .legend .sw.auto { background: #e8f1fb; } .legend .sw.prov { background: #fdf1d8; } .legend .sw.exc { background: #fbe7dc; border-color: #c0392b; } .legend .sw.qa { background: #f4f4f4; } .legend .sw.miss { background: #fafafa; }
+.chip { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--green-soft); color: var(--ok-ink); } .chip.amber { background: var(--amber-bg); color: var(--amber-ink); }
+details.more > summary { cursor: pointer; color: var(--blue); font-weight: 600; font-size: 14px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } @media (max-width: 980px) { .grid3 { grid-template-columns: 1fr; } }
 .drop.small strong { font-size: 15px; } .drop.small { min-height: 0; padding: 16px 16px 16px 72px; } .drop.small::before { left: 14px; width: 40px; height: 40px; margin-top: -20px; background-size: 22px; }
 pre.log { margin: 0; padding: 12px 14px; background: #f4f8fb; border: 1px solid #d6e3ef; border-radius: 10px; font: 12.5px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto; }
@@ -232,20 +244,29 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
     </div><div class="note" id="period" style="margin-top:8px"></div></div>
 
     <div class="card" id="fillCard" style="display:grid;gap:12px">
-      <div><h2 style="margin:0">APQR workbook in QA's template <span class="tag">final/apqr_curate.py</span></h2>
-      <p class="note" style="margin:6px 0 0">Runs the curator from the project's <span class="mono">final</span> folder – the same Python file as on the PC and the plant portal – in this browser (Python 3.12, WebAssembly). Every value comes from an approved rule (exact PAS-X step code + parameter code); a cell it cannot prove stays blank and is listed in <span class="mono">APQR_Exceptions</span>. Uses the batches selected above.</p></div>
-      <div class="grid3">
-      <label class="drop small" id="tdrop"><input type="file" id="tfile" accept=".xlsx">
-        <strong>QA's approved blank template (.xlsx)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="tchip">Optional · without it: built-in copy of QA's header rows</span></label>
-      <label class="drop small" id="vdrop"><input type="file" id="vfile" accept=".xlsx">
-        <strong>QA's own workbook to compare with (.xlsx)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="vchip">Optional · adds APQR_Validation (SAME / DIFFERENT)</span></label>
-      <label class="drop small" id="rdrop"><input type="file" id="rfile" accept=".csv">
-        <strong>QA-edited rules (.csv)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="rchip">Optional · default: the approved rules in the .py</span></label>
-      </div>
-      <div class="row" style="align-items:center"><span class="note" id="pyinfo">The first run loads Python once (about 13 MB, from this site).</span><span style="flex:1"></span>
-        <button class="b" id="tclear">Clear these files</button><button class="b go" id="tdl" disabled>Make APQR workbook</button></div>
+      <div><h2 style="margin:0">APQR workbook <span class="tag">final/apqr_curate.py</span></h2>
+      <p class="note" style="margin:6px 0 0">Made from the export alone, by the curator in the project's <span class="mono">final</span> folder (the same Python file as on the PC and the plant portal), here in the browser. Approved product: QA's exact layout and rules. Other products: QA-style layout built from the exact PAS-X codes. Every cell is traced to its PAS-X row; check it below before you download.</p></div>
+      <div class="row" style="align-items:center"><span class="chip" id="tmode" hidden></span><span class="note" id="pyinfo">Starts by itself when the export is loaded. The first run loads Python once (about 13 MB, from this site).</span><span style="flex:1"></span>
+        <button class="b" id="tdl" disabled>Make again</button><button class="b go" id="tsave" disabled>Download APQR workbook (.xlsx)</button></div>
       <div class="msg" id="tmsg"></div>
-      <div id="tres" hidden style="display:grid;gap:10px"><pre class="log" id="tlog"></pre><div class="scroll"><table id="tsum"></table></div></div>
+      <div id="tres" hidden style="display:grid;gap:10px">
+        <div class="kpis" id="tkpis"></div>
+        <div class="sheettabs" id="pvTabs" role="tablist"></div>
+        <div class="legend pvlegend"><span><i class="sw ok"></i>from PAS-X (approved rule)</span><span><i class="sw auto"></i>from PAS-X (automatic / learned layout: QA to approve)</span><span><i class="sw prov"></i>provisional rule</span><span><i class="sw exc"></i>left blank: exception</span><span><i class="sw qa"></i>for QA (printout, LIMS, not in MES)</span><span><i class="sw miss"></i>not in this export</span></div>
+        <div class="scroll pvwrap"><table class="pv" id="pvTable"></table></div>
+        <div class="note mono" id="pvCell">Click a cell to see where its value comes from.</div>
+        <details class="more"><summary id="texcSum">Exceptions</summary><div class="scroll"><table id="tsum"></table></div></details>
+        <details class="more"><summary>Curator log</summary><pre class="log" id="tlog"></pre></details>
+      </div>
+      <details class="more" id="tmore"><summary>Optional: QA's workbook, template, rules</summary>
+      <div class="grid3" style="margin-top:10px">
+        <label class="drop small" id="vdrop"><input type="file" id="vfile" accept=".xlsx">
+          <strong>QA's APQR workbook of this product</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="vchip">Checks every value (APQR_Validation). For a product without approved rules it teaches QA's layout.</span></label>
+        <label class="drop small" id="tdrop"><input type="file" id="tfile" accept=".xlsx">
+          <strong>QA's approved blank template</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="tchip">Approved products only · default: built-in copy of QA's headers</span></label>
+        <label class="drop small" id="rdrop"><input type="file" id="rfile" accept=".csv">
+          <strong>QA-edited rules (.csv)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="rchip">Default: the approved rules in the .py</span></label>
+      </div><div class="row" style="margin-top:8px"><button class="b" id="tclear">Clear these files</button></div></details>
     </div>
 
     <div class="kpis" id="kpis"></div>
@@ -342,7 +363,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
     <div class="card"><h2>3 · Command line</h2><p class="note"><code>python python/apqr_pivot.py export.csv</code> or drag the export onto <code>build_apqr.bat</code>. Same workbook.</p></div>
     <div class="card"><h2>4 · Automatic data sync</h2><p class="note">Step-by-step in <a href="guide-fabric.html">Data sync and Microsoft Fabric</a>: scheduled read-only pull first (no licence, data stays on-prem), Fabric pipeline + Lakehouse when the company wants one data platform.</p></div>
     <div class="card"><h2>Which parameters are CPPs</h2><p class="note">Every parameter is labelled <span class="pill ok">CPP</span>, <span class="pill typ">CPP?</span> or <span class="pill cqa">CQA</span> with its reason: QA's CPP list for the product (Options) first, then the PAS-X MBR criticality flag, then what is typical for the unit operation (to be confirmed by QA). Labels never change a value.</p></div>
-    <div class="card"><h2>QA's APQR workbook</h2><p class="note"><i>APQR workbook in QA's template</i> runs <code>final/apqr_curate.py</code> (the same file as the command line and the plant portal) in this browser: QA's approved template is kept exactly, each value comes from an approved rule with its exact PAS-X step and parameter code, and every cell it cannot prove is left blank and listed in <code>APQR_Exceptions</code>. Add QA's own workbook to get <code>APQR_Validation</code> (SAME / DIFFERENT per cell).</p></div>
+    <div class="card"><h2>QA's APQR workbook</h2><p class="note">Drop the export: <code>final/apqr_curate.py</code> runs here in the browser and shows the workbook sheet by sheet before you download it. For an approved product it uses QA's exact layout and approved rules. For any other product it builds a QA-style layout from the exact PAS-X step and parameter codes, or, if you add QA's workbook for that product, learns QA's layout and which PAS-X value goes in each column from the batches both files share. Every cell shows its source, and every gap is listed in <code>APQR_Exceptions</code>.</p></div>
     <div class="card"><h2>Two kinds of request</h2><p class="note"><i>Material + period</i> ("all batches of material X from Y to Z") or <i>Batch numbers</i> ("with respect to each batch no.", material optional). The SQL query takes the same two forms.</p></div>
     <div class="card"><h2>Proving the workbook</h2><p class="note">APQR sheet → <i>Check against QA's manual workbook</i>: drop QA's hand-made Excel for the same batches; every value QA typed is marked MATCH / MISMATCH / NOT_IN_MES. Try it with <i>Load example data</i> and <i>Use the example QA workbook</i>.</p></div>
   </div>
@@ -378,9 +399,9 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       "app/ocr.js?v=0a9472933d",
       "app/compare.js?v=0a0127a5ca",
       "app/worker.js?v=c53214a1de",
-      "app/ui.js?v=ad4de3db45"
+      "app/ui.js?v=160a6d77dd"
     ];
-    window.ADIGI_PY_WORKER = "app/py-worker.js?v=ae4703b725";        // final/apqr_curate.py in the browser, started on demand
+    window.ADIGI_PY_WORKER = "app/py-worker.js?v=19d9db8e61";        // final/apqr_curate.py in the browser, started on demand
     files.forEach(function (src) {
       var s = document.createElement("script");
       s.src = src; s.async = false;                       // keep the order

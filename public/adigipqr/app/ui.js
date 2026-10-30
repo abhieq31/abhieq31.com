@@ -148,6 +148,7 @@
       p.step("view");
       await nextFrame();
       await p.done(S.model ? S.model.batches.length + " batches · " + S.params.length + " parameters ready" : "Loaded");
+      if (S.model && location.protocol !== "file:") makeApqr(true);   // the APQR workbook follows by itself
     } catch (e) { p.fail("Not loaded: " + e.message); msg("msg", "Not loaded: " + e.message, "err"); }
   }
   $("file").addEventListener("change", function (e) { if (e.target.files[0]) load(e.target.files[0]); e.target.value = ""; });
@@ -191,7 +192,7 @@
   async function recompute(inLoad) {
     if (!S.loaded) return;
     var my = ++reqN;
-    $("dl").disabled = true; $("tdl").disabled = true;
+    $("dl").disabled = true; $("tdl").disabled = true; $("tsave").disabled = true;
     if (!inLoad) $("period").textContent = "Updating…";
     var r;
     try { r = await job("select", request()); }
@@ -482,37 +483,95 @@
     var take = async function (file) {
       S.cur[k] = { name: file.name, buffer: await file.arrayBuffer() };
       $(k + "chip").textContent = file.name + " · " + Math.round(file.size / 1024) + " KB";
-      $("tres").hidden = true; msg("tmsg", "");
+      msg("tmsg", file.name + " added" + (S.raw ? " – press Make again to use it." : "."));
     };
     $(k + "file").addEventListener("change", function (e) { if (e.target.files[0]) take(e.target.files[0]); e.target.value = ""; });
     dropZone($(k + "drop"), take);
   });
-  $("tclear").onclick = function () { S.cur = {}; ["t", "v", "r"].forEach(function (k) { $(k + "chip").textContent = CHIP[k]; }); $("tres").hidden = true; msg("tmsg", ""); };
-  $("tdl").onclick = async function () {
+  $("tclear").onclick = function () { S.cur = {}; ["t", "v", "r"].forEach(function (k) { $(k + "chip").textContent = CHIP[k]; }); };
+  var PV_CLASS = { FILLED: "ok", FORMULA: "ok", NA_OTHER_MACHINE: "ok", KEPT: "ok", FILLED_AUTO: "auto", FILLED_LEARNED: "auto",
+    FILLED_PROVISIONAL: "prov", EXCEPTION: "exc", QA_ENTRY: "qa", PRINTOUT: "qa", NOT_IN_MBR: "qa", NO_PASX_SOURCE: "qa",
+    NO_SOURCE_IN_EXPORT: "miss" };
+  var MODE = { APPROVED: ["Approved rule set", ""], LEARNED: ["Learned from QA's workbook – QA to approve", "amber"],
+    AUTO: ["Automatic layout – QA to review", "amber"] };
+  async function makeApqr(auto) {
     if (!S.raw || !S.model) return;
-    var btn = this; btn.disabled = true; msg("tmsg", "");
+    $("tdl").disabled = true; msg("tmsg", "");
     var p = progress("APQR workbook · final/apqr_curate.py", [["py", "Starting Python in this tab"], ["libs", "Loading openpyxl"],
-      ["files", "Handing over the export and templates"], ["curate", "Running apqr_curate.py (approved rules)"], ["save", "Saving to Downloads"]]);
+      ["files", "Handing over the export"], ["curate", "Running apqr_curate.py"], ["save", "Preparing the preview"]]);
     try {
       var files = { export: { name: S.raw.name, buffer: S.raw.buffer.slice(0) } }, tr = [files.export.buffer];
       [["t", "template"], ["v", "qa"], ["r", "rules"]].forEach(function (x) {
         if (S.cur[x[0]]) { files[x[1]] = { name: S.cur[x[0]].name, buffer: S.cur[x[0]].buffer.slice(0) }; tr.push(files[x[1]].buffer); }
       });
       var r = await pyJob({ files: files, batches: S.model.batches.slice() }, tr);
-      $("tlog").textContent = [r.stop, r.log.trim()].filter(Boolean).join("\n\n") +
-        "\n\napqr_curate.py v" + r.version + (r.sha ? " · SHA-256 " + r.sha : "");
+      S.out = r.buffer ? r : null;
+      $("tsave").disabled = !S.out;
+      $("tlog").textContent = [r.stop, r.log.trim()].filter(Boolean).join("\n\n") + "\n\napqr_curate.py v" + r.version + (r.sha ? " · SHA-256 " + r.sha : "");
       var ex = r.exceptions || [];
+      $("texcSum").textContent = "Exceptions – cells left blank on purpose (" + Math.max(ex.length - 1, 0) + ")";
       $("tsum").innerHTML = ex.length > 1 ? "<tr>" + ex[0].map(function (h) { return "<th>" + esc(h) + "</th>"; }).join("") + "</tr>" +
-        ex.slice(1, 301).map(function (row) { return "<tr>" + row.map(function (v) { return "<td>" + esc(v) + "</td>"; }).join("") + "</tr>"; }).join("") +
-        (ex.length > 301 ? '<tr><td colspan="' + ex[0].length + '" class="note">' + (ex.length - 301) + " more in the workbook.</td></tr>" : "") : "";
+        ex.slice(1, 501).map(function (row) { return "<tr>" + row.map(function (v) { return "<td>" + esc(v) + "</td>"; }).join("") + "</tr>"; }).join("") : "";
       $("tres").hidden = false;
-      if (!r.buffer) { p.fail(r.stop || "No workbook written"); msg("tmsg", r.stop || "No workbook written – see the log.", "err"); btn.disabled = false; return; }
-      save(new Blob([r.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), r.name);
-      msg("tmsg", "Saved " + r.name + ". " + (ex.length > 1 ? (ex.length - 1) + " cell(s) left blank on purpose – listed below and in APQR_Exceptions." : "No exceptions."), "ok");
-      await p.done("Saved " + r.name);
+      if (!r.buffer) { p.fail(r.stop || "No workbook written"); msg("tmsg", r.stop || "No workbook written – see the curator log.", "err"); $("tdl").disabled = false; return; }
+      showPreview(r.preview);
+      var pv = r.preview || {}, c = pv.counts || {}, m = MODE[pv.mode] || ["", ""];
+      $("tmode").textContent = m[0]; $("tmode").className = "chip " + m[1]; $("tmode").hidden = !m[0];
+      var fromPasx = (c.FILLED || 0) + (c.FILLED_AUTO || 0) + (c.FILLED_LEARNED || 0) + (c.FILLED_PROVISIONAL || 0) + (c.NA_OTHER_MACHINE || 0);
+      var forQa = (c.QA_ENTRY || 0) + (c.PRINTOUT || 0) + (c.NOT_IN_MBR || 0) + (c.NO_PASX_SOURCE || 0), v = pv.validation || {};
+      var k = [[(pv.batches || []).length, "batches"], [fromPasx, "cells from PAS-X"], [pv.exceptions || 0, "left blank (exceptions)"], [forQa, "for QA (printout, LIMS)"]];
+      if (v.SAME || v.DIFFERENT) k.push([(v.SAME || 0) + " / " + ((v.SAME || 0) + (v.DIFFERENT || 0)), "equal to QA's own values"]);
+      $("tkpis").innerHTML = k.map(function (x, i) { return '<div class="kpi' + (i === 2 && x[0] ? " amber" : "") + '"><b>' + esc(typeof x[0] === "number" ? x[0].toLocaleString("en-IN") : x[0]) + "</b><span>" + esc(x[1]) + "</span></div>"; }).join("");
+      msg("tmsg", r.name + " ready – check the sheets below, then download.", "ok");
+      await p.done(fromPasx.toLocaleString("en-IN") + " cells from PAS-X");
+      if (!auto) $("tres").scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (e) { p.fail("Not made: " + e.message); msg("tmsg", "Not made: " + e.message, "err"); }
-    btn.disabled = false;
+    $("tdl").disabled = false;
+  }
+  S.makeApqr = makeApqr;
+  $("tdl").onclick = function () { makeApqr(false); };
+  $("tsave").onclick = function () {
+    if (S.out) save(new Blob([S.out.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), S.out.name);
   };
+  // the curated sheets as in Excel: QA's header rows (merged, coloured) and this run's batches; each cell says its source
+  function showPreview(pv) {
+    var sheets = (pv && pv.sheets) || [];
+    S.pv = sheets; S.pvi = Math.min(S.pvi || 0, Math.max(sheets.length - 1, 0));
+    $("pvTabs").innerHTML = sheets.map(function (sh, i) {
+      var n = 0; sh.body.forEach(function (r) { r.forEach(function (c) { if (c[1] === "EXCEPTION") n++; }); });
+      return '<button role="tab" data-i="' + i + '" aria-selected="' + (i === S.pvi) + '">' + esc(sh.name) + (n ? " · " + n + "⚠" : "") + "</button>";
+    }).join("");
+    $("pvTabs").querySelectorAll("button").forEach(function (b) { b.onclick = function () { S.pvi = +b.dataset.i; showPreview(pv); }; });
+    var sh = sheets[S.pvi];
+    if (!sh) { $("pvTable").innerHTML = '<tr><td class="note">No sheet to show.</td></tr>'; return; }
+    var skip = {}, span = {};
+    sh.merges.forEach(function (m) {
+      span[m[0] + ":" + m[1]] = [m[2] - m[0] + 1, m[3] - m[1] + 1];
+      for (var r = m[0]; r <= m[2]; r++) for (var c = m[1]; c <= m[3]; c++) if (r !== m[0] || c !== m[1]) skip[r + ":" + c] = 1;
+    });
+    var html = "<thead>";
+    sh.head.forEach(function (row, ri) {
+      html += "<tr>";
+      row.forEach(function (v, ci) {
+        var r = ri + 1, c = ci + 1; if (skip[r + ":" + c]) return;
+        var sp = span[r + ":" + c] || [1, 1], f = sh.fills[String(r * 100000 + c)];
+        html += "<th" + (sp[0] > 1 ? ' rowspan="' + sp[0] + '"' : "") + (sp[1] > 1 ? ' colspan="' + sp[1] + '"' : "") + (f ? ' style="background:#' + f + '"' : "") + ">" + esc(v || "") + "</th>";
+      });
+      html += "</tr>";
+    });
+    html += "</thead><tbody>";
+    sh.body.slice(0, 200).forEach(function (row, ri) {
+      html += "<tr>" + row.map(function (c, ci) { return '<td class="' + (PV_CLASS[c[1]] || "") + '" data-r="' + ri + '" data-c="' + ci + '"' + (c[2] ? ' title="' + esc(c[1] + ": " + c[2]) + '"' : "") + ">" + esc(c[0]) + "</td>"; }).join("") + "</tr>";
+    });
+    $("pvTable").innerHTML = html + "</tbody>";
+    $("pvTable").onclick = function (e) {
+      var td = e.target.closest("td[data-r]"); if (!td) return;
+      var c = sh.body[+td.dataset.r][+td.dataset.c];
+      $("pvTable").querySelectorAll("td.sel").forEach(function (x) { x.classList.remove("sel"); }); td.classList.add("sel");
+      var head = sh.head.map(function (r) { return r[+td.dataset.c]; }).filter(Boolean).join(" › ");
+      $("pvCell").textContent = (head || "column " + (+td.dataset.c + 1)) + " = " + (c[0] || "(blank)") + (c[1] ? "  ·  " + c[1] : "") + (c[2] ? "  ·  " + c[2] : "");
+    };
+  }
 
   /* ------------------------------------------------------------------ download */
   function stamp() { var d = new Date(), p = function (n) { return (n < 10 ? "0" : "") + n; }; return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()); }
