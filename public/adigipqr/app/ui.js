@@ -131,6 +131,7 @@
     try {
       p.step("read", file.name + " · " + (file.size / 1048576).toFixed(1) + " MB");
       var buf = await file.arrayBuffer();
+      S.raw = { name: file.name, buffer: buf.slice(0) };   // the export as dropped, for final/apqr_curate.py
       var t = await job("parse", { buf: buf, name: file.name }, [buf]);
       if (!t.n) throw new Error("The file has no rows with a BATCH_NO.");
       S.loaded = true; S.n = t.n; S.sha = t.sha; S.file = file.name;
@@ -159,10 +160,6 @@
   $("exLoad").onclick = async function () {
     try { await load(await example("example_pasx_export.csv", "text/csv")); S.example = true; }
     catch (e) { msg("msg", "The example file could not be opened here (" + e.message + "). It is in the folder example/ next to this page.", "err"); }
-  };
-  $("exTpl").onclick = async function () {
-    try { await loadTpl(await example("example_qa_workbook_template.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")); }
-    catch (e) { msg("tmsg", "The example file could not be opened here (" + e.message + ").", "err"); }
   };
   $("exQa").onclick = async function () {
     try { await loadQa(await example("example_qa_manual.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")); }
@@ -210,7 +207,7 @@
       return;
     }
     ["secBatches", "secParams", "secCharts", "secSheets"].forEach(function (id) { $(id).hidden = false; });
-    $("dl").disabled = false; $("tdl").disabled = !S.tpl; msg("msg", "");
+    $("dl").disabled = false; $("tdl").disabled = false; msg("msg", "");
     S.model = r.model; S.params = r.params;
     var starts = S.model.batches.map(function (b) { return sel.first[b]; }).filter(Boolean).sort();
     $("period").textContent = (sel.byBatch ? "Requested " + sel.want.length + " batch number(s): " + (sel.want.length - sel.missing.length) + " found" +
@@ -454,41 +451,66 @@
     } catch (e) { p.fail("Could not write the comparison: " + e.message); }
   };
 
-  /* ------------------------------------------------------------------ QA's official workbook, filled */
-  async function loadTpl(file) {
-    S.tpl = { name: file.name, buffer: await file.arrayBuffer() };
-    $("tchip").textContent = file.name + " · " + Math.round(file.size / 1024) + " KB";
-    $("tdl").disabled = !S.model; $("tres").hidden = true; msg("tmsg", "");
+  /* ------------------------------------------------------------------ APQR workbook = final/apqr_curate.py
+     The curator is Python; app/py-worker.js runs that exact file (copied from final/ by tools/build_web.py) with
+     Pyodide from this site, with the same arguments as the command line. The page only hands over the files. */
+  S.cur = {};
+  var PW = null, pwJobs = {}, pwN = 0;
+  function pyWorker() {
+    if (PW) return PW;
+    if (location.protocol === "file:") throw new Error("Python cannot start from a double-clicked file. Use start_web_app.bat (or the website).");
+    PW = new Worker(window.ADIGI_PY_WORKER || "app/py-worker.js");
+    PW.onmessage = function (e) {
+      var d = e.data;
+      if (d.step) { if (P) P.step(d.step, d.detail); return; }
+      var j = pwJobs[d.id]; if (!j) return; delete pwJobs[d.id];
+      if (d.error) j.rej(new Error(d.error)); else j.res(d.result);
+    };
+    PW.onerror = function (e) {
+      Object.keys(pwJobs).forEach(function (k) { pwJobs[k].rej(new Error((e && e.message) || "Python stopped")); delete pwJobs[k]; });
+      PW = null;
+    };
+    return PW;
   }
-  $("tfile").addEventListener("change", function (e) { if (e.target.files[0]) loadTpl(e.target.files[0]); e.target.value = ""; });
-  dropZone($("tdrop"), loadTpl);
+  function pyJob(data, transfer) {
+    var w = pyWorker();
+    return new Promise(function (res, rej) { var id = ++pwN; pwJobs[id] = { res: res, rej: rej }; data.id = id; w.postMessage(data, transfer || []); });
+  }
+  var CHIP = {};
+  ["t", "v", "r"].forEach(function (k) {
+    CHIP[k] = $(k + "chip").textContent;
+    var take = async function (file) {
+      S.cur[k] = { name: file.name, buffer: await file.arrayBuffer() };
+      $(k + "chip").textContent = file.name + " · " + Math.round(file.size / 1024) + " KB";
+      $("tres").hidden = true; msg("tmsg", "");
+    };
+    $(k + "file").addEventListener("change", function (e) { if (e.target.files[0]) take(e.target.files[0]); e.target.value = ""; });
+    dropZone($(k + "drop"), take);
+  });
+  $("tclear").onclick = function () { S.cur = {}; ["t", "v", "r"].forEach(function (k) { $(k + "chip").textContent = CHIP[k]; }); $("tres").hidden = true; msg("tmsg", ""); };
   $("tdl").onclick = async function () {
-    if (!S.tpl || !S.model) return;
+    if (!S.raw || !S.model) return;
     var btn = this; btn.disabled = true; msg("tmsg", "");
-    var only = $("tOnly").checked;
-    var p = progress(only ? "Curated APQR in QA's layout" : "Filling QA's workbook", [["open", "Opening QA's workbook"], ["fill", "Learning from QA's values · filling cells"],
-      ["report", "Writing the fill report sheet"], ["zip", "Compressing the .xlsx"], ["save", "Saving to Downloads"]]);
+    var p = progress("APQR workbook · final/apqr_curate.py", [["py", "Starting Python in this tab"], ["libs", "Loading openpyxl"],
+      ["files", "Handing over the export and templates"], ["curate", "Running apqr_curate.py (approved rules)"], ["save", "Saving to Downloads"]]);
     try {
-      var sel = S.sel, req = sel.byBatch ? "batch numbers: " + sel.want.join(", ") : "material " + (sel.mat || "all") + ", manufactured " + (sel.from || "any") + " to " + (sel.to || "any");
-      var info = [["QA workbook", S.tpl.name], ["PAS-X export", S.file + (S.sha ? " · SHA-256 " + S.sha : "")], ["QA request", req],
-        ["Generated", new Date().toISOString()], ["Tool", "AdigiPQR web app v" + C.VERSION + " (processed in the browser, nothing uploaded)"],
-        ["Status", "Prepared from the PAS-X MES execution record for QA review. Verify against the batch record before use in the APQR."]];
-      var tb = S.tpl.buffer.slice(0);
-      var res = await job("fill", { buf: tb, opts: { leaveYellow: $("tYellow").checked, onlyRequested: only, info: info } }, [tb]);
-      p.step("save");
-      save(new Blob([res.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
-        S.tpl.name.replace(/\.xlsx$/i, "") + (only ? "_curated_" : "_filled_") + stamp() + ".xlsx");
-      var cnt = {}; res.report.forEach(function (r) { cnt[r.STATUS] = (cnt[r.STATUS] || 0) + 1; });
-      var T = window.AdigiCompare.STATUS_TEXT, notes = res.report.filter(function (r) { return !r.CELL; });
-      $("tsum").innerHTML = "<tr><th>Result</th><th class=\"n\">Cells</th><th>Meaning</th></tr>" + Object.keys(T).filter(function (k) { return cnt[k]; }).map(function (k) {
-        return '<tr class="' + (k === "AMBIGUOUS" ? "amb" : "") + '"><td>' + esc(k) + '</td><td class="n">' + cnt[k] + "</td><td>" + esc(T[k]) + "</td></tr>";
-      }).join("") + notes.map(function (r) { return '<tr><td>' + esc(r.SHEET || "–") + "</td><td></td><td>" + esc(r.STATUS + ": " + r.SOURCE) + "</td></tr>"; }).join("");
+      var files = { export: { name: S.raw.name, buffer: S.raw.buffer.slice(0) } }, tr = [files.export.buffer];
+      [["t", "template"], ["v", "qa"], ["r", "rules"]].forEach(function (x) {
+        if (S.cur[x[0]]) { files[x[1]] = { name: S.cur[x[0]].name, buffer: S.cur[x[0]].buffer.slice(0) }; tr.push(files[x[1]].buffer); }
+      });
+      var r = await pyJob({ files: files, batches: S.model.batches.slice() }, tr);
+      $("tlog").textContent = [r.stop, r.log.trim()].filter(Boolean).join("\n\n") +
+        "\n\napqr_curate.py v" + r.version + (r.sha ? " · SHA-256 " + r.sha : "");
+      var ex = r.exceptions || [];
+      $("tsum").innerHTML = ex.length > 1 ? "<tr>" + ex[0].map(function (h) { return "<th>" + esc(h) + "</th>"; }).join("") + "</tr>" +
+        ex.slice(1, 301).map(function (row) { return "<tr>" + row.map(function (v) { return "<td>" + esc(v) + "</td>"; }).join("") + "</tr>"; }).join("") +
+        (ex.length > 301 ? '<tr><td colspan="' + ex[0].length + '" class="note">' + (ex.length - 301) + " more in the workbook.</td></tr>" : "") : "";
       $("tres").hidden = false;
-      var learned = res.report.filter(function (r) { return r.STATUS === "FILLED" && /learned:/.test(r.SOURCE); }).length;
-      msg("tmsg", (cnt.FILLED || 0) + " values written" + (learned ? ", " + learned + " of them from sources proven against QA's own values" : "") +
-        ". Every value is traced in the sheet 'AdigiPQR fill report'" + (learned ? "; the proven sources are in 'AdigiPQR mapping'." : "."), "ok");
-      await p.done((cnt.FILLED || 0).toLocaleString("en-IN") + " values written");
-    } catch (e) { p.fail("Could not fill the workbook: " + e.message); msg("tmsg", "Could not fill the workbook: " + e.message, "err"); }
+      if (!r.buffer) { p.fail(r.stop || "No workbook written"); msg("tmsg", r.stop || "No workbook written – see the log.", "err"); btn.disabled = false; return; }
+      save(new Blob([r.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), r.name);
+      msg("tmsg", "Saved " + r.name + ". " + (ex.length > 1 ? (ex.length - 1) + " cell(s) left blank on purpose – listed below and in APQR_Exceptions." : "No exceptions."), "ok");
+      await p.done("Saved " + r.name);
+    } catch (e) { p.fail("Not made: " + e.message); msg("tmsg", "Not made: " + e.message, "err"); }
     btn.disabled = false;
   };
 

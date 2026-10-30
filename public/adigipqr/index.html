@@ -152,6 +152,9 @@ tr.bad td { background: var(--warn-bg); } tr.amb td { background: var(--amber-bg
 .pfoot .err { color: var(--warn-ink); flex: 1; } .pfoot button { margin-left: auto; }
 @media (prefers-reduced-motion: reduce) { .pflow i { animation: none; } .psteps li.now .d { animation: none; } }
 .recs td { white-space: nowrap; } .thumb { width: 100%; max-width: 520px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } @media (max-width: 980px) { .grid3 { grid-template-columns: 1fr; } }
+.drop.small strong { font-size: 15px; } .drop.small { min-height: 0; padding: 16px 16px 16px 72px; } .drop.small::before { left: 14px; width: 40px; height: 40px; margin-top: -20px; background-size: 22px; }
+pre.log { margin: 0; padding: 12px 14px; background: #f4f8fb; border: 1px solid #d6e3ef; border-radius: 10px; font: 12.5px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; } @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
 .card h2 .tag { font-size: 11.5px; font-weight: 600; color: var(--green); background: var(--green-soft); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
 [hidden] { display: none !important; }
@@ -209,7 +212,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
   <label class="drop" id="drop">
     <input type="file" id="file" accept=".csv,.txt,.xlsx">
     <strong>Drop the export (.csv or .xlsx) or click to choose</strong>
-    <span class="note">Result of <code>01_APQR_Final_PASX.sql</code> → Export results → CSV</span>
+    <span class="note">Result of <code>final/APQR_FINAL_QUERY.sql</code> → Export results → CSV</span>
     <span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span>
     <span class="mono" id="filechip">No file yet.</span>
   </label>
@@ -229,16 +232,20 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
     </div><div class="note" id="period" style="margin-top:8px"></div></div>
 
     <div class="card" id="fillCard" style="display:grid;gap:12px">
-      <div><h2 style="margin:0">Curated APQR in QA's exact layout <span class="tag">QA format</span></h2>
-      <p class="note" style="margin:6px 0 0">Drop QA's APQR workbook for this product. Values are written only where the PAS-X source agrees with QA's own values for earlier batches; everything else stays for QA, with the reason in the report sheet.</p></div>
-      <label class="drop" id="tdrop"><input type="file" id="tfile" accept=".xlsx">
-        <strong>Drop QA's APQR workbook (.xlsx)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="tchip">No file yet.</span></label>
-      <div class="row" style="align-items:center"><label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="tOnly" checked> New workbook with only the batches selected above</label>
-        <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="tYellow"> Leave yellow (LIMS / Tantra) columns to QA</label>
-        <span style="flex:1"></span><button class="b go" id="tdl" disabled>Download curated APQR</button></div>
-      <div class="row" style="align-items:center;margin-top:-4px"><button class="b" id="exTpl">Use the example QA workbook</button><span class="note">empty template, invented product</span></div>
+      <div><h2 style="margin:0">APQR workbook in QA's template <span class="tag">final/apqr_curate.py</span></h2>
+      <p class="note" style="margin:6px 0 0">Runs the curator from the project's <span class="mono">final</span> folder – the same Python file as on the PC and the plant portal – in this browser (Python 3.12, WebAssembly). Every value comes from an approved rule (exact PAS-X step code + parameter code); a cell it cannot prove stays blank and is listed in <span class="mono">APQR_Exceptions</span>. Uses the batches selected above.</p></div>
+      <div class="grid3">
+      <label class="drop small" id="tdrop"><input type="file" id="tfile" accept=".xlsx">
+        <strong>QA's approved blank template (.xlsx)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="tchip">Optional · without it: built-in copy of QA's header rows</span></label>
+      <label class="drop small" id="vdrop"><input type="file" id="vfile" accept=".xlsx">
+        <strong>QA's own workbook to compare with (.xlsx)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="vchip">Optional · adds APQR_Validation (SAME / DIFFERENT)</span></label>
+      <label class="drop small" id="rdrop"><input type="file" id="rfile" accept=".csv">
+        <strong>QA-edited rules (.csv)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="rchip">Optional · default: the approved rules in the .py</span></label>
+      </div>
+      <div class="row" style="align-items:center"><span class="note" id="pyinfo">The first run loads Python once (about 13 MB, from this site).</span><span style="flex:1"></span>
+        <button class="b" id="tclear">Clear these files</button><button class="b go" id="tdl" disabled>Make APQR workbook</button></div>
       <div class="msg" id="tmsg"></div>
-      <div id="tres" hidden class="scroll" style="max-height:none"><table id="tsum"></table></div>
+      <div id="tres" hidden style="display:grid;gap:10px"><pre class="log" id="tlog"></pre><div class="scroll"><table id="tsum"></table></div></div>
     </div>
 
     <div class="kpis" id="kpis"></div>
@@ -371,8 +378,9 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       "app/ocr.js?v=0a9472933d",
       "app/compare.js?v=0a0127a5ca",
       "app/worker.js?v=c53214a1de",
-      "app/ui.js?v=4a2d707029"
+      "app/ui.js?v=ad4de3db45"
     ];
+    window.ADIGI_PY_WORKER = "app/py-worker.js?v=ae4703b725";        // final/apqr_curate.py in the browser, started on demand
     files.forEach(function (src) {
       var s = document.createElement("script");
       s.src = src; s.async = false;                       // keep the order
