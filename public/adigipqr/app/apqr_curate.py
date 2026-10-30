@@ -40,7 +40,7 @@ import re
 import sys
 from collections import OrderedDict
 
-VERSION = '2.2.0'
+VERSION = '2.3.0'
 TRACE_SHEET, EXC_SHEET, RULE_SHEET, VALID_SHEET = 'APQR_Source_Trace', 'APQR_Exceptions', 'APQR_Rules', 'APQR_Validation'
 # every column of the export the curator reads; tests/test_sql.py checks each one is an output column of the SQL
 EXPORT_FIELDS = ('BATCH_NO', 'MATERIAL_CODE', 'PRODUCT_NAME', 'MANUFACTURING_ORDER', 'MBR_ID', 'MBR_VERSION', 'BATCH_SIZE',
@@ -1051,7 +1051,10 @@ def generic_layout(batches, mbr='GENERIC'):
                     merges += ['%s4:%s4' % (a, z), '%s5:%s5' % (a, z)]
                 for k, st in enumerate(stats):
                     col = cl(c + k)
-                    cells.append(('%s6' % col, GENERIC_STAT[st], HEAD_FILL[4]))
+                    if len(stats) > 1:                       # Min / Max; a single value has no sub-header (as QA)
+                        cells.append(('%s6' % col, GENERIC_STAT[st], HEAD_FILL[4]))
+                    else:
+                        merges.append('%s5:%s6' % (col, col))
                     widths[col] = 11
                     rules.append(_rule('GEN-%s-%s' % (re.sub(r'\W+', '', sheet)[:6], col), sheet, col, 'PASX',
                                        _gsource(pre, rest, codes), st, status='AUTO', layout=lname,
