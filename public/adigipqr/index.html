@@ -207,7 +207,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
   <div class="steps" id="apqrSteps">
     <div><b>Export from PAS-X</b>Material + period, read-only, CSV.</div>
     <div><b>Drop it here</b>Batches, CPPs and trends at a glance.</div>
-    <div><b>Drop QA's workbook</b>Curated APQR in QA's exact layout.</div>
+    <div><b>Make the APQR workbook</b>QA's template, filled by final/apqr_curate.py.</div>
   </div>
   <label class="drop" id="drop">
     <input type="file" id="file" accept=".csv,.txt,.xlsx">
@@ -342,7 +342,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
     <div class="card"><h2>3 · Command line</h2><p class="note"><code>python python/apqr_pivot.py export.csv</code> or drag the export onto <code>build_apqr.bat</code>. Same workbook.</p></div>
     <div class="card"><h2>4 · Automatic data sync</h2><p class="note">Step-by-step in <a href="guide-fabric.html">Data sync and Microsoft Fabric</a>: scheduled read-only pull first (no licence, data stays on-prem), Fabric pipeline + Lakehouse when the company wants one data platform.</p></div>
     <div class="card"><h2>Which parameters are CPPs</h2><p class="note">Every parameter is labelled <span class="pill ok">CPP</span>, <span class="pill typ">CPP?</span> or <span class="pill cqa">CQA</span> with its reason: QA's CPP list for the product (Options) first, then the PAS-X MBR criticality flag, then what is typical for the unit operation (to be confirmed by QA). Labels never change a value.</p></div>
-    <div class="card"><h2>QA's official workbook</h2><p class="note">Drop QA's own workbook in <i>Fill QA's official workbook</i>: new batches go into BMR detail, QA's formulas carry them to the other sheets, empty cells are filled from PAS-X, nothing QA typed is overwritten, yellow (LIMS / Tantra) columns can be left for QA, and a report sheet traces every value.</p></div>
+    <div class="card"><h2>QA's APQR workbook</h2><p class="note"><i>APQR workbook in QA's template</i> runs <code>final/apqr_curate.py</code> (the same file as the command line and the plant portal) in this browser: QA's approved template is kept exactly, each value comes from an approved rule with its exact PAS-X step and parameter code, and every cell it cannot prove is left blank and listed in <code>APQR_Exceptions</code>. Add QA's own workbook to get <code>APQR_Validation</code> (SAME / DIFFERENT per cell).</p></div>
     <div class="card"><h2>Two kinds of request</h2><p class="note"><i>Material + period</i> ("all batches of material X from Y to Z") or <i>Batch numbers</i> ("with respect to each batch no.", material optional). The SQL query takes the same two forms.</p></div>
     <div class="card"><h2>Proving the workbook</h2><p class="note">APQR sheet → <i>Check against QA's manual workbook</i>: drop QA's hand-made Excel for the same batches; every value QA typed is marked MATCH / MISMATCH / NOT_IN_MES. Try it with <i>Load example data</i> and <i>Use the example QA workbook</i>.</p></div>
   </div>
