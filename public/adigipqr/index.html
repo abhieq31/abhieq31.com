@@ -285,20 +285,6 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       <div class="charts" id="charts"></div></div></details>
     <details class="sec" id="secSheets"><summary><span>Preview of the QA sheets</span></summary><div class="body">
       <div class="sheettabs" id="sheetTabs"></div><div class="scroll"><table class="qa" id="tSheet"></table></div></div></details>
-    <details class="sec" id="secCheck"><summary><span>Check against QA's manual workbook</span></summary><div class="body">
-      <p class="note" style="margin:0">QA's hand-made workbook for the same batches: every typed value checked against PAS-X, cell by cell.</p>
-      <label class="drop" id="qdrop"><input type="file" id="qfile" accept=".xlsx">
-        <strong>Drop QA's APQR workbook (.xlsx)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="qchip">No file yet.</span></label>
-      <div class="row" style="align-items:center;margin-top:-4px"><button class="b" id="exQa">Use the example QA workbook</button><span class="note">two deliberate typing errors</span></div>
-      <div class="msg" id="qmsg"></div>
-      <div id="qres" hidden style="display:grid;gap:12px">
-        <div class="kpis" id="qkpis"></div>
-        <div class="scroll"><table id="qsum"></table></div>
-        <div class="row"><div class="chips" id="qFilter"><button data-f="" aria-pressed="true">All compared</button><button data-f="MISMATCH" aria-pressed="false">Mismatch</button><button data-f="AMBIGUOUS" aria-pressed="false">Ambiguous</button><button data-f="NOT_IN_MES" aria-pressed="false">Not in MES</button><button data-f="NO_MAPPING_RULE" aria-pressed="false">No mapping rule</button></div>
-          <span style="flex:1"></span><button class="b" id="qdl">Download comparison (Excel)</button></div>
-        <div class="scroll"><table id="qdet"></table></div>
-      </div>
-    </div></details>
     <details class="sec"><summary><span>Options</span></summary><div class="body">
       <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="oMerge" checked> Merge repeated in-process checks into one Min / Max / Avg</label>
       <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="oMin" checked> Seconds → minutes</label>
@@ -361,12 +347,12 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
   <div class="grid2">
     <div class="card"><h2>1 · This page (online or offline)</h2><p class="note">Everything runs in the browser. Offline: unzip the offline copy (link under "How?") on a PC and double-click <code>index.html</code> for the APQR sheet; for reading scans run <code>start_web_app.bat</code> (a local web server on 127.0.0.1, needs Python).</p></div>
     <div class="card"><h2>2 · Plant portal (shared store)</h2><p class="note"><code>start_portal.bat</code> on one plant server: the MES team loads exports once, QA picks a material and dates and downloads. Adds server-side BMR scan reading (RapidOCR) and an optional read-only nightly pull from PAS-X.</p></div>
-    <div class="card"><h2>3 · Command line</h2><p class="note"><code>python python/apqr_pivot.py export.csv</code> or drag the export onto <code>build_apqr.bat</code>. Same workbook.</p></div>
+    <div class="card"><h2>3 · Command line</h2><p class="note"><code>python final/apqr_curate.py export.xlsx</code> makes the same APQR workbook on any PC with Python (<code>--qa "QA workbook.xlsx"</code> to check it against QA's values).</p></div>
     <div class="card"><h2>4 · Automatic data sync</h2><p class="note">Step-by-step in <a href="guide-fabric.html">Data sync and Microsoft Fabric</a>: scheduled read-only pull first (no licence, data stays on-prem), Fabric pipeline + Lakehouse when the company wants one data platform.</p></div>
     <div class="card"><h2>Which parameters are CPPs</h2><p class="note">Every parameter is labelled <span class="pill ok">CPP</span>, <span class="pill typ">CPP?</span> or <span class="pill cqa">CQA</span> with its reason: QA's CPP list for the product (Options) first, then the PAS-X MBR criticality flag, then what is typical for the unit operation (to be confirmed by QA). Labels never change a value.</p></div>
     <div class="card"><h2>QA's APQR workbook</h2><p class="note">Drop the export: <code>final/apqr_curate.py</code> runs here in the browser and shows the workbook sheet by sheet before you download it. For an approved product it uses QA's exact layout and approved rules. For any other product it builds a QA-style layout from the exact PAS-X step and parameter codes, or, if you add QA's workbook for that product, learns QA's layout and which PAS-X value goes in each column from the batches both files share. Every cell shows its source, and every gap is listed in <code>APQR_Exceptions</code>.</p></div>
     <div class="card"><h2>Two kinds of request</h2><p class="note"><i>Material + period</i> ("all batches of material X from Y to Z") or <i>Batch numbers</i> ("with respect to each batch no.", material optional). The SQL query takes the same two forms.</p></div>
-    <div class="card"><h2>Proving the workbook</h2><p class="note">APQR sheet → <i>Check against QA's manual workbook</i>: drop QA's hand-made Excel for the same batches; every value QA typed is marked MATCH / MISMATCH / NOT_IN_MES. Try it with <i>Load example data</i> and <i>Use the example QA workbook</i>.</p></div>
+    <div class="card"><h2>Proving the workbook</h2><p class="note">Add QA's own APQR workbook under <i>Optional: QA's workbook</i>: every value the curator wrote is compared with QA's, with the likely cause of each difference (typing slip, another PAS-X value, other machine, not in PAS-X).</p></div>
   </div>
   <div class="card"><h2>What the workbook contains</h2><table>
     <tr><th>Sheet</th><th>Content</th></tr>
@@ -396,11 +382,10 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       "vendor/exceljs.min.js?v=7e49da6858",
       "vendor/jszip.min.js?v=7f839b2d46",
       "vendor/tesseract/tesseract.min.js?v=000c27d9cd",
-      "app/core.js?v=eef8fa3794",
+      "app/core.js?v=dee1afd8c2",
       "app/ocr.js?v=0a9472933d",
-      "app/compare.js?v=0a0127a5ca",
-      "app/worker.js?v=c53214a1de",
-      "app/ui.js?v=fb28d0b179"
+      "app/worker.js?v=078014e734",
+      "app/ui.js?v=4c65d15aa3"
     ];
     window.ADIGI_PY_WORKER = "app/py-worker.js?v=19d9db8e61";        // final/apqr_curate.py in the browser, started on demand
     files.forEach(function (src) {

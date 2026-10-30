@@ -6,7 +6,7 @@
     python apqr_curate.py EXPORT.xlsx --template T.xlsx --rules rules_F1M00011.csv   (QA's edited registry)
     python apqr_curate.py EXPORT.xlsx --learn "QA's workbook of the product.xlsx"      (new product: learn QA's layout)
 
-Input   the export of sql/APQR_FINAL_QUERY.sql (v6.2: every repetition of a step, formula / text / list activities).
+Input   the export of final/APQR_FINAL_QUERY.sql (v6.2: every repetition of a step, formula / text / list activities).
 Output  the template workbook exactly as it is (headers, sample rows, colours, formulas), the batches added below its
         last batch in manufacturing order, and three sheets:
           APQR_Source_Trace  one row per cell: rule, PAS-X step code path, parameter code, readings, calculation
@@ -23,7 +23,9 @@ Principles (QA 30-Oct-2026):
   - Coating Min / Max = PAS-X's own 'Spraying Min & Max' record, cross-checked against the 15-minute readings; a
     disagreement leaves the cell blank with an exception.
   - Nothing is invented: no constants, no guessed sources. Blank + reason beats a plausible wrong value.
-  - An MBR without an approved rule set: AUTO layout from the export's exact codes, or (--learn) QA's own layout with
+  - No Ave (average) values are written (QA decision 30-Oct-2026); QA's Ave columns stay blank.
+  - An MBR without an approved rule set: the generic QA format (QA's sheets and header levels, filled only on exact code
+    patterns), or (--qa / --learn) QA's own layout with
     rules learned from QA's values for batches both files have. Marked FILLED_AUTO / FILLED_LEARNED: QA to approve.
 Needs   Python 3.8+ and openpyxl (pip install openpyxl). This file is self-contained.
 Same file as adigipqr/curate.py (portal backend); tests/test_curate.py keeps them identical.
@@ -79,21 +81,33 @@ def cell_text(v):
 
 
 def read_export(path_or_bytes, name=None):
-    """Rows (dicts) of a CSV or .xlsx export; the header row is the first row that has BATCH_NO."""
+    """Rows (dicts) of a CSV or .xlsx export. The header is the first row (of the first 30) with BATCH_NO and
+    STEP_CODE_PATH, on any sheet.
+    QA's APQR workbook given by mistake is named as such (ValueError)."""
     name = name or (path_or_bytes if isinstance(path_or_bytes, str) else 'export.csv')
     data = open(path_or_bytes, 'rb').read() if isinstance(path_or_bytes, str) else path_or_bytes
     rows, hdr = [], None
     if name.lower().endswith(('.xlsx', '.xlsm')):
         import openpyxl
         wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
-        for r in wb.worksheets[0].iter_rows(values_only=True):
-            if hdr is None:
-                if any(s(x).upper() == 'BATCH_NO' for x in r):
-                    hdr = [s(x).upper() for x in r]
-                continue
-            if any(x is not None for x in r):
-                rows.append({h: cell_text(x) for h, x in zip(hdr, r) if h})
+        for ws in wb.worksheets:
+            for i, r in enumerate(ws.iter_rows(values_only=True)):
+                if hdr is None:
+                    if i >= 30:
+                        break
+                    if {'BATCH_NO', 'STEP_CODE_PATH'} <= {s(x).upper() for x in r}:     # the export, not a trace sheet
+                        hdr = [s(x).upper() for x in r]
+                    continue
+                if any(x is not None for x in r):
+                    rows.append({h: cell_text(x) for h, x in zip(hdr, r) if h})
+            if hdr:
+                break
+        names = wb.sheetnames
         wb.close()
+        if hdr is None and any(n.strip().upper() in ('BMR DETAILS', 'BMR DETAIL', TRACE_SHEET.upper(), 'COMPRESSION')
+                               for n in names):
+            raise ValueError('%s is an APQR workbook (sheets %s ...), not the PAS-X export: give the export of '
+                             'APQR_FINAL_QUERY.sql; QA\'s workbook goes with --qa' % (os.path.basename(name), ', '.join(names[:4])))
         return rows
     text = data.decode('utf-8-sig', errors='replace')
     delim = max(',;\t|', key=text.split('\n', 1)[0].count)
@@ -179,7 +193,25 @@ def _rule(rid, sheet, col, kind, sources='', stat='', require='ANY', scale='', u
                        EVIDENCE=evidence, VERSION=RULESET_VERSION.get(layout, layout))
 
 
+def no_ave(rules, layout):
+    """QA decision 30-Oct-2026: the curator writes no Ave (average) value. A rule whose QA column ends in 'Ave' is
+    kept in the registry as QA_ENTRY, so the column stays in QA's layout and is left for QA."""
+    leaf = {}
+    for sh in layout:
+        for col, p in layout_paths(sh).items():
+            leaf[(sh['name'], col)] = p[-1] if p else ''
+    for r in rules:
+        if r['KIND'] in ('PASX', 'HEADER') and leaf.get((r['SHEET'], r['COLUMN'])) in ('ave', 'avg', 'average', 'ave.'):
+            r.update(KIND='QA_ENTRY', SOURCES='', STATISTIC='', STATUS='',
+                     EVIDENCE='Ave column: not filled by the curator (QA decision 30-Oct-2026). Was: ' + r['EVIDENCE'])
+    return rules
+
+
 def f1m00011_rules():
+    return no_ave(_f1m00011_rules(), LAYOUTS['F1M00011'])
+
+
+def _f1m00011_rules():
     """The approved rule set of MBR F1M00011 (30000838 Venlafaxine ER mini tablets).
     Evidence: QA's F1M00011 workbook against the real exports (66 batches Jul-Aug 2026 with v5; batch 2605012278 with
     v6.1 and its batch record report pages 42-45, 98-99)."""
@@ -378,6 +410,10 @@ class Result:
 def parse_sources(text):
     out = []
     for part in [p for p in s(text).split(';') if p.strip()]:
+        if part.startswith('~'):                       # generic format: '~<path regex>¦<codes>'
+            path, _, par = part.rpartition('¦')
+            out.append((path, par.strip()))
+            continue
         path, _, par = part.partition('|')
         out.append((code(path), par.strip()))
     return out
@@ -386,6 +422,14 @@ def parse_sources(text):
 def match(b, path, par):
     """Export rows of one source: exact step code path (or 'PATH > *' = any step below) and exact parameter code
     (or '@Description' = exact activity description)."""
+    if path.startswith('~'):                           # generic format: path regex + a set of parameter codes
+        rx = re.compile(path[1:])
+        if par.startswith('@~'):
+            name = re.compile(par[2:])
+            return [r for r in b if rx.fullmatch(code(r.get('STEP_CODE_PATH'))) and
+                    name.search(' '.join(s(r.get('APQR_PARAMETER')).lower().split()))]
+        want = set(par.split(','))
+        return [r for r in b if rx.fullmatch(code(r.get('STEP_CODE_PATH'))) and s(r.get('PARAMETER_CODE')) in want]
     if path.endswith('> *'):
         pre = path[:-3].strip() + ' >'
         ok_path = lambda p: p.startswith(pre)
@@ -818,7 +862,8 @@ def own_sheets(wb, trace, exc, rules, info, validation=None, learned=None, unmap
 
 # ------------------------------------------------------------------------------------------------ any product
 # A product without an approved rule set is no longer refused. Two ways, both from exact PAS-X codes only:
-#   AUTO     the layout is built from the export itself: one sheet per APQR sheet of the SQL, one column group per
+#   GENERIC  the generic QA format (see GENERIC below): QA's sheets and header levels, the same columns for every
+#            product, filled only where PAS-X has the field's exact code pattern. (Formerly: one column group per
 #            STEP_CODE_PATH|PARAMETER_CODE, QA's header style (step > parameter > limit > Min / Max / Ave).
 #   LEARNED  QA's own workbook for the product is given (--learn): every QA column gets the one PAS-X series and
 #            statistic that reproduces QA's values in the batches both files have (>= 80 %, tolerance 0.1 %);
@@ -881,67 +926,149 @@ def _sheet_rank(name):
     return next((i for i, k in enumerate(SHEET_ORDER) if k in low), len(SHEET_ORDER))
 
 
-def auto_layout(batches, mbr='AUTO'):
-    """(layout, rules) of a QA-style workbook for any product, built from the export's own step and parameter codes."""
+# ------------------------------------------------------------------------------------------------ generic QA format
+# One APQR format in QA's style for every product without an approved rule set: QA's sheets, QA's header levels
+# (group > part > parameter > limit > Min / Max), the same columns for every product. A group repeats for each lot,
+# coating layer or machine the export has. A cell is filled only when PAS-X has the exact code pattern of its field
+# (stage root + step segment + parameter code); otherwise it stays blank. No Ave columns (QA decision 30-Oct-2026).
+# Patterns are plant code conventions seen in F1M00011 and F1M00207: GRAN > LOTn | GRANn, ... > IPC|INLET, COMP >
+# 60MIPC73 | FORCE61 |MMCFL | MCFLHS, COATxxx > ... SPRAY... |INLET, <stage> > LC > PR|TEMP. QA reviews the format once.
+LOT_RE = r'(?:LOT|GRAN)\d+'
+SPRAY_IPC = r'(?:.+ > )?SPRAY\w* > (?:IPC\w*|SPRAYIPC)'
+GENERIC = [
+    dict(sheet='Granulation', roots=r'GRAN', lots=True, fields=[
+        ('Dry mixing', 'Mixing time', r'(?:.+ > )?DRYMIX(?: > .+)?', 'MIXTM', ('VALUE',)),
+        ('Binder addition', 'Mixing time', r'(?:.+ > )?BINADD', 'MIXTM', ('VALUE',)),
+        ('Wet mixing', 'Kneading time', r'(?:.+ > )?MIXING', 'MIXTM', ('VALUE',)),
+        ('Wet mixing', 'Impeller load at end', r'(?:.+ > )?MIXING', 'IMLOADE,IMPLOADE,IMPLOAD', ('VALUE',)),
+        ('Drying', 'Inlet temperature', r'(?:DRY\w* > )?IPC\w*', 'INLET', ('MIN', 'MAX')),
+        ('Drying', 'Product temperature', r'(?:DRY\w* > )?IPC\w*', 'PROD,PRODUCT,PRD', ('MIN', 'MAX')),
+        ('Drying', 'Exhaust temperature', r'(?:DRY\w* > )?IPC\w*', 'EXH,EXHAUST', ('MIN', 'MAX')),
+        ('Drying', '% LOD after drying', r'(?:DRY\w* > )?AFDRY', 'FINLOD', ('VALUE',)),
+        ('Milling', '% LOD of milled granules', r'(?:.+ > )?(?:DRYMIL|MIL)\w*(?: > .+)?', 'LOD', ('VALUE',))]),
+    dict(sheet='Granulation', roots=r'LUB|BLEN|BLEND', lots=False, fields=[
+        ('Blending', 'Blending time', r'(?:.+ > )?BLEND > END', 'END,MIXTM', ('VALUE',)),
+        ('Blending', 'Blender RPM', r'(?:.+ > )?BLEND > START', 'RPM', ('VALUE',)),
+        ('Blending', '% LOD', r'LOD', 'LOD', ('VALUE',))]),
+    dict(sheet='Compression', roots=r'COMP', lots=False, fields=[
+        ('Machine set-up', 'Turret speed', r'.+', 'TURETRPM', ('MIN', 'MAX')),
+        ('Machine set-up', 'Feeder speed', r'.+', 'FEEDERPM', ('MIN', 'MAX')),
+        ('In-process checks', 'Pre-compression force', r'COMP > (?:\d+MIPC\w*|FORCE\w*)', 'MPCFL,MPCFR,PCFLHS,PCFRHS',
+         ('MIN', 'MAX')),
+        ('In-process checks', 'Main compression force', r'COMP > (?:\d+MIPC\w*|FORCE\w*)',
+         'MMCFL,MMCFR,MMMCF,MCFLHS,MCFRHS', ('MIN', 'MAX')),
+        ('In-process checks', 'Mass of tablets (LHS + RHS)', r'COMP > \d+MIN\w*',
+         '10LHS,10RHS,20LHS,20RHS,30LHS,30RHS', ('MIN', 'MAX')),
+        ('Lubricated blend', '% LOD', r'LOD', 'LOD', ('VALUE',))]),
+    dict(sheet='Coating', roots=r'COAT\w*', lots=False, fields=[
+        ('Pre-heating', 'Inlet air temperature', r'(?:.+ > )?PREHEAT(?: > .+)?', 'INLET', ('MIN', 'MAX')),
+        ('Pre-heating', 'Bed temperature', r'(?:.+ > )?PREHEAT(?: > .+)?', 'BED', ('MIN', 'MAX')),
+        ('Spraying', 'Inlet air temperature', SPRAY_IPC, 'INLET', ('MIN', 'MAX')),
+        ('Spraying', 'Exhaust air temperature', SPRAY_IPC, 'EXH', ('MIN', 'MAX')),
+        ('Spraying', 'Bed temperature', SPRAY_IPC, 'BED', ('MIN', 'MAX')),
+        ('Spraying', 'Atomising air pressure', SPRAY_IPC, 'ATM', ('MIN', 'MAX')),
+        ('Spraying', 'Pan RPM', SPRAY_IPC, 'PAN', ('MIN', 'MAX')),
+        ('Spraying', 'Peristaltic pump RPM', SPRAY_IPC, 'PPRPM', ('MIN', 'MAX')),
+        ('Spraying', 'Spray rate', SPRAY_IPC, 'SPRAY,1SPRAY', ('MIN', 'MAX')),
+        ('Drying', 'Inlet air temperature', r'(?:.+ > )?DRYING(?: > .+)?', 'INLET', ('MIN', 'MAX')),
+        ('Drying', 'Bed temperature', r'(?:.+ > )?DRYING(?: > .+)?', 'BED', ('MIN', 'MAX')),
+        ('Cooling', 'Inlet air temperature', r'(?:.+ > )?COOLING(?: > .+)?', 'INLET', ('MIN', 'MAX')),
+        ('Weight gain', '% weight gain', r'(?:.+ > )?WTGAIN', 'WTGAIN', ('VALUE',))]),
+    dict(sheet='Yield', roots=r'\w+', lots=False, only_found=True, fields=[
+        ('Yield', '% Actual yield', r'(?:YD|YIELD|YILED|SOLRE)', '@~^% actual yield', ('VALUE',))]),
+    dict(sheet='Temp & RH', roots=r'\w+', lots=False, only_found=True, fields=[
+        ('Line clearance', 'Temperature', r'LC > PR', 'TEMP', ('VALUE',)),
+        ('Line clearance', '% RH', r'LC > PR', 'RH', ('VALUE',))])]
+GENERIC_STAT = {'VALUE': 'Value', 'MIN': 'Min', 'MAX': 'Max'}
+GENERIC_SHEETS = ('BMR DETAILS', 'Granulation', 'Compression', 'Coating', 'Yield', 'Temp & RH')
+
+
+def _gsource(prefix, rest, codes):
+    return '~%s > (?:%s)¦%s' % (re.escape(prefix), rest, codes)
+
+
+def generic_layout(batches, mbr='GENERIC'):
+    """(layout, rules) of the generic QA format for any product (see GENERIC)."""
     from openpyxl.utils import get_column_letter as cl
-    lname = 'AUTO-' + (mbr or 'unknown')
-    RULESET_VERSION.setdefault(lname, 'AUTO layout from the export (%s, curator %s) - not approved by QA' % (mbr, VERSION))
+    lname = 'GENERIC-' + (mbr or 'unknown')
+    RULESET_VERSION.setdefault(lname, "generic QA format (curator %s): QA's layout, filled where PAS-X has the field's "
+                                      "exact code pattern - QA to review" % VERSION)
     ser = series(batches)
-    groups = OrderedDict()
-    for key, f in ser.items():
-        if series_stats(f):
-            groups.setdefault(f['sheet'], []).append((key, f))
-    names = sorted(groups, key=lambda n: (_sheet_rank(n), list(groups).index(n)))
-    lay, rules, used = [], [], set()
-
-    def sheet(name, cols, title):
-        nm = re.sub(r'[\[\]:*?/\\]', ' ', name)[:31].strip() or 'Sheet'
-        while nm.lower() in used:
-            nm = nm[:28] + '~%d' % len(used)
-        used.add(nm.lower())
-        n = 2 + len(cols)
-        cells = [('A1', title, HEAD_FILL[0])] + [('A2', 'Sr. No.', HEAD_FILL[1]), ('B2', 'Batch No.', HEAD_FILL[1])]
-        merges = ['A1:%s1' % cl(max(n, 2)), 'A2:A5', 'B2:B5']
-        widths = {'A': 7, 'B': 13}
-        return nm, n, cells, merges, widths
-
-    nm, n, cells, merges, widths = sheet('BMR DETAILS', MASTER_FIELDS, 'BMR details - %s - AUTO layout, not approved by QA' % mbr)
-    for i, (label, field) in enumerate(MASTER_FIELDS):
+    rules, lay = [], []
+    cells, merges = [('A1', 'BMR details - generic QA format (%s), not yet approved by QA' % mbr, HEAD_FILL[0]),
+                      ('A2', 'Sr. No.', HEAD_FILL[1]), ('B2', 'Batch No.', HEAD_FILL[1])], ['A2:A6', 'B2:B6']
+    master = MASTER_FIELDS[:5] + [('Ref. Doc No.', None), ('SFG / material code', 'MATERIAL_CODE'),
+                                  ('Product', 'PRODUCT_NAME'), ('Market', None), ('Remarks', None)]
+    master = [m for m in master if m[0] != 'Material code']
+    widths = {'A': 7, 'B': 13}
+    for i, (label, field) in enumerate(master):
         c = cl(3 + i)
         cells.append(('%s2' % c, label, HEAD_FILL[1]))
-        merges.append('%s2:%s5' % (c, c))
-        widths[c] = 14
-        rules.append(_rule('AUTO-BMR-%s' % field, nm, c, 'HEADER', field, status='AUTO', layout=lname,
-                           evidence='batch header field of the export'))
-    lay.append(dict(name=nm, first=6, bcol=2, ncols=n, cells=cells, merges=merges, widths=widths, heights={1: 20}))
-    for g in names:
-        cols = [(key, f, st) for key, f in groups[g] for st in series_stats(f)]
-        nm, n, cells, merges, widths = sheet(g, cols, g + ' - AUTO layout, not approved by QA')
-        c = 3
-        last_step = None
-        for key, f in groups[g]:
-            stats = series_stats(f)
-            a, z = cl(c), cl(c + len(stats) - 1)
-            if f['step'] != last_step:                          # one step heading over its parameters
-                span = sum(len(series_stats(x)) for k2, x in groups[g][groups[g].index((key, f)):]
-                           if x['step'] == f['step'])
-                cells.append(('%s2' % a, f['step'], HEAD_FILL[1]))
-                if span > 1:
-                    merges.append('%s2:%s2' % (a, cl(c + span - 1)))
-                last_step = f['step']
-            cells += [('%s3' % a, f['param'], HEAD_FILL[2]), ('%s4' % a, _limit_text(f), HEAD_FILL[3])]
-            if len(stats) > 1:
-                merges += ['%s3:%s3' % (a, z), '%s4:%s4' % (a, z)]
-            for i, st in enumerate(stats):
-                col = cl(c + i)
-                cells.append(('%s5' % col, STAT_LABEL[st], HEAD_FILL[4]))
-                widths[col] = 10 if st != 'TEXT' else 18
-                rules.append(_rule('AUTO-%s-%s-%s' % (re.sub(r'\W+', '', nm)[:10], col, st), nm, col, 'PASX',
-                                   _source(*key), st, status='AUTO', layout=lname,
-                                   evidence='automatic: exact series of the export (%s)' % f['param']))
-            c += len(stats)
-        lay.append(dict(name=nm, first=6, bcol=2, ncols=n, cells=cells, merges=merges, widths=widths,
-                        heights={2: 45, 3: 45, 4: 30}))
+        merges.append('%s2:%s6' % (c, c))
+        widths[c] = 15
+        rules.append(_rule('GEN-BMR-%s' % c, 'BMR DETAILS', c, 'HEADER' if field else 'QA_ENTRY', field or '',
+                           status='AUTO', layout=lname, evidence='batch header field of the export' if field else
+                           'QA enters it'))
+    n = 2 + len(master)
+    merges.append('A1:%s1' % cl(n))
+    lay.append(dict(name='BMR DETAILS', first=7, bcol=2, ncols=n, cells=cells, merges=merges, widths=widths,
+                    heights={1: 20}))
+    by_sheet = OrderedDict((n_, []) for n_ in GENERIC_SHEETS[1:])
+    for g in GENERIC:
+        inst = OrderedDict()
+        for (path, par), f in ser.items():
+            seg = path.split(' > ')
+            if not re.fullmatch(g['roots'], seg[0]):
+                continue
+            pre = seg[0] + (' > ' + seg[1] if g['lots'] and len(seg) > 2 and re.fullmatch(LOT_RE, seg[1]) else '')
+            rest = path[len(pre) + 3:]
+            for fld in g['fields']:
+                ok_par = (re.search(fld[3][2:], ' '.join(f['param'].lower().split())) if fld[3].startswith('@~')
+                          else par in fld[3].split(','))
+                if ok_par and re.fullmatch(fld[2], rest):
+                    inst.setdefault(pre, dict(stage=f['stage'], hits={}))['hits'].setdefault(fld[:2], f)
+        if not inst and not g.get('only_found'):
+            inst[g['roots'].split('|')[0]] = dict(stage=g['sheet'], hits={})
+        for pre, i in sorted(inst.items(), key=lambda kv: kv[0]):
+            by_sheet[g['sheet']].append((g, pre, i))
+    for sheet, groups in by_sheet.items():
+        cells = [('A2', 'Sr. No.', HEAD_FILL[1]), ('B2', 'Batch No.', HEAD_FILL[1])]
+        merges, widths, c = ['A2:A6', 'B2:B6'], {'A': 7, 'B': 13}, 3
+        for g, pre, i in groups:
+            lot = pre.split(' > ')[1] if ' > ' in pre else ''
+            label = (i['stage'] or pre) + (' - ' + lot if lot else '') + ('  [%s]' % pre.split(' > ')[0]
+                                                                       if g['roots'] != r'GRAN' else '')
+            g0 = c
+            part_start = {}
+            for part, param, rest, codes, stats in g['fields']:
+                f = i['hits'].get((part, param))
+                a, z = cl(c), cl(c + len(stats) - 1)
+                if part not in part_start:
+                    part_start[part] = c
+                    cells.append(('%s3' % a, part, HEAD_FILL[2]))
+                cells += [('%s4' % a, param, HEAD_FILL[2]), ('%s5' % a, _limit_text(f) if f else '-', HEAD_FILL[3])]
+                if len(stats) > 1:
+                    merges += ['%s4:%s4' % (a, z), '%s5:%s5' % (a, z)]
+                for k, st in enumerate(stats):
+                    col = cl(c + k)
+                    cells.append(('%s6' % col, GENERIC_STAT[st], HEAD_FILL[4]))
+                    widths[col] = 11
+                    rules.append(_rule('GEN-%s-%s' % (re.sub(r'\W+', '', sheet)[:6], col), sheet, col, 'PASX',
+                                       _gsource(pre, rest, codes), st, status='AUTO', layout=lname,
+                                       evidence='generic field %s > %s: code pattern %s | %s' % (part, param, rest, codes)))
+                c += len(stats)
+            parts = list(part_start.items())
+            for k, (part, start) in enumerate(parts):
+                end = (parts[k + 1][1] if k + 1 < len(parts) else c) - 1
+                if end > start:
+                    merges.append('%s3:%s3' % (cl(start), cl(end)))
+            cells.append(('%s2' % cl(g0), label, HEAD_FILL[1]))
+            if c - 1 > g0:
+                merges.append('%s2:%s2' % (cl(g0), cl(c - 1)))
+        cells.insert(0, ('A1', '%s - generic QA format, not yet approved by QA' % sheet, HEAD_FILL[0]))
+        merges.append('A1:%s1' % cl(max(c - 1, 2)))
+        lay.append(dict(name=sheet, first=7, bcol=2, ncols=max(c - 1, 2), cells=cells, merges=merges, widths=widths,
+                        heights={2: 40, 3: 30, 4: 40, 5: 30}))
     return lay, rules
 
 
@@ -1230,7 +1357,7 @@ def learn(qa_path, batches, name='LEARNED'):
 
 MODE_TEXT = {'APPROVED': 'approved rule set (exact codes, verified against QA)',
              'LEARNED': "learned from QA's own workbook: QA to approve the rules (sheet APQR_Learning)",
-             'AUTO': 'AUTO layout from the export: QA to review the layout before use'}
+             'GENERIC': "generic QA format for a product without approved rules: QA to review before use"}
 
 
 def quality(trace, vc):
@@ -1252,11 +1379,15 @@ def quality(trace, vc):
 def unmapped(batches, rules):
     """PAS-X series of the export that no rule uses: candidates for QA's next rule (sheet APQR_Unmapped_PASX)."""
     srcs = [(p, q) for r in rules if r['KIND'] == 'PASX' for p, q in parse_sources(r['SOURCES'])]
+    used = set()
+    for b in batches.values():
+        for p, q in set(srcs):
+            for r in match(b, p, q):
+                used.add((code(r.get('STEP_CODE_PATH')), s(r.get('PARAMETER_CODE')) or
+                          '@' + ' '.join(s(r.get('APQR_PARAMETER')).split())))
     out = []
     for (path, par), f in series(batches).items():
-        hit = any((p == path or (p.endswith('> *') and path.startswith(p[:-3].strip() + ' >'))) and
-                  (q == par or (q.startswith('@') and par.startswith('@') and q.lower() == par.lower())) for p, q in srcs)
-        if hit:
+        if (path, par) in used:
             continue
         rows = [r for b in batches.values() for r in b if code(r.get('STEP_CODE_PATH')) == path and
                 (s(r.get('PARAMETER_CODE')) or '@' + ' '.join(s(r.get('APQR_PARAMETER')).split())) == par]
@@ -1365,7 +1496,7 @@ def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, va
     copy); layout = force a rule set ('F1M00011'); rules = rule list (default: the built-in approved set);
     validate_with = QA's own workbook to compare with; learn_from = QA's own workbook to learn the layout and rules
     from (a product without an approved rule set); strict = refuse a product without an approved rule set instead of
-    the AUTO layout. Returns (workbook, trace, exceptions, summary)."""
+    the generic QA format. Returns (workbook, trace, exceptions, summary)."""
     import openpyxl
     batches = by_batch(rows)
     if batches_wanted:
@@ -1379,6 +1510,7 @@ def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, va
     if learn_from is not None:
         name = '_'.join(mbrs) or '_'.join(mats) or 'product'
         lay, lrules, learned = learn(learn_from, by_batch(rows), name)     # all export batches teach, not only the asked
+        lrules = no_ave(lrules, lay)
         mbr, mode, why = 'LEARNED-' + name, 'LEARNED', "layout and rules learned from QA's own workbook"
         rules = rules if rules is not None else lrules
     else:
@@ -1395,9 +1527,9 @@ def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, va
             raise ValueError(why + '. A new product needs its own rule set (rules CSV, approved by QA) and template; '
                              'nothing is filled by guessing.')
         else:
-            lay, arules = auto_layout(batches, '_'.join(mbrs) or '_'.join(mats) or 'unknown')
-            mbr, mode = arules[0]['LAYOUT'], 'AUTO'
-            why += ': AUTO layout built from the export (exact step and parameter codes; QA to review the layout)'
+            lay, arules = generic_layout(batches, '_'.join(mbrs) or '_'.join(mats) or 'unknown')
+            mbr, mode = arules[0]['LAYOUT'], 'GENERIC'
+            why += ": generic QA format (QA's layout, filled where PAS-X has the field's exact code pattern)"
             rules = rules if rules is not None else arules
             if template is not None:
                 notes.append('template not used: it belongs to an approved rule set, this product has none')
@@ -1477,7 +1609,7 @@ def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, va
         [('Template check', n) for n in notes] + \
         [('Principle', 'Every filled cell comes from an exact PAS-X step code path + parameter code named in a rule; '
                        'blank + exception instead of a guess. Prototype for QA review: verify against the batch record.')]
-    own_sheets(wb, trace, exc, rules, info, validation, learned, None if mode == 'AUTO' else unmapped(use, rules))
+    own_sheets(wb, trace, exc, rules, info, validation, learned, unmapped(use, rules))
     summ = dict(mode=mode, learned=learned, metrics=metrics, differences=[v for v in validation or [] if v[6] == 'DIFFERENT'], preview=lambda: preview(wb, lay, trace), batches=len(order), order=order, filled=filled, exceptions=len(exc), counts=counts, mbr=mbr, why=why,
                 skipped=skipped, notes=notes, validation=vc, template=from_template)
     return wb, trace, exc, summ
@@ -1546,7 +1678,7 @@ def find_template(paths, mbr):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description='PAS-X raw export -> QA APQR workbook (approved rules, exact template).')
-    ap.add_argument('exports', nargs='*', help='export .xlsx / .csv of sql/APQR_FINAL_QUERY.sql')
+    ap.add_argument('exports', nargs='*', help='export .xlsx / .csv of final/APQR_FINAL_QUERY.sql')
     ap.add_argument('--template', help='approved APQR template .xlsx (default: APQR_TEMPLATE_<MBR>.xlsx or a '
                                        '"...Blank...Template...xlsx" next to the export / this program)')
     ap.add_argument('-o', '--out', help='output .xlsx')
@@ -1560,7 +1692,7 @@ def main(argv=None):
     ap.add_argument('--qa', metavar='QA_WORKBOOK', help="QA's own workbook of the product: --validate when the product has "
                                                        'an approved rule set, else --learn and --validate')
     ap.add_argument('--preview-json', metavar='JSON', help='also write the sheets as the web page shows them')
-    ap.add_argument('--strict', action='store_true', help='refuse a product without an approved rule set (no AUTO layout)')
+    ap.add_argument('--strict', action='store_true', help='refuse a product without an approved rule set (no generic QA format)')
     a = ap.parse_args(argv)
     if a.export_rules:
         write_rules(a.export_rules, RULESETS[a.layout or 'F1M00011']())
@@ -1570,7 +1702,10 @@ def main(argv=None):
         ap.error('give the export file(s)')
     rows = []
     for p in a.exports:
-        rows += read_export(p)
+        try:
+            rows += read_export(p)
+        except ValueError as e:
+            sys.exit('STOPPED: %s' % e)
     if not rows:
         sys.exit('No rows with a BATCH_NO column in %s - is this the export of APQR_FINAL_QUERY.sql?' % ', '.join(a.exports))
     wanted = [x for x in re.split(r'[,\s]+', a.batches or '') if x]
@@ -1594,7 +1729,7 @@ def main(argv=None):
     print('Rule set: %s  (%s)' % (summ['mbr'], summ['why']))
     print('Template: %s' % (template if summ['template'] else 'built-in copy of QA header rows' if summ['mode'] ==
                             'APPROVED' else "QA's workbook header rows" if summ['mode'] == 'LEARNED' else
-                            'AUTO layout (from the export)'))
+                            'generic QA format (built in)'))
     if summ['learned'] is not None:
         lc = OrderedDict()
         for x in summ['learned']:

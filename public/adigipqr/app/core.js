@@ -75,7 +75,7 @@
   function normalise(raw, columns) {
     var cols = (columns || (raw[0] ? Object.keys(raw[0]) : [])).map(function (c) { return String(c).trim().toUpperCase(); });
     var miss = REQUIRED.filter(function (c) { return cols.indexOf(c) < 0; });
-    if (miss.length) throw new Error("Missing columns " + miss.join(", ") + ". Export the result of 01_APQR_Final_PASX.sql with column headers on.");
+    if (miss.length) throw new Error("Missing columns " + miss.join(", ") + ". Export the result of final/APQR_FINAL_QUERY.sql with column headers on.");
     var rows = raw.map(function (r) {
       var o = {};
       Object.keys(r).forEach(function (k) { o[String(k).trim().toUpperCase()] = r[k] === null || r[k] === undefined ? "" : r[k]; });

@@ -1,5 +1,5 @@
 /* AdigiPQR worker - the heavy work (reading the export, writing .xlsx, QA's workbook) runs here, off the page's
-   main thread, so the page never freezes. Same code as the page (core.js, compare.js); nothing is sent anywhere:
+   main thread, so the page never freezes. Same code as the page (core.js); nothing is sent anywhere:
    the worker is part of this tab and has no network access of its own. Each step is reported to the page. */
 /* Also loaded by the page itself: there it only registers the same jobs (AdigiJobs) for browsers without workers. */
 (function () {
@@ -53,19 +53,42 @@ function serialDate(v, kind) {                   // Excel serial (1900 system) -
   return kind === "d" ? dd : kind === "t" ? tt : dd + " " + tt;
 }
 async function readXlsx(buf) {
+  // the export may sit on any sheet and below a title: the header is the first row (of the first 30) with BATCH_NO and
+  // STEP_CODE_PATH (an APQR workbook's trace sheet has BATCH_NO too: it is not an export)
   var zip = await JSZip.loadAsync(buf), file = function (n) { var f = zip.file(n); return f ? f.async("string") : Promise.resolve(""); };
-  var target = "xl/worksheets/sheet1.xml";
-  var wbx = await file("xl/workbook.xml"), rels = await file("xl/_rels/workbook.xml.rels");
-  var rid = (wbx.match(/<sheet\b[^>]*r:id="([^"]+)"/) || [])[1];
-  if (rid) {
-    var rel = (rels.match(new RegExp('<Relationship\\b[^>]*Id="' + rid + '"[^>]*>')) || [""])[0], tg = (rel.match(/Target="([^"]+)"/) || [])[1];
-    if (tg) target = tg.charAt(0) === "/" ? tg.slice(1) : "xl/" + tg.replace(/^\.\//, "");
+  var wbx = await file("xl/workbook.xml"), rels = await file("xl/_rels/workbook.xml.rels"), sheets = [], m;
+  var sre = /<sheet\b[^>]*?name="([^"]*)"[^>]*?r:id="([^"]+)"/g;
+  while ((m = sre.exec(wbx))) {
+    var rel = (rels.match(new RegExp('<Relationship\\b[^>]*Id="' + m[2] + '"[^>]*>')) || [""])[0], tg = (rel.match(/Target="([^"]+)"/) || [])[1];
+    if (tg) sheets.push({ name: unxml(m[1]), target: tg.charAt(0) === "/" ? tg.slice(1) : "xl/" + tg.replace(/^\.\//, "") });
   }
-  var sst = [], sx = await file("xl/sharedStrings.xml"), m, re = /<si>([\s\S]*?)<\/si>|<si\/>/g;
+  if (!sheets.length) sheets.push({ name: "Sheet1", target: "xl/worksheets/sheet1.xml" });
+  var sst = [], sx = await file("xl/sharedStrings.xml"), re = /<si>([\s\S]*?)<\/si>|<si\/>/g;
   while ((m = re.exec(sx))) sst.push(m[1] ? texts(m[1]) : "");
-  var styles = dateStyles(await file("xl/styles.xml")), xml = await file(target);
-  if (!xml) throw new Error("No worksheet found in the .xlsx file.");
-  var rows = [], cur = null, cell = /<row\b[^>]*?(\/)?>|<\/row>|<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, next = 0;
+  var styles = dateStyles(await file("xl/styles.xml"));
+  for (var si = 0; si < sheets.length; si++) {
+    var xml = await file(sheets[si].target);
+    if (!xml) continue;
+    var rows = sheetRows(xml, sst, styles), h = -1;
+    for (var k = 0; k < Math.min(rows.length, 30) && h < 0; k++)
+      if (["BATCH_NO", "STEP_CODE_PATH"].every(function (c) { return (rows[k] || []).some(function (x) { return x !== undefined && String(x).trim().toUpperCase() === c; }); })) h = k;
+    if (h < 0) continue;
+    var head = rows[h].map(function (x) { return x === undefined ? "" : String(x).trim().toUpperCase(); }), out = [];
+    for (var i = h + 1; i < rows.length; i++) {
+      var o = {}, rw = rows[i] || [], any = false;
+      for (var j = 0; j < head.length; j++) if (head[j]) { o[head[j]] = rw[j] === undefined ? "" : rw[j]; if (o[head[j]] !== "") any = true; }
+      if (any) out.push(o);
+    }
+    return { rows: out, cols: head.filter(Boolean) };
+  }
+  var names = sheets.map(function (x) { return x.name; });
+  if (names.some(function (n) { return /^(BMR DETAILS?|APQR_Source_Trace|APQR_Rules|Compression|Coating)$/i.test(n.trim()); }))
+    throw new Error("This is an APQR workbook (QA format: " + names.slice(0, 4).join(", ") + " …), not the PAS-X export. Drop the export of final/APQR_FINAL_QUERY.sql here; QA's own workbook goes under “Optional: QA's workbook” below.");
+  throw new Error("No sheet of this file has the BATCH_NO and STEP_CODE_PATH columns. Drop the export of final/APQR_FINAL_QUERY.sql (column headers on).");
+}
+
+function sheetRows(xml, sst, styles) {
+  var rows = [], cur = null, cell = /<row\b[^>]*?(\/)?>|<\/row>|<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, next = 0, m;
   while ((m = cell.exec(xml))) {
     var tag = m[0];
     if (tag.charCodeAt(1) === 114) { cur = []; rows.push(cur); next = 0; continue; }       // <row
@@ -88,13 +111,7 @@ async function readXlsx(buf) {
     }
     cur[ci] = v;
   }
-  var head = (rows.shift() || []).map(function (h) { return h === undefined ? "" : String(h).trim(); }), out = new Array(rows.length);
-  for (var i = 0; i < rows.length; i++) {
-    var o = {}, rw = rows[i];
-    for (var j = 0; j < head.length; j++) if (head[j]) o[head[j]] = rw[j] === undefined ? "" : rw[j];
-    out[i] = o;
-  }
-  return { rows: out.filter(function (o) { for (var k in o) if (o[k] !== "") return true; return false; }), cols: head.filter(Boolean) };
+  return rows;
 }
 
 async function readTable(buf, name) {
@@ -167,15 +184,6 @@ var OPS = {
   },
   workbook: async function (d) {
     var buf = ab((await AdigiCore.workbook(SEL.rows, d.opts)).buffer);
-    return { buffer: buf, transfer: [buf] };
-  },
-  compare: async function (d) { return AdigiCompare.run(d.buf, DATA.rows, ""); },
-  fill: async function (d) {
-    var res = await AdigiCompare.fillWorkbook(d.buf, SEL.rows, d.opts), buf = ab(res.buffer);
-    return { buffer: buf, report: res.report, transfer: [buf] };
-  },
-  qaReport: async function (d) {
-    var buf = ab(await AdigiCompare.workbook(d.res, d.info));
     return { buffer: buf, transfer: [buf] };
   }
 };

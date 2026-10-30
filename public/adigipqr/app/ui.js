@@ -35,7 +35,7 @@
       try {
         var all = Array.prototype.map.call(document.scripts, function (x) { return x.src; }).filter(Boolean);
         var src = all.filter(function (u) { return /app\/worker\.js/.test(u); })[0];
-        var deps = all.filter(function (u) { return /vendor\/(papaparse|exceljs|jszip)\.min\.js|app\/(core|compare)\.js/.test(u); });
+        var deps = all.filter(function (u) { return /vendor\/(papaparse|exceljs|jszip)\.min\.js|app\/core\.js/.test(u); });
         if (!window.Worker) return res(null);
         if (location.protocol === "file:") {     // a double-clicked index.html: the worker comes from app/worker-bundle.js
           if (!window.ADIGI_WORKER_CODE) return res(null);
@@ -149,7 +149,12 @@
       await nextFrame();
       await p.done(S.model ? S.model.batches.length + " batches · " + S.params.length + " parameters ready" : "Loaded");
       if (S.model && location.protocol !== "file:") makeApqr(true);   // the APQR workbook follows by itself
-    } catch (e) { p.fail("Not loaded: " + e.message); msg("msg", "Not loaded: " + e.message, "err"); }
+    } catch (e) {
+      var wrong = /APQR workbook|No sheet of this file/.test(e.message);
+      p.fail((wrong ? "" : "Overview not available: ") + e.message);
+      msg("msg", wrong ? e.message : "The overview could not read this file (" + e.message + "). The APQR workbook is still made from it below.", "err");
+      if (!wrong && S.raw && location.protocol !== "file:") { $("loaded").hidden = false; document.body.classList.add("has-data"); S.model = null; setTimeout(function () { makeApqr(true); }, 800); }
+    }
   }
   $("file").addEventListener("change", function (e) { if (e.target.files[0]) load(e.target.files[0]); e.target.value = ""; });
   // invented example files shipped with the app (web/example): a download from this site, nothing is uploaded
@@ -161,10 +166,6 @@
   $("exLoad").onclick = async function () {
     try { await load(await example("example_pasx_export.csv", "text/csv")); S.example = true; }
     catch (e) { msg("msg", "The example file could not be opened here (" + e.message + "). It is in the folder example/ next to this page.", "err"); }
-  };
-  $("exQa").onclick = async function () {
-    try { await loadQa(await example("example_qa_manual.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")); }
-    catch (e) { msg("qmsg", "The example file could not be opened here (" + e.message + ").", "err"); }
   };
   dropZone($("drop"), load);
   function dropZone(el, fn) {
@@ -383,75 +384,6 @@
     $("tSheet").innerHTML = h;
   }
 
-  /* ------------------------------------------------------------------ check against QA's manual workbook */
-  async function loadQa(file) {
-    if (!S.loaded) { msg("qmsg", "Load the PAS-X export first.", "err"); return; }
-    msg("qmsg", ""); $("qres").hidden = true;
-    var p = progress("Checking QA's workbook against PAS-X", [["read", "Reading QA's workbook"], ["open", "Opening the .xlsx"],
-      ["flat", "Reading QA's headers & batch rows"], ["match", "Matching every QA cell to PAS-X rows"], ["show", "Drawing the results"]]);
-    try {
-      p.step("read", file.name);
-      var qb = await file.arrayBuffer();
-      var res = await job("compare", { buf: qb }, [qb]);
-      p.step("show", res.results.length.toLocaleString("en-IN") + " cells compared");
-      S.qa = res; S.qaFile = file.name; S.qf = "";
-      $("qchip").textContent = file.name + " · " + res.qaValues + " values in " + res.qaBatches.length + " batch(es)";
-      if (!res.results.length) {
-        p.fail("Nothing to compare");
-        msg("qmsg", res.qaBatches.length ? "None of QA's batches are in this export (" + res.missing.slice(0, 5).join(", ") + (res.missing.length > 5 ? " …" : "") + "). Export the same batches from PAS-X." :
-          "No batch rows found. Expected sheets: " + window.AdigiCompare.SHEETS.join(", ") + ", with 10-digit batch numbers in one of the first four columns.", "err");
-        return;
-      }
-      msg("qmsg", res.missing.length ? res.missing.length + " of QA's batches are not in this export and were skipped: " + res.missing.slice(0, 8).join(", ") + (res.missing.length > 8 ? " …" : "") : "", res.missing.length ? "err" : "");
-      renderQa(); $("qres").hidden = false;
-      await p.done(res.results.filter(function (x) { return /^MATCH/.test(x.STATUS); }).length.toLocaleString("en-IN") + " values match");
-    } catch (e) { p.fail("Could not read the workbook: " + e.message); msg("qmsg", "Could not read the workbook: " + e.message, "err"); }
-  }
-  function renderQa() {
-    var r = S.qa.results, count = function (f) { return r.filter(f).length; };
-    var typed = r.filter(function (x) { return x.STATUS !== "QA_BLANK"; });
-    var match = count(function (x) { return /^MATCH/.test(x.STATUS); }), mis = count(function (x) { return x.STATUS === "MISMATCH"; });
-    var comparable = typed.filter(function (x) { return /^MATCH|MISMATCH|AMBIGUOUS/.test(x.STATUS); }).length;
-    var tiles = [[typed.length, "values typed by QA"], [match, "match PAS-X" + (comparable ? " (" + Math.round(100 * match / comparable) + " % of comparable)" : "")],
-      [mis, "mismatch", mis ? "warn" : ""], [count(function (x) { return x.STATUS === "AMBIGUOUS"; }), "ambiguous", "amber"],
-      [count(function (x) { return x.STATUS === "NOT_IN_MES"; }), "not recorded in PAS-X"], [count(function (x) { return x.STATUS === "NO_MAPPING_RULE"; }), "columns without a mapping rule"]];
-    $("qkpis").innerHTML = tiles.map(function (t) { return '<div class="kpi ' + (t[2] && t[0] ? t[2] : "") + '"><b>' + t[0] + "</b><span>" + esc(t[1]) + "</span></div>"; }).join("");
-    var sts = [], sheets = [];
-    r.forEach(function (x) { if (sts.indexOf(x.STATUS) < 0) sts.push(x.STATUS); if (sheets.indexOf(x.QA_SHEET) < 0) sheets.push(x.QA_SHEET); });
-    sts.sort();
-    $("qsum").innerHTML = "<tr><th>QA sheet</th>" + sts.map(function (st) { return '<th class="n">' + esc(st) + "</th>"; }).join("") + "</tr>" +
-      sheets.map(function (sh) {
-        return "<tr><td>" + esc(sh) + "</td>" + sts.map(function (st) { var n = count(function (x) { return x.QA_SHEET === sh && x.STATUS === st; }); return '<td class="n">' + (n || "") + "</td>"; }).join("") + "</tr>";
-      }).join("");
-    renderQaDetail();
-  }
-  function renderQaDetail() {
-    var list = S.qa.results.filter(function (x) { return S.qf ? x.STATUS === S.qf : x.STATUS !== "QA_BLANK"; }), more = list.length > 500;
-    $("qdet").innerHTML = '<tr><th>Batch</th><th>QA sheet › column</th><th>Stat</th><th class="n">QA value</th><th class="n">PAS-X value</th><th>Status</th><th>PAS-X stage › step › parameter</th></tr>' +
-      list.slice(0, 500).map(function (x) {
-        var cls = x.STATUS === "MISMATCH" ? "bad" : x.STATUS === "AMBIGUOUS" ? "amb" : "";
-        var qv = x.QA_VALUE instanceof Date ? x.QA_VALUE.toISOString().slice(11, 19) : x.QA_VALUE;
-        return '<tr class="' + cls + '"><td class="mono">' + esc(x.BATCH_NO) + "</td><td>" + esc(x.QA_SHEET + " › " + x.QA_COLUMN) + "</td><td>" + esc(x.STAT) +
-          '</td><td class="n">' + esc(qv === null || qv === undefined ? "" : qv) + '</td><td class="n">' + esc(typeof x.MES_VALUE === "number" ? f(x.MES_VALUE, 4) : x.MES_VALUE || "") +
-          "</td><td>" + esc(x.STATUS) + "</td><td>" + esc([x.MES_STAGE, x.MES_STEP, x.MES_PARAMETER].filter(Boolean).join(" › ")) + "</td></tr>";
-      }).join("") + (more ? '<tr><td colspan="7" class="note">First 500 of ' + list.length + " shown – the download has all.</td></tr>" : "") +
-      (list.length ? "" : '<tr><td colspan="7" class="note">Nothing in this group.</td></tr>');
-  }
-  $("qfile").addEventListener("change", function (e) { if (e.target.files[0]) loadQa(e.target.files[0]); e.target.value = ""; });
-  dropZone($("qdrop"), loadQa);
-  chips("qFilter", function (v) { S.qf = v; renderQaDetail(); });
-  $("qdl").onclick = async function () {
-    if (!S.qa) return;
-    var p = progress("Writing the comparison", [["zip", "Writing Summary + Detail sheets"], ["save", "Saving to Downloads"]]);
-    try {
-      var out = await job("qaReport", { res: S.qa, info: [["QA workbook", S.qaFile], ["PAS-X export", S.file + (S.sha ? " · SHA-256 " + S.sha : "")],
-        ["Generated", new Date().toISOString()], ["Tool", "AdigiPQR web app v" + C.VERSION + " (processed in the browser, nothing uploaded)"]] });
-      p.step("save");
-      save(new Blob([out.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "APQR_check_vs_QA_" + stamp() + ".xlsx");
-      await p.done("Saved");
-    } catch (e) { p.fail("Could not write the comparison: " + e.message); }
-  };
-
   /* ------------------------------------------------------------------ APQR workbook = final/apqr_curate.py
      The curator is Python; app/py-worker.js runs that exact file (copied from final/ by tools/build_web.py) with
      Pyodide from this site, with the same arguments as the command line. The page only hands over the files. */
@@ -493,9 +425,9 @@
     FILLED_PROVISIONAL: "prov", EXCEPTION: "exc", QA_ENTRY: "qa", PRINTOUT: "qa", NOT_IN_MBR: "qa", NO_PASX_SOURCE: "qa",
     NO_SOURCE_IN_EXPORT: "miss" };
   var MODE = { APPROVED: ["Approved rule set", ""], LEARNED: ["Learned from QA's workbook – QA to approve", "amber"],
-    AUTO: ["Automatic layout – QA to review", "amber"] };
+    GENERIC: ["Generic QA format – QA to review", "amber"] };
   async function makeApqr(auto) {
-    if (!S.raw || !S.model) return;
+    if (!S.raw) return;
     $("tdl").disabled = true; msg("tmsg", "");
     var p = progress("APQR workbook · final/apqr_curate.py", [["py", "Starting Python in this tab"], ["libs", "Loading openpyxl"],
       ["files", "Handing over the export"], ["curate", "Running apqr_curate.py"], ["save", "Preparing the preview"]]);
@@ -504,7 +436,7 @@
       [["t", "template"], ["v", "qa"], ["r", "rules"]].forEach(function (x) {
         if (S.cur[x[0]]) { files[x[1]] = { name: S.cur[x[0]].name, buffer: S.cur[x[0]].buffer.slice(0) }; tr.push(files[x[1]].buffer); }
       });
-      var r = await pyJob({ files: files, batches: S.model.batches.slice() }, tr);
+      var r = await pyJob({ files: files, batches: S.model ? S.model.batches.slice() : [] }, tr);
       S.out = r.buffer ? r : null;
       $("tsave").disabled = !S.out;
       $("tlog").textContent = [r.stop, r.log.trim()].filter(Boolean).join("\n\n") + "\n\napqr_curate.py v" + r.version + (r.sha ? " · SHA-256 " + r.sha : "");
