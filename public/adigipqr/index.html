@@ -218,13 +218,13 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
   <p class="lede">PAS-X export in, QA's APQR workbook out — with Cpk, trends and out-of-limit flags.</p></div>
   <div class="steps" id="apqrSteps">
     <div><b>Export from PAS-X</b>Material + period, read-only, CSV.</div>
-    <div><b>Drop it here</b>Batches, CPPs and trends at a glance.</div>
-    <div><b>Make the APQR workbook</b>QA's template, filled by final/apqr_curate.py.</div>
+    <div><b>Drop it here</b>Only the raw extract: nothing else to attach.</div>
+    <div><b>Check, then download</b>QA's APQR made by itself, previewed sheet by sheet, every cell traced.</div>
   </div>
   <label class="drop" id="drop">
     <input type="file" id="file" accept=".csv,.txt,.xlsx">
     <strong>Drop the export (.csv or .xlsx) or click to choose</strong>
-    <span class="note">Result of <code>final/APQR_FINAL_QUERY.sql</code> → Export results → CSV</span>
+    <span class="note">Result of <code>final/APQR_FINAL_QUERY.sql</code> (by material + dates, or batch numbers) → Export results. The APQR workbook is then made here by <code>final/apqr_curate.py</code> <span id="curv">v2.2.0</span> and shown before download.</span>
     <span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span>
     <span class="mono" id="filechip">No file yet.</span>
   </label>
@@ -255,6 +255,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
         <div class="legend pvlegend"><span><i class="sw ok"></i>from PAS-X (approved rule)</span><span><i class="sw auto"></i>from PAS-X (automatic / learned layout: QA to approve)</span><span><i class="sw prov"></i>provisional rule</span><span><i class="sw exc"></i>left blank: exception</span><span><i class="sw qa"></i>for QA (printout, LIMS, not in MES)</span><span><i class="sw miss"></i>not in this export</span></div>
         <div class="scroll pvwrap"><table class="pv" id="pvTable"></table></div>
         <div class="note mono" id="pvCell">Click a cell to see where its value comes from.</div>
+        <details class="more" id="tdiffBox" hidden><summary id="tdiffSum">Differences from QA's workbook</summary><div class="scroll"><table id="tdiff"></table></div></details>
         <details class="more"><summary id="texcSum">Exceptions</summary><div class="scroll"><table id="tsum"></table></div></details>
         <details class="more"><summary>Curator log</summary><pre class="log" id="tlog"></pre></details>
       </div>
@@ -386,7 +387,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
   <ol class="psteps" id="psteps"></ol>
   <div class="pfoot"><span id="pnote">Working in this browser tab · nothing is uploaded</span><button class="b" id="pclose" hidden>Close</button></div>
 </div></div>
-<footer><div class="in"><span><svg class="logo" width="18" height="18" aria-hidden="true"><use href="#logo"/></svg>AdigiPQR <span id="ver"></span></span><span>No data leaves this computer</span><span>For QA review · not a validated system</span></div></footer>
+<footer><div class="in"><span><svg class="logo" width="18" height="18" aria-hidden="true"><use href="#logo"/></svg>AdigiPQR <span id="ver"></span> · curator <span id="curv2">v2.2.0</span> · SQL v6.2</span><span>No data leaves this computer</span><span>For QA review · not a validated system</span></div></footer>
 
 <script>
   (function () {
@@ -399,7 +400,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       "app/ocr.js?v=0a9472933d",
       "app/compare.js?v=0a0127a5ca",
       "app/worker.js?v=c53214a1de",
-      "app/ui.js?v=160a6d77dd"
+      "app/ui.js?v=fb28d0b179"
     ];
     window.ADIGI_PY_WORKER = "app/py-worker.js?v=19d9db8e61";        // final/apqr_curate.py in the browser, started on demand
     files.forEach(function (src) {

@@ -520,7 +520,15 @@
       var fromPasx = (c.FILLED || 0) + (c.FILLED_AUTO || 0) + (c.FILLED_LEARNED || 0) + (c.FILLED_PROVISIONAL || 0) + (c.NA_OTHER_MACHINE || 0);
       var forQa = (c.QA_ENTRY || 0) + (c.PRINTOUT || 0) + (c.NOT_IN_MBR || 0) + (c.NO_PASX_SOURCE || 0), v = pv.validation || {};
       var k = [[(pv.batches || []).length, "batches"], [fromPasx, "cells from PAS-X"], [pv.exceptions || 0, "left blank (exceptions)"], [forQa, "for QA (printout, LIMS)"]];
-      if (v.SAME || v.DIFFERENT) k.push([(v.SAME || 0) + " / " + ((v.SAME || 0) + (v.DIFFERENT || 0)), "equal to QA's own values"]);
+      var mt = pv.metrics || {};
+      if (mt["accuracy vs QA"]) k.push([mt["accuracy vs QA"].split(" (")[0], "equal to QA's values (" + mt["accuracy vs QA"].split(" (")[1]]);
+      if (mt.traceability) k.push([mt.traceability, "cells traced to PAS-X"]);
+      var dd = pv.differences || [];
+      $("tdiffBox").hidden = !dd.length;
+      $("tdiffSum").textContent = "Differences from QA's workbook (" + dd.length + ") – with the likely cause";
+      $("tdiff").innerHTML = dd.length ? "<tr><th>Batch</th><th>Sheet</th><th>Cell</th><th>Column</th><th>QA</th><th>PAS-X</th><th>Likely cause</th></tr>" +
+        dd.map(function (d) { return '<tr><td class="mono">' + esc(d[0]) + "</td><td>" + esc(d[1]) + '</td><td class="mono">' + esc(d[2]) + "</td><td>" + esc(d[3]) + '</td><td class="n">' + esc(d[4]) + '</td><td class="n">' + esc(d[5]) + "</td><td>" + esc(d[8]) + "</td></tr>"; }).join("") : "";
+      if (pv.version) { $("curv").textContent = "v" + pv.version; $("curv2").textContent = "v" + pv.version; }
       $("tkpis").innerHTML = k.map(function (x, i) { return '<div class="kpi' + (i === 2 && x[0] ? " amber" : "") + '"><b>' + esc(typeof x[0] === "number" ? x[0].toLocaleString("en-IN") : x[0]) + "</b><span>" + esc(x[1]) + "</span></div>"; }).join("");
       msg("tmsg", r.name + " ready – check the sheets below, then download.", "ok");
       await p.done(fromPasx.toLocaleString("en-IN") + " cells from PAS-X");

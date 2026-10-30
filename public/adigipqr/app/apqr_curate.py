@@ -38,8 +38,16 @@ import re
 import sys
 from collections import OrderedDict
 
-VERSION = '2.1.0'
+VERSION = '2.2.0'
 TRACE_SHEET, EXC_SHEET, RULE_SHEET, VALID_SHEET = 'APQR_Source_Trace', 'APQR_Exceptions', 'APQR_Rules', 'APQR_Validation'
+# every column of the export the curator reads; tests/test_sql.py checks each one is an output column of the SQL
+EXPORT_FIELDS = ('BATCH_NO', 'MATERIAL_CODE', 'PRODUCT_NAME', 'MANUFACTURING_ORDER', 'MBR_ID', 'MBR_VERSION', 'BATCH_SIZE',
+                 'BATCH_SIZE_UOM', 'MFG_START', 'MFG_MONTH', 'EXP_MONTH', 'SHELF_LIFE', 'APQR_SHEET', 'STAGE', 'STEP',
+                 'STEP_PATH', 'STEP_CODE_PATH', 'APQR_PARAMETER', 'PARAMETER_CODE', 'UOM', 'SPEC_MIN', 'SPEC_MAX',
+                 'TARGET_SET_VALUE', 'READING_MIN', 'READING_MAX', 'READING_AVG', 'READING_COUNT',
+                 'READING_MIN_AFTER_FIRST', 'READING_MAX_AFTER_FIRST', 'READING_VALUES', 'INDIVIDUAL_MIN',
+                 'INDIVIDUAL_MAX', 'INDIVIDUAL_AVG', 'INDIVIDUAL_COUNT', 'CORRECTED_ENTRIES', 'SUPERSEDED_VALUES',
+                 'ACTUAL_TEXT', 'FIRST_READING_ON', 'LAST_READING_ON')
 LEARN_SHEET, UNMAPPED_SHEET = 'APQR_Learning', 'APQR_Unmapped_PASX'
 OWN_SHEETS = (TRACE_SHEET, EXC_SHEET, RULE_SHEET, VALID_SHEET, LEARN_SHEET, UNMAPPED_SHEET, 'AdigiPQR source')
 
@@ -335,6 +343,9 @@ def f1m00011_rules():
 
 
 RULESETS = {'F1M00011': f1m00011_rules}
+# MBR versions the rule set was proven on (66 batches Jul-Aug 2026: versions 4 and 5). Another version may have moved
+# steps or codes: its batches are not filled (exception UNKNOWN_MBR_VERSION) until QA approves the rule set for it.
+APPROVED_MBR_VERSIONS = {'F1M00011': ('4', '5')}
 # how an export is recognised when MBR_ID is empty or different: product codes, or step codes of that MBR
 LAYOUT_SIGNS = {'F1M00011': dict(materials={'30000838'}, codes=('GRAN > LOT1 > IPC', 'COMP > COMP > 30MIN',
                                                                  'COAT > SPRMNMX'))}
@@ -723,7 +734,10 @@ def fill_sheet(wb, ws, sh, rules, batches, order, trace, exc, master_rows, from_
 TRACE_COLS = ['BATCH_NO', 'MATERIAL_CODE', 'MBR_ID', 'MBR_VERSION', 'APQR_SHEET', 'OUTPUT_CELL', 'APQR_FIELD',
               'OUTPUT_VALUE', 'STATUS', 'RULE_ID', 'RULE_STATUS', 'SOURCE_STEP_CODE_PATH', 'SOURCE_PARAMETER_CODE',
               'SOURCE_PARAMETER', 'SOURCE_STATISTIC', 'SOURCE_READING_COUNT', 'SOURCE_READING_VALUES',
-              'SOURCE_TEXT', 'SOURCE_FIRST_READING', 'SOURCE_LAST_READING', 'CALCULATION', 'PROBLEM', 'MAPPING_VERSION']
+              'SOURCE_TEXT', 'SOURCE_FIRST_READING', 'SOURCE_LAST_READING', 'CALCULATION', 'PROBLEM', 'MAPPING_VERSION',
+              'SOURCE_TYPE']
+# SOURCE_TYPE: PASX_DIRECT (one value as entered), PASX_DERIVED (min / max / avg / sum over readings), PASX_BATCH_HEADER,
+# QA_TEMPLATE_FORMULA (QA's own formula), RULE_NA (approved rule: other machine / no rejection); never a free constant
 
 
 def trace_row(b, rows, sh, rule, cell, value, res):
@@ -733,7 +747,22 @@ def trace_row(b, rows, sh, rule, cell, value, res):
             j('STEP_CODE_PATH'), j('PARAMETER_CODE'), j('APQR_PARAMETER'), rule.get('STATISTIC', ''),
             sum(int(num(r.get('READING_COUNT')) or 0) for r in res.rows) if res.rows else None,
             j('READING_VALUES')[:1000], j('ACTUAL_TEXT')[:500], j('FIRST_READING_ON'), j('LAST_READING_ON'),
-            res.calc, res.problem, rule.get('VERSION', '')]
+            res.calc, res.problem, rule.get('VERSION', ''), source_type(rule, res, value)]
+
+
+def source_type(rule, res, value):
+    if value in (None, '') or res.status not in ('FILLED', 'FILLED_PROVISIONAL', 'FILLED_AUTO', 'FILLED_LEARNED',
+                                                 'FORMULA', 'NA_OTHER_MACHINE'):
+        return ''
+    if res.status == 'FORMULA':
+        return 'QA_TEMPLATE_FORMULA'
+    if res.status == 'NA_OTHER_MACHINE' or (rule.get('ZERO_AS') and value == rule.get('ZERO_AS')):
+        return 'RULE_NA'
+    if rule['KIND'] == 'HEADER':
+        return 'PASX_BATCH_HEADER'
+    if not res.rows:
+        return ''
+    return 'PASX_DIRECT' if rule.get('STATISTIC') in ('VALUE', 'TEXT') else 'PASX_DERIVED'
 
 
 def _table(ws, head, rows, widths):
@@ -756,14 +785,14 @@ def own_sheets(wb, trace, exc, rules, info, validation=None, learned=None, unmap
         if n in wb.sheetnames:
             del wb[n]
     ws = wb.create_sheet(TRACE_SHEET)
-    _table(ws, TRACE_COLS, trace, [12, 10, 10, 6, 22, 8, 40, 12, 18, 20, 12, 34, 14, 26, 16, 8, 40, 24, 16, 16, 40, 40, 22])
+    _table(ws, TRACE_COLS, trace, [12, 10, 10, 6, 22, 8, 40, 12, 18, 20, 12, 34, 14, 26, 16, 8, 40, 24, 16, 16, 40, 40, 22, 20])
     ws = wb.create_sheet(EXC_SHEET)
     _table(ws, ['BATCH_NO', 'APQR_SHEET', 'OUTPUT_CELL', 'APQR_FIELD', 'RULE_ID', 'STATUS', 'REASON'], exc,
            [12, 24, 10, 50, 22, 18, 90])
     if validation is not None:
         ws = wb.create_sheet(VALID_SHEET)
-        _table(ws, ['BATCH_NO', 'APQR_SHEET', 'CELL', 'APQR_FIELD', 'QA_VALUE', 'CURATED_VALUE', 'RESULT', 'RULE_ID'],
-               validation, [12, 24, 8, 50, 14, 14, 12, 22])
+        _table(ws, ['BATCH_NO', 'APQR_SHEET', 'CELL', 'APQR_FIELD', 'QA_VALUE', 'CURATED_VALUE', 'RESULT', 'RULE_ID',
+                    'LIKELY_CAUSE'], validation, [12, 24, 8, 50, 14, 14, 12, 22, 90])
     if learned is not None:
         ws = wb.create_sheet(LEARN_SHEET)
         _table(ws, ['QA_SHEET', 'COLUMN', 'QA_HEADER', 'RESULT', 'PASX_SOURCE_STATISTIC', 'AGREED', 'OF_QA_VALUES'],
@@ -876,7 +905,7 @@ def auto_layout(batches, mbr='AUTO'):
         widths = {'A': 7, 'B': 13}
         return nm, n, cells, merges, widths
 
-    nm, n, cells, merges, widths = sheet('BMR DETAILS', MASTER_FIELDS, 'BMR details - %s' % mbr)
+    nm, n, cells, merges, widths = sheet('BMR DETAILS', MASTER_FIELDS, 'BMR details - %s - AUTO layout, not approved by QA' % mbr)
     for i, (label, field) in enumerate(MASTER_FIELDS):
         c = cl(3 + i)
         cells.append(('%s2' % c, label, HEAD_FILL[1]))
@@ -887,7 +916,7 @@ def auto_layout(batches, mbr='AUTO'):
     lay.append(dict(name=nm, first=6, bcol=2, ncols=n, cells=cells, merges=merges, widths=widths, heights={1: 20}))
     for g in names:
         cols = [(key, f, st) for key, f in groups[g] for st in series_stats(f)]
-        nm, n, cells, merges, widths = sheet(g, cols, g)
+        nm, n, cells, merges, widths = sheet(g, cols, g + ' - AUTO layout, not approved by QA')
         c = 3
         last_step = None
         for key, f in groups[g]:
@@ -1204,6 +1233,22 @@ MODE_TEXT = {'APPROVED': 'approved rule set (exact codes, verified against QA)',
              'AUTO': 'AUTO layout from the export: QA to review the layout before use'}
 
 
+def quality(trace, vc):
+    """Acceptance metrics. Traceability = written cells whose trace names their PAS-X source (or QA's formula / the
+    machine rule) / written cells. With QA's workbook: accuracy = equal / (equal + different) over the cells written,
+    coverage = QA's values reproduced / QA's values in the rule columns (QA_EMPTY = written where QA has nothing)."""
+    written = [t for t in trace if t[8] in ('FILLED', 'FILLED_PROVISIONAL', 'FILLED_AUTO', 'FILLED_LEARNED', 'FORMULA',
+                                            'NA_OTHER_MACHINE') and t[7] not in (None, '')]
+    traced = [t for t in written if t[TRACE_COLS.index('SOURCE_TYPE')]]
+    m = OrderedDict([('cells written', len(written)),
+                     ('traceability', '%.1f %%' % (100.0 * len(traced) / len(written)) if written else 'n/a')])
+    same, diff, only = vc.get('SAME', 0), vc.get('DIFFERENT', 0), vc.get('ONLY_QA', 0)
+    if same + diff:
+        m['accuracy vs QA'] = '%.1f %% (%d of %d)' % (100.0 * same / (same + diff), same, same + diff)
+        m['coverage of QA values'] = '%.1f %% (%d of %d)' % (100.0 * same / (same + diff + only), same, same + diff + only)
+    return m
+
+
 def unmapped(batches, rules):
     """PAS-X series of the export that no rule uses: candidates for QA's next rule (sheet APQR_Unmapped_PASX)."""
     srcs = [(p, q) for r in rules if r['KIND'] == 'PASX' for p, q in parse_sources(r['SOURCES'])]
@@ -1239,8 +1284,43 @@ def detect_layout(batches):
 
 
 # ------------------------------------------------------------------------------------------------ validation
-def validate(wb, qa_path, layout, rules, order):
-    """Curated cells against QA's own workbook for the batches QA already has: SAME / DIFFERENT / QA_EMPTY / ONLY_QA."""
+def likely_cause(qv, cv, rule, b, field=''):
+    """Why QA's value differs, from the data alone: a digit slip, QA's value is another PAS-X series of the batch, the
+    batch ran on the other machine, or QA's value is nowhere in the export (check the batch record)."""
+    q, c = num(qv), num(cv)
+    if q is None and isinstance(qv, str) and re.fullmatch(r'[\d.,\s]+', qv.strip()):
+        return 'QA_TYPING: %r is not a number' % qv
+    if q is not None and c is not None and c != 0:
+        for f in (10, 100, 1000, 0.1, 0.01, 0.001):
+            if abs(q - c * f) <= max(0.011, abs(q) * 0.001):
+                return 'QA_TYPING: decimal point (QA %s, PAS-X %s)' % (clean(q), clean(c))
+    if s(cv).upper() == 'NA' and rule.get('MACHINE'):
+        return 'MACHINE: PAS-X shows the batch on the %s-station machine only; QA has values in the %s-station block' % (
+            station(b), rule['MACHINE'])
+    if q is None:
+        return 'TEXT: QA %s, PAS-X %s - check which the batch record supports' % (s(qv)[:30], s(cv)[:30])
+    own = {(code(path), par) for path, par in parse_sources(rule.get('SOURCES', ''))}
+    hits = []
+    for r in b:
+        key = (code(r.get('STEP_CODE_PATH')), s(r.get('PARAMETER_CODE')))
+        if key in own:
+            continue
+        for f in ('READING_MIN', 'READING_MAX', 'READING_AVG', 'READING_MIN_AFTER_FIRST', 'READING_MAX_AFTER_FIRST'):
+            v = num(r.get(f))
+            if v is not None and abs(v - q) <= max(0.011, abs(q) * 0.001):
+                hits.append('%s|%s (%s)' % (key[0], key[1], s(r.get('APQR_PARAMETER'))))
+                break
+    if hits:
+        want = _tokens(field) | _tokens(rule.get('SOURCES', '').replace('>', ' '))
+        hits = sorted(dict.fromkeys(hits), key=lambda h: -len(want & _tokens(h.replace('>', ' '))))
+        return 'OTHER_SOURCE: QA\'s value = PAS-X %s%s - the rule uses %s; check which one the QA header means' % (
+            hits[0], ' (+%d more)' % (len(hits) - 1) if len(hits) > 1 else '', rule.get('SOURCES', '')[:80])
+    return 'NOT_IN_PASX: QA\'s value is not in the export - check the batch record page'
+
+
+def validate(wb, qa_path, layout, rules, order, batches=None):
+    """Curated cells against QA's own workbook for the batches QA already has: SAME / DIFFERENT / QA_EMPTY / ONLY_QA;
+    each DIFFERENT with its likely cause (likely_cause)."""
     import openpyxl
     qa = openpyxl.load_workbook(qa_path)
     out = []
@@ -1273,7 +1353,8 @@ def validate(wb, qa_path, layout, rules, order):
                 else:
                     k = 'SAME' if _norm(cv).replace(' ', '') == _norm(qv).replace(' ', '') else 'DIFFERENT'
                 out.append([b, sh['name'], '%s%d' % (rule['COLUMN'], crows[b]), field_name(sh, rule['COLUMN']), qv, cv,
-                            k, rule['RULE_ID']])
+                            k, rule['RULE_ID'], likely_cause(qv, cv, rule, batches[b], field_name(sh, rule['COLUMN'])) if k == 'DIFFERENT' and batches
+                            and b in batches else ''])
     return out
 
 
@@ -1324,11 +1405,24 @@ def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, va
     other = {m for m in mbrs if m != mbr} if mode == 'APPROVED' else set()
     use = OrderedDict((b, r) for b, r in batches.items() if first(r, 'MBR_ID') not in other)
     skipped = [b for b in batches if b not in use]
+    version_exc = []
+    if mode == 'APPROVED' and mbr in APPROVED_MBR_VERSIONS:
+        ok_v = APPROVED_MBR_VERSIONS[mbr]
+        for b in list(use):
+            v = re.sub(r'\.0+$', '', first(use[b], 'MBR_VERSION')).lstrip('0')
+            if v and v not in ok_v:
+                del use[b]
+                skipped.append(b)
+                version_exc.append([b, '-', '-', 'whole batch', 'MBR-VERSION', 'UNKNOWN_MBR_VERSION',
+                                    'MBR %s version %s: the rule set is approved for version(s) %s only - batch not filled '
+                                    'until QA approves the rules for this version' % (mbr, v, ', '.join(ok_v))])
+    if not use:
+        raise ValueError('No batch can be filled: ' + '; '.join(e[6] for e in version_exc[:3]))
     order = sorted(use, key=lambda b: (start_key(first(use[b], 'MFG_START')), b))
     from_template = template is not None
     wb = openpyxl.load_workbook(template if isinstance(template, str) else io.BytesIO(template)) if from_template \
         else builtin_workbook(lay)
-    trace, exc = [], []
+    trace, exc = [], list(version_exc)
     names = {n.lower().strip(): n for n in wb.sheetnames}
     master_rows = {}
     for sh in lay:
@@ -1363,10 +1457,15 @@ def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, va
     counts = OrderedDict()
     for t in trace:
         counts[t[8]] = counts.get(t[8], 0) + 1
-    validation = validate(wb, validate_with, lay, rules, order) if validate_with else None
+    validation = validate(wb, validate_with, lay, rules, order, use) if validate_with else None
     vc = OrderedDict()
     for v in validation or []:
         vc[v[6]] = vc.get(v[6], 0) + 1
+    metrics = quality(trace, vc)
+    if mode != 'APPROVED':                            # amber tabs: layout or rules not approved by QA yet
+        for sh in lay:
+            if sh['name'] in wb.sheetnames:
+                wb[sh['name']].sheet_properties.tabColor = 'FFC000'
     info = list(extra_info) + [('Tool', 'AdigiPQR curator v' + VERSION), ('Mode', MODE_TEXT[mode]),
             ('Rule set', RULESET_VERSION.get(mbr, mbr)),
             ('Rule set chosen because', why), ('Template', 'given workbook' if from_template else
@@ -1374,11 +1473,12 @@ def curate(rows, batches_wanted=None, template=None, layout=None, rules=None, va
             ('MBR(s) in export', ', '.join(mbrs) or '?'), ('Batches', len(order)),
             ('Batches of another MBR (left out)', ', '.join(skipped) or 'none')] + \
         [('Cells ' + k, v) for k, v in counts.items()] + [('Exceptions', len(exc))] + \
-        [('Validation ' + k, v) for k, v in vc.items()] + [('Template check', n) for n in notes] + \
+        [('Validation ' + k, v) for k, v in vc.items()] + [('Metric ' + k, v) for k, v in metrics.items()] + \
+        [('Template check', n) for n in notes] + \
         [('Principle', 'Every filled cell comes from an exact PAS-X step code path + parameter code named in a rule; '
                        'blank + exception instead of a guess. Prototype for QA review: verify against the batch record.')]
     own_sheets(wb, trace, exc, rules, info, validation, learned, None if mode == 'AUTO' else unmapped(use, rules))
-    summ = dict(mode=mode, learned=learned, preview=lambda: preview(wb, lay, trace), batches=len(order), order=order, filled=filled, exceptions=len(exc), counts=counts, mbr=mbr, why=why,
+    summ = dict(mode=mode, learned=learned, metrics=metrics, differences=[v for v in validation or [] if v[6] == 'DIFFERENT'], preview=lambda: preview(wb, lay, trace), batches=len(order), order=order, filled=filled, exceptions=len(exc), counts=counts, mbr=mbr, why=why,
                 skipped=skipped, notes=notes, validation=vc, template=from_template)
     return wb, trace, exc, summ
 
@@ -1510,13 +1610,23 @@ def main(argv=None):
         print('%d exception(s) - see sheet %s' % (summ['exceptions'], EXC_SHEET))
     if summ['validation']:
         print("Against QA's workbook: " + ', '.join('%s %d' % (k, v) for k, v in summ['validation'].items()))
+        causes = OrderedDict()
+        for d in summ['differences']:
+            k = d[8].split(':')[0]
+            causes[k] = causes.get(k, 0) + 1
+        if causes:
+            print('  differences by likely cause: ' + ', '.join('%s %d' % kv for kv in causes.items()) +
+                  ' (sheet %s, column LIKELY_CAUSE)' % VALID_SHEET)
     if summ['skipped']:
-        print('Batches of another MBR left out: ' + ', '.join(summ['skipped']))
+        print('Batches left out (another MBR or an MBR version without approved rules): ' + ', '.join(summ['skipped']))
+    print('Metrics: ' + '; '.join('%s %s' % kv for kv in summ['metrics'].items()))
     print('Saved: ' + os.path.abspath(out))
     if a.preview_json:
         import json
         with open(a.preview_json, 'w', encoding='utf-8') as fh:
             json.dump(dict(sheets=summ['preview'](), mode=summ['mode'], counts=summ['counts'], batches=summ['order'],
+                           metrics=summ['metrics'], skipped=summ['skipped'], version=VERSION,
+                           differences=[[s(x) for x in d] for d in summ['differences'][:500]],
                            exceptions=summ['exceptions'], validation=summ['validation']), fh)
 
 
