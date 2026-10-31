@@ -10,13 +10,15 @@
     }
   })();
 </script>
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="dark">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Data sync and Fabric – AdigiPQR</title>
 <style>
-:root { color-scheme: light; --bg:#f3f7fb; --surface:#fff; --ink:#0f2236; --muted:#55687c; --line:#d6e1ec; --accent:#0b4f8a; --green:#12805c; --head:#edf3f9; --h:#0a3560;
-  --font: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+:root { color-scheme: dark; --bg:#111111; --surface:#1a1a1a; --ink:#f5f5f0; --muted:#a4a4a4; --line:#2e2e2e; --accent:#e5383b; --green:#e5383b; --head:#222222; --h:#f5f5f0;
+  --font: "Atkinson", -apple-system, "Segoe UI", system-ui, Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+@font-face { font-family: "Atkinson"; src: url("vendor/fonts/atkinson-regular.woff") format("woff"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Atkinson"; src: url("vendor/fonts/atkinson-bold.woff") format("woff"); font-weight: 700; font-display: swap; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--font); }
 main { max-width: 980px; margin: 0 auto; padding: 24px 16px 56px; display: grid; gap: 16px; }
@@ -33,14 +35,14 @@ code { font-family: var(--mono); font-size: 13px; }
 .flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; align-items: stretch; }
 .flow div { border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 10px; padding: 10px; background: var(--bg); font-size: 13.5px; }
 .flow div:nth-child(even) { border-top-color: var(--green); }
-.band { background: linear-gradient(115deg, #0a3560 0%, #0b4f8a 52%, #12805c 100%); color: #fff; }
+.band { background: var(--bg); border-bottom: 1px solid var(--line); color: var(--ink); }
 .band div { max-width: 980px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 17px; }
-.band a { color: #fff; text-decoration: none; } .band i { font-style: normal; color: #9ff0c9; }
+.band a { color: var(--ink); text-decoration: none; } .band i { font-style: normal; color: var(--accent); }
 .flow b { display: block; }
 </style>
 </head>
 <body>
-<div class="band"><div><svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b4f8a"/><stop offset="1" stop-color="#14a06c"/></linearGradient></defs><rect width="64" height="64" rx="15" fill="url(#lg)" stroke="#fff" stroke-opacity=".35" stroke-width="3"/><path d="M12 18H52M12 46H52" stroke="#fff" stroke-opacity=".55" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 4"/><path d="M13 36L22 29L30 34L39 25L47 28" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="47" cy="28" r="4.6" fill="#fff"/></svg><a href="./#guide">Adigi<i>PQR</i></a></div></div>
+<div class="band"><div><svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#e5383b" stroke="#fff" stroke-opacity=".35" stroke-width="3"/><path d="M12 18H52M12 46H52" stroke="#fff" stroke-opacity=".55" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 4"/><path d="M13 36L22 29L30 34L39 25L47 28" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="47" cy="28" r="4.6" fill="#fff"/></svg><a href="./#guide">Adigi<i>PQR</i></a></div></div>
 <main>
   <div><a href="./#guide">← AdigiPQR</a>
   <h1>From manual exports to an automatic data sync</h1>

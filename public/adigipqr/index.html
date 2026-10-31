@@ -3,236 +3,228 @@
 <head>
 <meta charset="utf-8">
 <script>
-  /* Served as /adigipqr (no trailing slash) relative paths would resolve one folder up: set the base before
-     anything relative is loaded (scripts are added by the loader at the end of the page, not by static tags). */
+  /* Served as /adigipqr (no trailing slash) relative paths would resolve one folder up: the address gets its slash and
+     the base is set before anything relative is loaded (scripts are added by the loader at the end of the page). */
   (function () {
     var p = location.pathname;
     if (location.protocol !== "file:" && !/\/$/.test(p) && !/\.html?$/i.test(p)) {
+      // one address: abhieq31.com/adigipqr/ (a link without the slash is moved there before anything loads)
+      if (window.history && history.replaceState) history.replaceState(null, "", p + "/" + location.search + location.hash);
       var b = document.createElement("base"); b.href = p + "/"; document.head.appendChild(b);
     }
   })();
 </script>
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="dark">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>AdigiPQR – APQR data sheet</title>
-<meta name="description" content="Turns the PAS-X MES export into the QA APQR workbook in the browser. No upload: the file never leaves this computer.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' role='img' aria-label='AdigiPQR'> <defs> <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'> <stop offset='0' stop-color='%230b4f8a'/> <stop offset='1' stop-color='%2314a06c'/> </linearGradient> </defs> <rect width='64' height='64' rx='15' fill='url(%23g)'/> <%21-- a control chart: every batch between the two limits --> <path d='M12 18H52M12 46H52' stroke='%23fff' stroke-opacity='.55' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='4 4'/> <path d='M13 36L22 29L30 34L39 25L47 28' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/> <circle cx='47' cy='28' r='4.6' fill='%23fff'/> </svg>" type="image/svg+xml">
-<meta name="theme-color" content="#0b4f8a">
+<title>AdigiPQR – APQR workbook from PAS-X</title>
+<meta name="description" content="QA's APQR workbook from the PAS-X export, made in this browser. Nothing is uploaded.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23e5383b'/%3E%3Cpath d='M12 18H52M12 46H52' stroke='%23fff' stroke-opacity='.55' stroke-width='2.4' stroke-dasharray='4 4'/%3E%3Cpath d='M13 36L22 29L30 34L39 25L47 28' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" type="image/svg+xml">
+<meta name="theme-color" content="#111111">
 <style>
-:root { color-scheme: light; --bg:#f3f7fb; --surface:#fff; --ink:#0f2236; --muted:#55687c; --line:#d6e1ec; --head:#edf3f9;
-  --blue:#0b4f8a; --blue-deep:#0a3560; --blue-soft:#e7f0fa; --green:#12805c; --green-bright:#14a06c; --green-soft:#e2f4ec;
-  --accent:var(--blue); --accent-soft:var(--blue-soft); --series:#0b4f8a; --limit:#c0392b; --ctl:#8395a7; --flag:#d68910;
-  --warn-bg:#fbe7dc; --warn-ink:#8a3412; --ok-bg:var(--green-soft); --ok-ink:#0f6b4c; --amber-bg:#fdf1d8; --amber-ink:#7a5205;
-  --shadow: 0 1px 2px rgba(15,34,54,.05), 0 4px 14px rgba(15,34,54,.05);
-  --font: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+/* Black / red / white, as abhieq31.com: matte black, off-white type, one red accent. The workbook preview stays white
+   paper, as in Excel. */
+@font-face { font-family: "Atkinson"; src: url("vendor/fonts/atkinson-regular.woff") format("woff"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Atkinson"; src: url("vendor/fonts/atkinson-bold.woff") format("woff"); font-weight: 700; font-display: swap; }
+:root { color-scheme: dark; --bg:#111111; --surface:#1a1a1a; --raised:#222222; --ink:#f5f5f0; --muted:#a4a4a4; --line:#2e2e2e;
+  --red:#e5383b; --red-hover:#ff4d50; --red-soft:rgba(229,56,59,.14); --white:#ffffff;
+  --series:#f5f5f0; --limit:#e5383b; --ctl:#7a7a7a; --flag:#f0a830;
+  --warn-bg:rgba(229,56,59,.16); --warn-ink:#ff8a8c; --amber-bg:rgba(240,168,48,.15); --amber-ink:#f5c26b;
+  --font: "Atkinson", -apple-system, "Segoe UI", system-ui, Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace; }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font); min-height: 100vh; display: flex; flex-direction: column; }
-main.in { flex: 1 0 auto; width: 100%; }
-a { color: var(--accent); }
-.in { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
-/* header: blue to green band */
-header { background: linear-gradient(115deg, #0a3560 0%, #0b4f8a 52%, #12805c 100%); color: #fff; }
+html { background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--font); min-height: 100vh; display: flex; flex-direction: column; }
+a { color: var(--red); } a:hover { color: var(--red-hover); }
+.in { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+header { border-bottom: 1px solid var(--line); }
 header .in { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; padding-top: 14px; padding-bottom: 0; }
-.brand { display: flex; align-items: center; gap: 11px; padding-bottom: 12px; color: #fff; text-decoration: none; }
-.brand .logo { flex: none; border-radius: 9px; box-shadow: 0 0 0 1.5px rgba(255,255,255,.35); }
-.brand b { font-size: 19px; font-weight: 650; letter-spacing: .2px; } .brand b i { font-style: normal; color: #9ff0c9; }
-.brand small { display: block; font-size: 12.5px; color: rgba(255,255,255,.75); line-height: 1.2; }
-nav { display: flex; flex-wrap: wrap; gap: 2px; align-self: end; margin-left: auto; }
-nav button { border: 0; background: none; color: rgba(255,255,255,.78); padding: 9px 14px 11px; font: 500 14.5px var(--font); cursor: pointer; border-radius: 9px 9px 0 0; }
-nav button:hover { color: #fff; background: rgba(255,255,255,.08); }
-nav button[aria-selected="true"] { color: var(--blue-deep); background: var(--bg); }
-/* privacy strip */
-.private { background: var(--green-soft); border-bottom: 1px solid var(--line); color: var(--ok-ink); }
-.private .in { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding-top: 9px; padding-bottom: 9px; font-size: 14px; }
-.private svg { flex: none; } .private b { color: var(--ink); } .private .in > span { flex: 1 1 240px; min-width: 0; }
-.private details { margin-left: auto; } .private summary { cursor: pointer; color: var(--green); font-weight: 600; font-size: 13.5px; }
+.brand { display: flex; align-items: center; gap: 11px; padding-bottom: 12px; color: var(--ink); text-decoration: none; }
+.brand .logo { flex: none; border-radius: 9px; }
+.brand b { font-size: 19px; letter-spacing: .2px; } .brand b i { font-style: normal; color: var(--red); }
+.brand small { display: block; font-size: 12.5px; color: var(--muted); line-height: 1.2; }
+nav { display: flex; flex-wrap: wrap; gap: 4px; align-self: end; margin-left: auto; }
+nav button { border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); padding: 9px 12px 11px; font: 15px var(--font); cursor: pointer; }
+nav button:hover { color: var(--ink); }
+nav button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--red); }
+.private { border-bottom: 1px solid var(--line); background: var(--surface); }
+.private .in { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding-top: 10px; padding-bottom: 10px; font-size: 14px; color: var(--muted); }
+.private svg { flex: none; color: var(--red); } .private b { color: var(--ink); } .private .in > span { flex: 1 1 260px; min-width: 0; }
+.private details { margin-left: auto; } .private summary { cursor: pointer; color: var(--ink); font-size: 13.5px; text-decoration: underline; text-decoration-color: var(--red); text-underline-offset: 3px; }
 .private details[open] { flex-basis: 100%; margin-left: 0; }
 .private details ul { margin: 6px 0 2px; padding-left: 20px; color: var(--ink); font-size: 13.5px; display: grid; gap: 3px; }
-main.in { padding-top: 34px; padding-bottom: 56px; display: grid; gap: 18px; align-content: start; }
+main.in { flex: 1 0 auto; width: 100%; padding-top: 36px; padding-bottom: 56px; display: grid; gap: 18px; align-content: start; }
 section { gap: 18px !important; }
-main > *, section > *, #loaded > *, #sresult > *, #qres > *, .row > * { min-width: 0; }
+main > *, section > *, #loaded > *, #sresult > *, .row > * { min-width: 0; }
 select { max-width: 100%; text-overflow: ellipsis; }
-h1 { font-size: 28px; line-height: 1.2; margin: 0; color: var(--blue-deep); letter-spacing: -.3px; } h2 { font-size: 17px; margin: 0 0 10px; color: var(--ink); }
-.lede { color: var(--muted); margin: 8px 0 0; max-width: 78ch; font-size: 15.5px; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; box-shadow: var(--shadow); }
-.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; counter-reset: s; }
-.steps div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px 11px 50px; position: relative; font-size: 13.5px; color: var(--muted); }
-.steps div::before { counter-increment: s; content: counter(s); position: absolute; left: 13px; top: 12px; width: 26px; height: 26px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--blue), var(--green-bright)); color: #fff; font: 600 13px/26px var(--font); text-align: center; }
-.steps b { display: block; color: var(--ink); font-size: 14px; }
-.drop { border: 2px dashed #a9c2da; border-radius: 16px; background: linear-gradient(180deg, #fff, #f7fafd); padding: 26px 26px 26px 96px; display: grid; gap: 6px; cursor: pointer; text-align: left; transition: border-color .15s, background .15s; position: relative; min-height: 120px; align-content: center; }
-.drop::before { content: ""; position: absolute; left: 26px; top: 50%; width: 48px; height: 48px; margin-top: -24px; border-radius: 14px;
-  background: var(--blue-soft) no-repeat center/26px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230b4f8a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3'/%3E%3C/svg%3E"); }
-.drop:hover::before, .drop.over::before { background-color: #fff; }
-.drop:hover, .drop.over { border-color: var(--green); background: var(--green-soft); }
-.drop strong { font-size: 18px; color: var(--blue); } .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.lock { display: inline-flex; align-items: center; gap: 5px; color: var(--ok-ink); font-size: 13px; font-weight: 600; }
+h1 { font-size: 30px; line-height: 1.2; margin: 0; color: var(--ink); letter-spacing: -.3px; } h1 em { font-style: normal; color: var(--red); }
+h2 { font-size: 17px; margin: 0 0 10px; color: var(--ink); }
+.lede { color: var(--muted); margin: 8px 0 0; max-width: 72ch; font-size: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; counter-reset: s; }
+.steps div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 12px 50px; position: relative; font-size: 13.5px; color: var(--muted); }
+.steps div::before { counter-increment: s; content: counter(s); position: absolute; left: 14px; top: 13px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--red); color: var(--white); font: 700 13px/24px var(--font); text-align: center; }
+.steps b { display: block; color: var(--ink); font-size: 14.5px; }
+.drop { border: 2px dashed #3d3d3d; border-radius: 14px; background: var(--surface); padding: 26px 26px 26px 96px; display: grid; gap: 6px; cursor: pointer; text-align: left; transition: border-color .15s, background .15s; position: relative; min-height: 120px; align-content: center; }
+.drop::before { content: ""; position: absolute; left: 26px; top: 50%; width: 48px; height: 48px; margin-top: -24px; border-radius: 12px;
+  background: var(--red-soft) no-repeat center/26px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e5383b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3'/%3E%3C/svg%3E"); }
+.drop:hover, .drop.over { border-color: var(--red); background: var(--raised); }
+.drop strong { font-size: 18px; color: var(--ink); } .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.lock { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 13px; } .lock svg { color: var(--red); }
 .row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; }
 label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
-input, select, textarea { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+input, select, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
 textarea { width: 100%; font: 12.5px/1.45 var(--mono); }
-input:focus, select:focus, button:focus-visible, summary:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
-input[type="checkbox"] { accent-color: var(--green); }
-button.b { font: 500 14px var(--font); border-radius: 9px; padding: 9px 16px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--blue); }
-button.b:hover:not(:disabled) { border-color: var(--blue); }
-button.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
-button.primary:hover:not(:disabled) { background: var(--blue-deep); }
-button.go { background: var(--green); border-color: var(--green); color: #fff; padding: 10px 20px; font-weight: 600; }
-button.go:hover:not(:disabled) { background: #0e6a4c; border-color: #0e6a4c; }
-button:disabled { opacity: .5; cursor: default; }
+input:focus, select:focus, button:focus-visible, summary:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+input[type="checkbox"] { accent-color: var(--red); }
+button.b { font: 14px var(--font); border-radius: 8px; padding: 9px 16px; cursor: pointer; border: 1px solid #3d3d3d; background: transparent; color: var(--ink); }
+button.b:hover:not(:disabled) { border-color: var(--ink); }
+button.primary, button.go { background: var(--red); border-color: var(--red); color: var(--white); font-weight: 700; }
+button.primary:hover:not(:disabled), button.go:hover:not(:disabled) { background: var(--red-hover); border-color: var(--red-hover); }
+button.go { padding: 10px 20px; }
+button:disabled { opacity: .45; cursor: default; }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; } @media (max-width: 820px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 12px 17px; box-shadow: var(--shadow), inset 4px 0 0 var(--blue); }
-.kpi:nth-child(even) { box-shadow: var(--shadow), inset 4px 0 0 var(--green-bright); }
-.kpi b { display: block; font-size: 25px; font-variant-numeric: tabular-nums; line-height: 1.2; color: var(--blue-deep); } .kpi span { color: var(--muted); font-size: 12.5px; }
-.kpi.warn { background: var(--warn-bg); border-color: transparent; box-shadow: inset 4px 0 0 var(--limit); color: var(--warn-ink); } .kpi.warn b, .kpi.warn span { color: inherit; }
-.kpi.amber { background: var(--amber-bg); border-color: transparent; box-shadow: inset 4px 0 0 var(--flag); color: var(--amber-ink); } .kpi.amber b, .kpi.amber span { color: inherit; }
-details.sec { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
-details.sec > summary { cursor: pointer; padding: 14px 18px; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; color: var(--blue-deep); }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.kpi b { display: block; font-size: 25px; font-variant-numeric: tabular-nums; line-height: 1.2; color: var(--ink); } .kpi span { color: var(--muted); font-size: 12.5px; }
+.kpi.warn { border-color: var(--red); } .kpi.warn b { color: var(--warn-ink); }
+.kpi.amber { border-color: #5a4720; } .kpi.amber b { color: var(--amber-ink); }
+details.sec { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+details.sec > summary { cursor: pointer; padding: 14px 18px; font-weight: 700; list-style: none; display: flex; justify-content: space-between; gap: 12px; color: var(--ink); }
 details.sec > summary::-webkit-details-marker { display: none; }
-details.sec > summary::after { content: "Show ▾"; color: var(--green); font-weight: 600; font-size: 13px; }
-details.sec[open] > summary::after { content: "Hide ▴"; }
+details.sec > summary::after { content: "Show"; color: var(--red); font-size: 13px; }
+details.sec[open] > summary::after { content: "Hide"; }
 details.sec[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: 14px; }
-details.sec > .body { padding: 0 18px 18px; display: grid; gap: 12px; }
+details.sec > .body { padding: 0 18px 18px; display: grid; gap: 14px; }
 .scroll { overflow: auto; max-height: 520px; border: 1px solid var(--line); border-radius: 10px; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
 th, td { border-bottom: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
-th { background: var(--head); font-weight: 600; position: sticky; top: 0; z-index: 1; color: var(--blue-deep); }
-tbody tr:hover td { background: var(--blue-soft); }
+th { background: var(--raised); font-weight: 700; position: sticky; top: 0; z-index: 1; color: var(--ink); }
+tbody tr:hover td { background: #202020; }
 td.n, th.n { text-align: right; font-family: var(--mono); font-size: 12.5px; }
 .scroll td.n, .scroll td.mono, .scroll th, #tBatches td { white-space: nowrap; }
 tr.bad td { background: var(--warn-bg); } tr.amb td { background: var(--amber-bg); }
-.pill { display: inline-block; font-size: 12px; padding: 1px 9px; border-radius: 999px; background: var(--head); color: var(--muted); white-space: nowrap; }
-.pill.ok { background: var(--ok-bg); color: var(--ok-ink); } .pill.typ { background: var(--surface); color: var(--ok-ink); box-shadow: inset 0 0 0 1px var(--green); } .pill.cqa { background: var(--blue-soft); color: var(--blue); } .pill.bad { background: var(--warn-bg); color: var(--warn-ink); } .pill.amb { background: var(--amber-bg); color: var(--amber-ink); }
-.seg { display: inline-flex; align-items: center; gap: 0; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 3px; background: var(--head); flex-wrap: wrap; }
+.pill { display: inline-block; font-size: 12px; padding: 1px 9px; border-radius: 999px; background: var(--raised); color: var(--muted); white-space: nowrap; }
+.pill.ok { background: var(--red); color: var(--white); } .pill.typ { color: var(--ink); box-shadow: inset 0 0 0 1px var(--red); } .pill.cqa { background: var(--ink); color: var(--bg); }
+.pill.bad { background: var(--warn-bg); color: var(--warn-ink); } .pill.amb { background: var(--amber-bg); color: var(--amber-ink); }
+.seg { display: inline-flex; align-items: center; gap: 0; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 3px; background: var(--bg); flex-wrap: wrap; }
 .seg span { font-size: 12.5px; color: var(--muted); padding: 0 10px 0 8px; }
-.seg button { border: 0; background: none; padding: 6px 14px; border-radius: 8px; font: 500 13.5px var(--font); color: var(--muted); cursor: pointer; }
-.seg button[aria-pressed="true"] { background: var(--surface); color: var(--blue); box-shadow: 0 1px 3px rgba(15,34,54,.12); }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; } .chips button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 4px 12px; font: 13px var(--font); cursor: pointer; }
-.chips button[aria-pressed="true"] { background: var(--blue); color: #fff; border-color: var(--blue); }
+.seg button { border: 0; background: none; padding: 6px 14px; border-radius: 8px; font: 13.5px var(--font); color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--raised); color: var(--ink); box-shadow: inset 0 -2px 0 var(--red); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; } .chips button { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 4px 12px; font: 13px var(--font); cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
-.chart { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--surface); }
+.chart { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: var(--bg); }
 .chart h3 { font-size: 13.5px; margin: 0 0 2px; color: var(--ink); } .chart p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
-.chart svg { width: 100%; height: auto; display: block; }
+.chart svg { width: 100%; height: auto; display: block; } .chart svg text { fill: var(--muted); }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--muted); }
 .legend i { display: inline-block; width: 16px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
 .legend i.dot { width: 9px; height: 9px; border: 0; border-radius: 50%; }
-.msg { min-height: 1.4em; color: var(--muted); } .msg.err { color: var(--warn-ink); } .msg.ok { color: var(--ok-ink); font-weight: 500; }
+.msg { min-height: 1.4em; color: var(--muted); } .msg.err { color: var(--warn-ink); } .msg.ok { color: var(--ink); }
+.msg:empty { display: none; }
 .note { font-size: 13px; color: var(--muted); }
 .sheettabs { display: flex; flex-wrap: wrap; gap: 4px; } .sheettabs button { border: 0; background: none; padding: 5px 10px; color: var(--muted); cursor: pointer; font: 14px var(--font); border-bottom: 2px solid transparent; }
-.sheettabs button[aria-selected="true"] { color: var(--blue); border-bottom-color: var(--green-bright); font-weight: 600; }
+.sheettabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--red); font-weight: 700; }
 .qa th, .qa td { border: 1px solid var(--line); white-space: nowrap; } .qa td.oos { background: var(--warn-bg); color: var(--warn-ink); }
-.bar { height: 8px; background: var(--head); border-radius: 99px; overflow: hidden; } .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--blue), var(--green-bright)); transition: width .3s; }
-/* live pipeline: what the background worker is doing, step by step */
-.prog { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(10,53,96,.28); backdrop-filter: blur(3px); }
+.bar { height: 6px; background: var(--raised); border-radius: 99px; overflow: hidden; } .bar i { display: block; height: 100%; width: 0; background: var(--red); transition: width .3s; }
+/* progress overlay: what the background worker is doing, step by step */
+.prog { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.6); backdrop-filter: blur(3px); }
 .prog[hidden] { display: none; }
-.pcard { width: min(520px, 100%); background: var(--surface); border-radius: 16px; box-shadow: 0 18px 50px rgba(10,53,96,.28); padding: 20px 22px 16px; }
-.phead { display: flex; align-items: center; gap: 12px; } .phead b { font-size: 17px; color: var(--blue-deep); flex: 1; min-width: 0; }
+.pcard { width: min(520px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px 16px; }
+.phead { display: flex; align-items: center; gap: 12px; } .phead b { font-size: 17px; color: var(--ink); flex: 1; min-width: 0; }
 .phead .mono { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-.pflow { position: relative; height: 34px; margin: 14px 0 6px; border-radius: 10px; background: var(--blue-soft); overflow: hidden; }
-.pflow::before { content: ""; position: absolute; inset: 15px 0 auto; height: 4px; background: linear-gradient(90deg, var(--blue), var(--green-bright)); opacity: .25; }
-.pflow i { position: absolute; top: 11px; width: 12px; height: 12px; border-radius: 3px; background: var(--blue); animation: pkt 1.6s linear infinite; opacity: 0; }
-.pflow i:nth-child(2) { animation-delay: .27s; background: #2f6fae; } .pflow i:nth-child(3) { animation-delay: .53s; background: var(--green); }
-.pflow i:nth-child(4) { animation-delay: .8s; } .pflow i:nth-child(5) { animation-delay: 1.07s; background: var(--green-bright); } .pflow i:nth-child(6) { animation-delay: 1.33s; background: #2f6fae; }
-@keyframes pkt { 0% { left: -14px; opacity: 0; transform: rotate(0); } 12% { opacity: 1; } 88% { opacity: 1; } 100% { left: 100%; opacity: 0; transform: rotate(180deg); } }
+.pflow { position: relative; height: 4px; margin: 14px 0 8px; border-radius: 4px; background: var(--raised); overflow: hidden; }
+.pflow i { position: absolute; top: 0; width: 22%; height: 4px; border-radius: 4px; background: var(--red); animation: pkt 1.4s ease-in-out infinite; opacity: 0; }
+.pflow i:nth-child(n+2) { display: none; }
+@keyframes pkt { 0% { left: -22%; opacity: 1; } 100% { left: 100%; opacity: 1; } }
 .prog.ok .pflow i, .prog.bad .pflow i { animation: none; opacity: 0; }
-.prog.ok .pflow { background: var(--green-soft); } .prog.ok .pflow::before { opacity: 1; }
-.prog.bad .pflow { background: var(--warn-bg); }
+.prog.ok .pflow { background: var(--ink); } .prog.bad .pflow { background: var(--red); }
 .psteps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
 .psteps li { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; padding: 5px 4px; color: var(--muted); font-size: 14px; border-radius: 8px; }
-.psteps li .d { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; }
+.psteps li .d { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #3d3d3d; display: grid; place-items: center; }
 .psteps li small { display: block; font-size: 12px; color: var(--muted); }
 .psteps li .t { font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-.psteps li.now { color: var(--ink); background: var(--blue-soft); font-weight: 600; } .psteps li.now small { font-weight: 400; }
-.psteps li.now .d { border-color: var(--blue); border-top-color: transparent; animation: spin .8s linear infinite; }
-.psteps li.done { color: var(--ink); } .psteps li.done .d { border-color: var(--green-bright); background: var(--green-bright); }
-.psteps li.done .d::after { content: ""; width: 7px; height: 4px; border: solid #fff; border-width: 0 0 2px 2px; transform: translateY(-1px) rotate(-45deg); }
+.psteps li.now { color: var(--ink); background: var(--raised); font-weight: 700; } .psteps li.now small { font-weight: 400; }
+.psteps li.now .d { border-color: var(--red); border-top-color: transparent; animation: spin .8s linear infinite; }
+.psteps li.done { color: var(--ink); } .psteps li.done .d { border-color: var(--ink); background: var(--ink); }
+.psteps li.done .d::after { content: ""; width: 7px; height: 4px; border: solid var(--bg); border-width: 0 0 2px 2px; transform: translateY(-1px) rotate(-45deg); }
 @keyframes spin { to { transform: rotate(360deg); } }
 .pfoot { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
 .pfoot .err { color: var(--warn-ink); flex: 1; } .pfoot button { margin-left: auto; }
-@media (prefers-reduced-motion: reduce) { .pflow i { animation: none; } .psteps li.now .d { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pflow i { animation: none; opacity: 1; left: 0; } .psteps li.now .d { animation: none; } }
 .recs td { white-space: nowrap; } .thumb { width: 100%; max-width: 520px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
-.pvwrap { max-height: 560px; } table.pv { width: auto; border-collapse: separate; border-spacing: 0; font: 12.5px/1.35 "Times New Roman", Georgia, serif; }
-table.pv th, table.pv td { border-right: 1px solid #c9d6e3; border-bottom: 1px solid #c9d6e3; padding: 4px 7px; min-width: 64px; max-width: 220px; white-space: normal; text-align: center; vertical-align: middle; }
-table.pv thead th { position: static; background: #f3f6f9; color: #10263b; font-weight: 700; }
+/* the APQR workbook preview: white paper, QA's own header colours, as in Excel */
+.pvwrap { max-height: 560px; background: #fff; border-color: #3d3d3d; }
+table.pv { width: auto; border-collapse: separate; border-spacing: 0; font: 12.5px/1.35 "Times New Roman", Georgia, serif; color: #111; }
+table.pv th, table.pv td { border-right: 1px solid #c8c8c8; border-bottom: 1px solid #c8c8c8; padding: 4px 7px; min-width: 64px; max-width: 220px; white-space: normal; text-align: center; vertical-align: middle; }
+table.pv thead th { position: static; background: #f2f2f2; color: #111; font-weight: 700; }
 table.pv thead tr:last-child th { position: sticky; top: 0; }
-table.pv td { cursor: pointer; font-variant-numeric: tabular-nums; }
-table.pv td.ok { background: #fff; } table.pv td.auto { background: #e8f1fb; } table.pv td.prov { background: #fdf1d8; }
-table.pv td.exc { background: #fbe7dc; box-shadow: inset 0 0 0 2px #c0392b; } table.pv td.qa { background: #f4f4f4; color: #8a96a3; }
-table.pv td.miss { background: #fafafa; } table.pv td.sel { outline: 2px solid var(--green); outline-offset: -2px; }
-.legend .sw { width: 14px; height: 12px; border: 1px solid #c9d6e3; border-top-width: 1px; border-radius: 2px; vertical-align: -1px; }
-.legend .sw.ok { background: #fff; } .legend .sw.auto { background: #e8f1fb; } .legend .sw.prov { background: #fdf1d8; } .legend .sw.exc { background: #fbe7dc; border-color: #c0392b; } .legend .sw.qa { background: #f4f4f4; } .legend .sw.miss { background: #fafafa; }
-.chip { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--green-soft); color: var(--ok-ink); } .chip.amber { background: var(--amber-bg); color: var(--amber-ink); }
-details.more > summary { cursor: pointer; color: var(--blue); font-weight: 600; font-size: 14px; }
+table.pv td { cursor: pointer; font-variant-numeric: tabular-nums; background: #fff; }
+table.pv tbody tr:hover td { background: #fafafa; }
+table.pv td.ok { background: #fff; } table.pv td.auto { background: #eef3fb; } table.pv td.prov { background: #fdf1d8; }
+table.pv td.exc { background: #fde8e8; box-shadow: inset 0 0 0 2px var(--red); } table.pv td.qa { background: #f1f1f1; color: #888; }
+table.pv td.miss { background: #fafafa; } table.pv td.sel { outline: 2px solid var(--red); outline-offset: -2px; }
+.legend .sw { width: 14px; height: 12px; border: 1px solid #555; border-radius: 2px; vertical-align: -1px; }
+.legend .sw.ok { background: #fff; } .legend .sw.auto { background: #eef3fb; } .legend .sw.prov { background: #fdf1d8; } .legend .sw.exc { background: #fde8e8; border-color: var(--red); } .legend .sw.qa { background: #d8d8d8; } .legend .sw.miss { background: #fafafa; }
+.chip { display: inline-block; font-size: 12.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--ink); color: var(--bg); } .chip.amber { background: var(--amber-bg); color: var(--amber-ink); }
+details.more > summary { cursor: pointer; color: var(--ink); font-size: 14px; text-decoration: underline; text-decoration-color: var(--red); text-underline-offset: 3px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } @media (max-width: 980px) { .grid3 { grid-template-columns: 1fr; } }
 .drop.small strong { font-size: 15px; } .drop.small { min-height: 0; padding: 16px 16px 16px 72px; } .drop.small::before { left: 14px; width: 40px; height: 40px; margin-top: -20px; background-size: 22px; }
-pre.log { margin: 0; padding: 12px 14px; background: #f4f8fb; border: 1px solid #d6e3ef; border-radius: 10px; font: 12.5px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto; }
+pre.log { margin: 0; padding: 12px 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; font: 12.5px/1.45 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto; color: var(--ink); }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; } @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
-.card h2 .tag { font-size: 11.5px; font-weight: 600; color: var(--green); background: var(--green-soft); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+.card h2 .tag { font-size: 11.5px; font-weight: 400; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; font-family: var(--mono); }
 [hidden] { display: none !important; }
 .has-data #apqrSteps, .has-data #exRow { display: none; }
 .has-data #drop { min-height: 0; padding-top: 14px; padding-bottom: 14px; } .has-data #drop strong { font-size: 16px; }
 .has-data #drop::before { width: 40px; height: 40px; margin-top: -20px; background-size: 22px; }
-.msg:empty { display: none; }
-footer { border-top: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 12.5px; }
+footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
 footer .in { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; padding-top: 14px; padding-bottom: 18px; }
 footer .logo { vertical-align: -4px; margin-right: 6px; }
 code, .mono { font-family: var(--mono); font-size: 12.5px; }
-@media (max-width: 640px) { .drop { padding: 20px 18px 20px 82px; } .drop::before { left: 18px; } main.in { padding-top: 24px; } nav { margin-left: 0; } nav button { padding: 8px 10px 10px; font-size: 14px; } h1 { font-size: 22px; } .private details { margin-left: 0; } }
+@media (max-width: 640px) { .drop { padding: 20px 18px 20px 82px; } .drop::before { left: 18px; } main.in { padding-top: 24px; } nav { margin-left: 0; } nav button { padding: 8px 10px 10px; font-size: 14px; } h1 { font-size: 24px; } .private details { margin-left: 0; } }
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="logo" viewBox="0 0 64 64"><defs>
-    <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0b4f8a"/>
-      <stop offset="1" stop-color="#14a06c"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="15" fill="url(#lg)"/>
-  <!-- a control chart: every batch between the two limits -->
-  <path d="M12 18H52M12 46H52" stroke="#fff" stroke-opacity=".55" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 4"/>
-  <path d="M13 36L22 29L30 34L39 25L47 28" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="47" cy="28" r="4.6" fill="#fff"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="logo" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#e5383b"/><!-- a control chart: every batch between the two limits --><path d="M12 18H52M12 46H52" stroke="#fff" stroke-opacity=".55" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 4"/><path d="M13 36L22 29L30 34L39 25L47 28" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="47" cy="28" r="4.6" fill="#fff"/></symbol></svg>
 <header><div class="in">
-  <div class="brand"><svg class="logo" width="36" height="36" aria-hidden="true"><use href="#logo"/></svg><div><b>Adigi<i>PQR</i></b><small>APQR data from PAS-X MES and BMR scans</small></div></div>
+  <div class="brand"><svg class="logo" width="36" height="36" aria-hidden="true"><use href="#logo"/></svg><div><b>Adigi<i>PQR</i></b><small>APQR workbook from PAS-X</small></div></div>
   <nav role="tablist">
-    <button role="tab" data-tab="apqr" aria-selected="true">APQR sheet</button>
-    <button role="tab" data-tab="scan" aria-selected="false">CPP from BMR scans</button>
-    <button role="tab" data-tab="sql" aria-selected="false" id="sqlTabBtn" hidden>SQL for the MES team</button>
-    <button role="tab" data-tab="guide" aria-selected="false">Guides</button>
+    <button role="tab" data-tab="apqr" aria-selected="true">APQR</button>
+    <button role="tab" data-tab="scan" aria-selected="false">BMR scans</button>
+    <button role="tab" data-tab="sql" aria-selected="false" id="sqlTabBtn" hidden>SQL</button>
+    <button role="tab" data-tab="guide" aria-selected="false">Help</button>
   </nav>
 </div></header>
 <div class="private" role="note"><div class="in">
   <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  <span><b>100 % in your browser.</b> Nothing is uploaded — no server ever sees your data.</span>
-  <details><summary>How?</summary><ul>
-    <li>Static page, no upload function, no server program behind it. Check it yourself: F12 → Network.</li>
-    <li>All processing runs in this tab; results go straight to Downloads. Closing the tab erases the data.</li>
-    <li>No internet on the plant PC? <a href="adigipqr-offline.zip" id="offlineZip">Offline copy (.zip)</a>.</li></ul></details>
+  <span><b>Your data stays on this computer.</b> Files are read inside this browser tab: nothing is uploaded, stored or sent. Close the tab and it is gone.</span>
+  <details><summary>How to check</summary><ul>
+    <li>This is a static page with no upload function and no server program. Press F12 → Network while you use it: no file leaves.</li>
+    <li>The workbook is made in this tab and saved straight to your Downloads folder.</li>
+    <li>No internet on the plant PC? Use the <a href="adigipqr-offline.zip" id="offlineZip">offline copy (.zip)</a>.</li></ul></details>
 </div></div>
 
 <main class="in">
 <!-- ============================================================== APQR -->
 <section id="tab-apqr" style="display:grid;gap:16px">
-  <div><h1>APQR from PAS-X, in seconds</h1>
-  <p class="lede">PAS-X export in, QA's APQR workbook out — with Cpk, trends and out-of-limit flags.</p></div>
+  <div><h1>APQR workbook <em>from PAS-X</em></h1>
+  <p class="lede">Drop the PAS-X export. Check the workbook on screen. Download it.</p></div>
   <div class="steps" id="apqrSteps">
-    <div><b>Export from PAS-X</b>Material + period, read-only, CSV.</div>
-    <div><b>Drop it here</b>Only the raw extract: nothing else to attach.</div>
-    <div><b>Check, then download</b>QA's APQR made by itself, previewed sheet by sheet, every cell traced.</div>
+    <div><b>Export</b>Run <code>APQR_FINAL_QUERY.sql</code> in PL/SQL Developer (material + dates, or batch numbers).</div>
+    <div><b>Drop</b>The export file, nothing else.</div>
+    <div><b>Check and download</b>QA's layout; every cell shows its PAS-X source.</div>
   </div>
   <label class="drop" id="drop">
     <input type="file" id="file" accept=".csv,.txt,.xlsx">
-    <strong>Drop the export (.csv or .xlsx) or click to choose</strong>
-    <span class="note">Result of <code>final/APQR_FINAL_QUERY.sql</code> (by material + dates, or batch numbers) → Export results. The APQR workbook is then made here by <code>final/apqr_curate.py</code> <span id="curv">v2.3.0</span> and shown before download.</span>
+    <strong>Drop the PAS-X export here, or click to choose</strong>
+    <span class="note">.xlsx or .csv · curator <span id="curv">v2.3.0</span></span>
     <span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span>
     <span class="mono" id="filechip">No file yet.</span>
   </label>
-  <div class="row" id="exRow" style="align-items:center;margin-top:-6px"><button class="b" id="exLoad">Load example data</button><span class="note">invented, 24 batches</span></div>
+  <div class="row" id="exRow" style="align-items:center;margin-top:-6px"><button class="b" id="exLoad">Try with example data</button><span class="note">invented product, 24 batches</span></div>
   <div class="msg" id="msg"></div>
 
   <div id="loaded" hidden style="display:grid;gap:16px">
-    <div class="card"><div class="seg" id="reqMode"><span>QA request</span><button data-m="period" aria-pressed="true">Material + period</button><button data-m="batch" aria-pressed="false">Batch numbers</button></div>
+    <div class="card"><div class="seg" id="reqMode"><span>Batches</span><button data-m="period" aria-pressed="true">Material + period</button><button data-m="batch" aria-pressed="false">Batch numbers</button></div>
       <div class="row">
       <label>Material<select id="fMat"></select></label>
       <label class="m-period">Manufactured from<input type="date" id="fFrom"></label>
@@ -240,26 +232,26 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       <label class="m-batch" hidden style="flex:1 1 340px">Batch numbers (comma, space or one per line)<textarea id="fBatches" rows="2" placeholder="2105013021, 2105013022"></textarea></label>
       <button class="b" id="apply">Apply</button>
       <span style="flex:1"></span>
-      <button class="b" id="dl" title="Every PAS-X stage, step and parameter as columns, with Cpk and trends - not QA's layout">PAS-X overview (.xlsx)</button>
+      <button class="b" id="dl" title="Every PAS-X parameter with Cpk and trends - not QA's layout">PAS-X data review (.xlsx)</button>
     </div><div class="note" id="period" style="margin-top:8px"></div></div>
 
     <div class="card" id="fillCard" style="display:grid;gap:12px">
       <div><h2 style="margin:0">APQR workbook <span class="tag">final/apqr_curate.py</span></h2>
-      <p class="note" style="margin:6px 0 0">Made from the export alone, by the curator in the project's <span class="mono">final</span> folder (the same Python file as on the PC and the plant portal), here in the browser. Approved product: QA's exact layout and rules. Other products: QA-style layout built from the exact PAS-X codes. Every cell is traced to its PAS-X row; check it below before you download.</p></div>
-      <div class="row" style="align-items:center"><span class="chip" id="tmode" hidden></span><span class="note" id="pyinfo">Starts by itself when the export is loaded. The first run loads Python once (about 13 MB, from this site).</span><span style="flex:1"></span>
-        <button class="b" id="tdl" disabled>Make again</button><button class="b go" id="tsave" disabled>Download APQR workbook (.xlsx)</button></div>
+      <p class="note" style="margin:6px 0 0">Every cell is traced to its PAS-X row. A cell that cannot be proved stays blank and is listed under Exceptions.</p></div>
+      <div class="row" style="align-items:center"><span class="chip" id="tmode" hidden></span><span class="note" id="pyinfo">Starts by itself. The first run loads Python once (about 13 MB, from this site).</span><span style="flex:1"></span>
+        <button class="b" id="tdl" disabled>Rebuild</button><button class="b go" id="tsave" disabled>Download APQR workbook</button></div>
       <div class="msg" id="tmsg"></div>
       <div id="tres" hidden style="display:grid;gap:10px">
         <div class="kpis" id="tkpis"></div>
         <div class="sheettabs" id="pvTabs" role="tablist"></div>
-        <div class="legend pvlegend"><span><i class="sw ok"></i>from PAS-X (approved rule)</span><span><i class="sw auto"></i>from PAS-X (automatic / learned layout: QA to approve)</span><span><i class="sw prov"></i>provisional rule</span><span><i class="sw exc"></i>left blank: exception</span><span><i class="sw qa"></i>for QA (printout, LIMS, not in MES)</span><span><i class="sw miss"></i>not in this export</span></div>
+        <div class="legend pvlegend"><span><i class="sw ok"></i>from PAS-X</span><span><i class="sw auto"></i>from PAS-X, format to be approved by QA</span><span><i class="sw prov"></i>provisional</span><span><i class="sw exc"></i>exception (blank)</span><span><i class="sw qa"></i>for QA (printout, LIMS)</span><span><i class="sw miss"></i>not in this export</span></div>
         <div class="scroll pvwrap"><table class="pv" id="pvTable"></table></div>
         <div class="note mono" id="pvCell">Click a cell to see where its value comes from.</div>
         <details class="more" id="tdiffBox" hidden><summary id="tdiffSum">Differences from QA's workbook</summary><div class="scroll"><table id="tdiff"></table></div></details>
         <details class="more"><summary id="texcSum">Exceptions</summary><div class="scroll"><table id="tsum"></table></div></details>
         <details class="more"><summary>Curator log</summary><pre class="log" id="tlog"></pre></details>
       </div>
-      <details class="more" id="tmore"><summary>Optional: QA's workbook, template, rules</summary>
+      <details class="more" id="tmore"><summary>Optional: compare with QA's workbook</summary>
       <div class="grid3" style="margin-top:10px">
         <label class="drop small" id="vdrop"><input type="file" id="vfile" accept=".xlsx">
           <strong>QA's APQR workbook of this product</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="vchip">Checks every value (APQR_Validation). For a product without approved rules it teaches QA's layout.</span></label>
@@ -270,28 +262,30 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       </div><div class="row" style="margin-top:8px"><button class="b" id="tclear">Clear these files</button></div></details>
     </div>
 
+    <details class="sec" id="review"><summary><span>PAS-X data review: Cpk, trends, out-of-limit</span></summary><div class="body">
     <div class="kpis" id="kpis"></div>
 
-    <details class="sec" id="secBatches"><summary><span>Batches</span></summary><div class="body"><div class="scroll"><table id="tBatches"></table></div></div></details>
-    <details class="sec" id="secParams"><summary><span>Parameters, capability and trend signals</span></summary><div class="body">
+    <details class="more" id="secBatches"><summary>Batches</summary></summary><div class="body"><div class="scroll"><table id="tBatches"></table></div></div></details>
+    <details class="more" id="secParams"><summary>Parameters, Cpk and trend signals</summary><div class="body">
       <div class="chips" id="pFilter"><button data-f="" aria-pressed="true">All</button><button data-f="crit" aria-pressed="false">CPP &amp; CQA</button><button data-f="out" aria-pressed="false">Outside MBR limit</button>
       <button data-f="cpk" aria-pressed="false">Cpk below 1.33</button><button data-f="sig" aria-pressed="false">Trend signals</button></div>
       <div class="scroll"><table id="tParams"></table></div>
       <p class="note"><span class="pill ok">CPP</span> QA list / MBR flag · <span class="pill typ">CPP?</span> typical, QA to confirm · <span class="pill cqa">CQA</span> IPQC · Cpk on batch-to-batch σ, from 6 batches · R1 beyond 3σ, R2 nine on one side, R3 six trending.</p>
     </div></details>
-    <details class="sec" id="secCharts"><summary><span>Trend charts</span></summary><div class="body">
+    <details class="more" id="secCharts"><summary>Trend charts</summary><div class="body">
       <div class="chips" id="cFilter"><button data-f="" aria-pressed="true">All</button><button data-f="crit" aria-pressed="false">CPP &amp; CQA</button><button data-f="flag" aria-pressed="false">Only flagged</button></div>
       <div class="legend"><span><i style="border-color:var(--series)"></i>batch value</span><span><i style="border-color:var(--limit)"></i>MBR limit (LSL/USL)</span><span><i style="border-color:var(--ctl);border-top-style:dashed"></i>control limit (3σ)</span><span><i class="dot" style="background:var(--limit)"></i>outside limit</span><span><i class="dot" style="background:var(--flag)"></i>trend signal</span></div>
       <div class="charts" id="charts"></div></div></details>
-    <details class="sec" id="secSheets"><summary><span>Preview of the QA sheets</span></summary><div class="body">
+    <details class="more" id="secSheets"><summary>Data review sheets</summary><div class="body">
       <div class="sheettabs" id="sheetTabs"></div><div class="scroll"><table class="qa" id="tSheet"></table></div></div></details>
-    <details class="sec"><summary><span>Options</span></summary><div class="body">
+    <details class="more"><summary>Options</summary><div class="body">
       <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="oMerge" checked> Merge repeated in-process checks into one Min / Max / Avg</label>
       <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="oMin" checked> Seconds → minutes</label>
       <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="oInsp"> Inspection sheet</label>
       <label>QA's CPP list (one per line; "stage: parameter" for one stage)
         <textarea id="oCpp" rows="5" placeholder="Compression: main compression force&#10;Compression: turret speed&#10;Granulation: impeller amperage&#10;Coating: bed temperature"></textarea></label>
       <label>Your name (for Report info)<input id="who" placeholder="optional"></label>
+    </div></details>
     </div></details>
   </div>
 </section>
@@ -343,28 +337,15 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 
 <!-- ============================================================== GUIDES -->
 <section id="tab-guide" hidden style="display:grid;gap:16px">
-  <div><h1>Guides</h1><p class="lede">Ways to run it, and the path to an automatic data sync.</p></div>
+  <div><h1>Help</h1><p class="lede">How it works, and how to check that it is right.</p></div>
   <div class="grid2">
-    <div class="card"><h2>1 · This page (online or offline)</h2><p class="note">Everything runs in the browser. Offline: unzip the offline copy (link under "How?") on a PC and double-click <code>index.html</code> for the APQR sheet; for reading scans run <code>start_web_app.bat</code> (a local web server on 127.0.0.1, needs Python).</p></div>
-    <div class="card"><h2>2 · Plant portal (shared store)</h2><p class="note"><code>start_portal.bat</code> on one plant server: the MES team loads exports once, QA picks a material and dates and downloads. Adds server-side BMR scan reading (RapidOCR) and an optional read-only nightly pull from PAS-X.</p></div>
-    <div class="card"><h2>3 · Command line</h2><p class="note"><code>python final/apqr_curate.py export.xlsx</code> makes the same APQR workbook on any PC with Python (<code>--qa "QA workbook.xlsx"</code> to check it against QA's values).</p></div>
-    <div class="card"><h2>4 · Automatic data sync</h2><p class="note">Step-by-step in <a href="guide-fabric.html">Data sync and Microsoft Fabric</a>: scheduled read-only pull first (no licence, data stays on-prem), Fabric pipeline + Lakehouse when the company wants one data platform.</p></div>
-    <div class="card"><h2>Which parameters are CPPs</h2><p class="note">Every parameter is labelled <span class="pill ok">CPP</span>, <span class="pill typ">CPP?</span> or <span class="pill cqa">CQA</span> with its reason: QA's CPP list for the product (Options) first, then the PAS-X MBR criticality flag, then what is typical for the unit operation (to be confirmed by QA). Labels never change a value.</p></div>
-    <div class="card"><h2>QA's APQR workbook</h2><p class="note">Drop the export: <code>final/apqr_curate.py</code> runs here in the browser and shows the workbook sheet by sheet before you download it. For an approved product it uses QA's exact layout and approved rules. For any other product it builds a QA-style layout from the exact PAS-X step and parameter codes, or, if you add QA's workbook for that product, learns QA's layout and which PAS-X value goes in each column from the batches both files share. Every cell shows its source, and every gap is listed in <code>APQR_Exceptions</code>.</p></div>
-    <div class="card"><h2>Two kinds of request</h2><p class="note"><i>Material + period</i> ("all batches of material X from Y to Z") or <i>Batch numbers</i> ("with respect to each batch no.", material optional). The SQL query takes the same two forms.</p></div>
-    <div class="card"><h2>Proving the workbook</h2><p class="note">Add QA's own APQR workbook under <i>Optional: QA's workbook</i>: every value the curator wrote is compared with QA's, with the likely cause of each difference (typing slip, another PAS-X value, other machine, not in PAS-X).</p></div>
+    <div class="card"><h2>Is my data safe?</h2><p class="note">Yes. The page is static: the export is read and the workbook is made inside your browser tab. Nothing is uploaded or stored, and closing the tab removes it. Without internet, use the offline copy (link at the top, under "How to check").</p></div>
+    <div class="card"><h2>Which format will I get?</h2><p class="note"><b>Approved product</b> (MBR F1M00011): QA's own APQR layout and approved rules. <b>Any other product</b>: the generic QA format, with QA's sheets and header levels and the same columns for every product. A cell is filled only where PAS-X has that exact value; otherwise it stays blank. No average (Ave) values are written.</p></div>
+    <div class="card"><h2>How do I check a value?</h2><p class="note">Click any cell in the preview: it shows the PAS-X step code, the parameter code, the readings and the calculation. The workbook carries the same detail in its sheet <code>APQR_Source_Trace</code>.</p></div>
+    <div class="card"><h2>Compare with QA's own workbook</h2><p class="note">Add QA's workbook under "Optional: compare with QA's workbook". Every value is checked against QA's, and each difference gets its likely cause: a typing slip, another PAS-X value, the other machine, or not in PAS-X.</p></div>
+    <div class="card"><h2>Other ways to run it</h2><p class="note">Command line: <code>python final/apqr_curate.py export.xlsx</code>. Plant portal: <code>start_portal.bat</code> on one server, for a shared store of exports. Automatic sync: <a href="guide-fabric.html">data sync and Microsoft Fabric</a>.</p></div>
+    <div class="card"><h2>Status</h2><p class="note">Prototype for QA review. Verify against the batch record before use in a GMP APQR. Not a validated system.</p></div>
   </div>
-  <div class="card"><h2>What the workbook contains</h2><table>
-    <tr><th>Sheet</th><th>Content</th></tr>
-    <tr><td>BMR detail</td><td>One row per batch: batch no., product, size, mfg./exp. month, SFG code, MBR, order, status. Market and master BMR no. stay for QA.</td></tr>
-    <tr><td>Granulation, Compression, Coating, Capsule, Packing</td><td>Batches as rows; stage › step › parameter › limit › Min/Max/Avg as columns; values outside the MBR limit shaded; equipment IDs.</td></tr>
-    <tr><td>Yield data, Temp. &amp; Humidity</td><td>Manufacturing yields; line-clearance temperature and RH per stage.</td></tr>
-    <tr><td>IP-Analytical</td><td>Analytical results when they are part of the input (LIMS template in the portal).</td></tr>
-    <tr><td>BPR Details, Packing Yield</td><td>One row per packing order; packing yields with equipment.</td></tr>
-    <tr><td>Out of limit</td><td>Every recorded value outside its limit, with superseded (corrected) entries.</td></tr>
-    <tr><td>Summary, Trends, Trend data</td><td>Per parameter: criticality (CPP / CQA) and its basis, n, mean, SD, Cpk, Ppk, batches outside limit, trend signals; native Excel line charts against LSL/USL.</td></tr>
-    <tr><td>Scanned records</td><td>Values read from BMR scans and accepted by a person, with page numbers.</td></tr>
-    <tr><td>MES long data, Report info</td><td>The source rows, and which file (SHA-256) they came from.</td></tr></table></div>
 </section>
 </main>
 <div class="prog" id="prog" hidden role="status" aria-live="polite"><div class="pcard">
@@ -373,7 +354,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
   <ol class="psteps" id="psteps"></ol>
   <div class="pfoot"><span id="pnote">Working in this browser tab · nothing is uploaded</span><button class="b" id="pclose" hidden>Close</button></div>
 </div></div>
-<footer><div class="in"><span><svg class="logo" width="18" height="18" aria-hidden="true"><use href="#logo"/></svg>AdigiPQR <span id="ver"></span> · curator <span id="curv2">v2.3.0</span> · SQL v6.2</span><span>No data leaves this computer</span><span>For QA review · not a validated system</span></div></footer>
+<footer><div class="in"><span><svg class="logo" width="18" height="18" aria-hidden="true"><use href="#logo"/></svg>AdigiPQR <span id="ver"></span> · curator <span id="curv2">v2.3.0</span> · SQL v6.2</span><span>Nothing leaves this computer</span><span>Prototype for QA review · not a validated system</span></div></footer>
 
 <script>
   (function () {
@@ -385,7 +366,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       "app/core.js?v=dee1afd8c2",
       "app/ocr.js?v=0a9472933d",
       "app/worker.js?v=078014e734",
-      "app/ui.js?v=4c65d15aa3"
+      "app/ui.js?v=f39f24ef50"
     ];
     window.ADIGI_PY_WORKER = "app/py-worker.js?v=19d9db8e61";        // final/apqr_curate.py in the browser, started on demand
     files.forEach(function (src) {

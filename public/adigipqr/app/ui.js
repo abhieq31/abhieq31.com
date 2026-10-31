@@ -15,7 +15,8 @@
   function show(tab) {
     document.querySelectorAll("nav [role=tab]").forEach(function (b) { b.setAttribute("aria-selected", b.dataset.tab === tab ? "true" : "false"); });
     ["apqr", "scan", "sql", "guide"].forEach(function (t) { $("tab-" + t).hidden = t !== tab; });
-    if (location.hash.slice(1) !== tab) history.replaceState(null, "", "#" + tab);
+    var want = tab === "apqr" ? location.pathname + location.search : "#" + tab;     // the main tab keeps a clean address
+    if ((location.hash.slice(1) || "apqr") !== tab) history.replaceState(null, "", want);
   }
   document.querySelectorAll("nav [role=tab]").forEach(function (b) { b.onclick = function () { show(b.dataset.tab); }; });
   // The offline zip exists only on the public site; the offline copy and the plant portal hide the link.
@@ -266,7 +267,7 @@
         '</td><td class="mono">' + esc(C.s(r.MBR_ID) + (C.s(r.MBR_VERSION) ? "-" + C.s(r.MBR_VERSION) : "")) + '</td><td class="mono">' + esc(r.MANUFACTURING_ORDER) +
         "</td><td>" + esc(r.MO_STATUS) + '</td><td class="n">' + (oos[b] || "") + "</td></tr>";
     }).join("");
-    $("secBatches").querySelector("summary span").textContent = "Batches (" + S.model.batches.length + ")";
+    $("secBatches").querySelector("summary").textContent = "Batches (" + S.model.batches.length + ")";
   }
   function pFilter(p, mode) {
     if (mode === "crit") return !!p.crit;
@@ -302,7 +303,7 @@
         '</td><td class="n">' + f(p.cap.cpk, 2) + '</td><td class="n">' + f(p.cap.ppk, 2) + "</td><td>" + verdictPill(p) + '</td><td class="mono">' + esc(p.out.join(", ")) +
         "</td><td>" + rulePills(p) + "</td></tr>";
     }).join("") + (list.length ? "" : '<tr><td colspan="14" class="note">No parameter matches this filter.</td></tr>');
-    $("secParams").querySelector("summary span").textContent = "Parameters, capability and trend signals (" + S.params.length + ")";
+    $("secParams").querySelector("summary").textContent = "Parameters, Cpk and trend signals (" + S.params.length + ")";
   }
   chips("pFilter", function (v) { S.pf = v; renderParams(); });
   chips("cFilter", function (v) { S.cf = v; renderCharts(); });
@@ -350,7 +351,7 @@
         (p.out.length ? ' · <span class="pill bad">' + p.out.length + " outside limit</span>" : "") +
         " " + rulePills(p) + "</p></div>";
     }).join("") || '<p class="note">No charts for this filter.</p>';
-    $("secCharts").querySelector("summary span").textContent = "Trend charts (" + S.params.filter(function (p) { return p.values.length >= 2; }).length + ")";
+    $("secCharts").querySelector("summary").textContent = "Trend charts (" + S.params.filter(function (p) { return p.values.length >= 2; }).length + ")";
   }
 
   /* ------------------------------------------------------------------ sheet preview */
