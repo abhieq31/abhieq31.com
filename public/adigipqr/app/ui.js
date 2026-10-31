@@ -388,7 +388,6 @@
   /* ------------------------------------------------------------------ APQR workbook = final/apqr_curate.py
      The curator is Python; app/py-worker.js runs that exact file (copied from final/ by tools/build_web.py) with
      Pyodide from this site, with the same arguments as the command line. The page only hands over the files. */
-  S.cur = {};
   var PW = null, pwJobs = {}, pwN = 0;
   function pyWorker() {
     if (PW) return PW;
@@ -410,23 +409,10 @@
     var w = pyWorker();
     return new Promise(function (res, rej) { var id = ++pwN; pwJobs[id] = { res: res, rej: rej }; data.id = id; w.postMessage(data, transfer || []); });
   }
-  var CHIP = {};
-  ["t", "v", "r"].forEach(function (k) {
-    CHIP[k] = $(k + "chip").textContent;
-    var take = async function (file) {
-      S.cur[k] = { name: file.name, buffer: await file.arrayBuffer() };
-      $(k + "chip").textContent = file.name + " · " + Math.round(file.size / 1024) + " KB";
-      msg("tmsg", file.name + " added" + (S.raw ? " – press Make again to use it." : "."));
-    };
-    $(k + "file").addEventListener("change", function (e) { if (e.target.files[0]) take(e.target.files[0]); e.target.value = ""; });
-    dropZone($(k + "drop"), take);
-  });
-  $("tclear").onclick = function () { S.cur = {}; ["t", "v", "r"].forEach(function (k) { $(k + "chip").textContent = CHIP[k]; }); };
   var PV_CLASS = { FILLED: "ok", FORMULA: "ok", NA_OTHER_MACHINE: "ok", KEPT: "ok", FILLED_AUTO: "auto", FILLED_LEARNED: "auto",
     FILLED_PROVISIONAL: "prov", EXCEPTION: "exc", QA_ENTRY: "qa", PRINTOUT: "qa", NOT_IN_MBR: "qa", NO_PASX_SOURCE: "qa",
     NO_SOURCE_IN_EXPORT: "miss" };
-  var MODE = { APPROVED: ["Approved rule set", ""], LEARNED: ["Learned from QA's workbook – QA to approve", "amber"],
-    GENERIC: ["Generic QA format – QA to review", "amber"] };
+  var MODE = { APPROVED: ["Reference format · verified rules", ""], GENERIC: ["Generic APQR format", "amber"] };
   async function makeApqr(auto) {
     if (!S.raw) return;
     $("tdl").disabled = true; msg("tmsg", "");
@@ -434,9 +420,6 @@
       ["files", "Handing over the export"], ["curate", "Running apqr_curate.py"], ["save", "Preparing the preview"]]);
     try {
       var files = { export: { name: S.raw.name, buffer: S.raw.buffer.slice(0) } }, tr = [files.export.buffer];
-      [["t", "template"], ["v", "qa"], ["r", "rules"]].forEach(function (x) {
-        if (S.cur[x[0]]) { files[x[1]] = { name: S.cur[x[0]].name, buffer: S.cur[x[0]].buffer.slice(0) }; tr.push(files[x[1]].buffer); }
-      });
       var r = await pyJob({ files: files, batches: S.model ? S.model.batches.slice() : [] }, tr);
       S.out = r.buffer ? r : null;
       $("tsave").disabled = !S.out;
@@ -456,11 +439,6 @@
       var mt = pv.metrics || {};
       if (mt["accuracy vs QA"]) k.push([mt["accuracy vs QA"].split(" (")[0], "equal to QA's values (" + mt["accuracy vs QA"].split(" (")[1]]);
       if (mt.traceability) k.push([mt.traceability, "cells traced to PAS-X"]);
-      var dd = pv.differences || [];
-      $("tdiffBox").hidden = !dd.length;
-      $("tdiffSum").textContent = "Differences from QA's workbook (" + dd.length + ") – with the likely cause";
-      $("tdiff").innerHTML = dd.length ? "<tr><th>Batch</th><th>Sheet</th><th>Cell</th><th>Column</th><th>QA</th><th>PAS-X</th><th>Likely cause</th></tr>" +
-        dd.map(function (d) { return '<tr><td class="mono">' + esc(d[0]) + "</td><td>" + esc(d[1]) + '</td><td class="mono">' + esc(d[2]) + "</td><td>" + esc(d[3]) + '</td><td class="n">' + esc(d[4]) + '</td><td class="n">' + esc(d[5]) + "</td><td>" + esc(d[8]) + "</td></tr>"; }).join("") : "";
       if (pv.version) { $("curv").textContent = "v" + pv.version; $("curv2").textContent = "v" + pv.version; }
       $("tkpis").innerHTML = k.map(function (x, i) { return '<div class="kpi' + (i === 2 && x[0] ? " amber" : "") + '"><b>' + esc(typeof x[0] === "number" ? x[0].toLocaleString("en-IN") : x[0]) + "</b><span>" + esc(x[1]) + "</span></div>"; }).join("");
       msg("tmsg", r.name + " ready – check the sheets below, then download.", "ok");

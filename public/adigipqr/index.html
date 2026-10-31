@@ -152,7 +152,7 @@ tr.bad td { background: var(--warn-bg); } tr.amb td { background: var(--amber-bg
 .pfoot .err { color: var(--warn-ink); flex: 1; } .pfoot button { margin-left: auto; }
 @media (prefers-reduced-motion: reduce) { .pflow i { animation: none; opacity: 1; left: 0; } .psteps li.now .d { animation: none; } }
 .recs td { white-space: nowrap; } .thumb { width: 100%; max-width: 520px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
-/* the APQR workbook preview: white paper, QA's own header colours, as in Excel */
+/* the APQR workbook preview: white paper with the header colours of the APQR format, as in Excel */
 .pvwrap { max-height: 560px; background: #fff; border-color: #3d3d3d; }
 table.pv { width: auto; border-collapse: separate; border-spacing: 0; font: 12.5px/1.35 "Times New Roman", Georgia, serif; color: #111; }
 table.pv th, table.pv td { border-right: 1px solid #c8c8c8; border-bottom: 1px solid #c8c8c8; padding: 4px 7px; min-width: 64px; max-width: 220px; white-space: normal; text-align: center; vertical-align: middle; }
@@ -244,22 +244,12 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       <div id="tres" hidden style="display:grid;gap:10px">
         <div class="kpis" id="tkpis"></div>
         <div class="sheettabs" id="pvTabs" role="tablist"></div>
-        <div class="legend pvlegend"><span><i class="sw ok"></i>from PAS-X</span><span><i class="sw auto"></i>from PAS-X, format to be approved by QA</span><span><i class="sw prov"></i>provisional</span><span><i class="sw exc"></i>exception (blank)</span><span><i class="sw qa"></i>for QA (printout, LIMS)</span><span><i class="sw miss"></i>not in this export</span></div>
+        <div class="legend pvlegend"><span><i class="sw ok"></i>from PAS-X</span><span><i class="sw auto"></i>from PAS-X, generic format</span><span><i class="sw prov"></i>provisional</span><span><i class="sw exc"></i>exception (blank)</span><span><i class="sw qa"></i>for QA (printout, LIMS)</span><span><i class="sw miss"></i>not in this export</span></div>
         <div class="scroll pvwrap"><table class="pv" id="pvTable"></table></div>
         <div class="note mono" id="pvCell">Click a cell to see where its value comes from.</div>
-        <details class="more" id="tdiffBox" hidden><summary id="tdiffSum">Differences from QA's workbook</summary><div class="scroll"><table id="tdiff"></table></div></details>
         <details class="more"><summary id="texcSum">Exceptions</summary><div class="scroll"><table id="tsum"></table></div></details>
         <details class="more"><summary>Curator log</summary><pre class="log" id="tlog"></pre></details>
       </div>
-      <details class="more" id="tmore"><summary>Optional: compare with QA's workbook</summary>
-      <div class="grid3" style="margin-top:10px">
-        <label class="drop small" id="vdrop"><input type="file" id="vfile" accept=".xlsx">
-          <strong>QA's APQR workbook of this product</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="vchip">Checks every value (APQR_Validation). For a product without approved rules it teaches QA's layout.</span></label>
-        <label class="drop small" id="tdrop"><input type="file" id="tfile" accept=".xlsx">
-          <strong>QA's approved blank template</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="tchip">Approved products only · default: built-in copy of QA's headers</span></label>
-        <label class="drop small" id="rdrop"><input type="file" id="rfile" accept=".csv">
-          <strong>QA-edited rules (.csv)</strong><span class="lock"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="currentColor" opacity=".16"/><path d="M12 2.5 4.5 5.4v6.1c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10V5.4L12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Read in this browser – not uploaded</span><span class="mono" id="rchip">Default: the approved rules in the .py</span></label>
-      </div><div class="row" style="margin-top:8px"><button class="b" id="tclear">Clear these files</button></div></details>
     </div>
 
     <details class="sec" id="review"><summary><span>PAS-X data review: Cpk, trends, out-of-limit</span></summary><div class="body">
@@ -340,9 +330,9 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
   <div><h1>Help</h1><p class="lede">How it works, and how to check that it is right.</p></div>
   <div class="grid2">
     <div class="card"><h2>Is my data safe?</h2><p class="note">Yes. The page is static: the export is read and the workbook is made inside your browser tab. Nothing is uploaded or stored, and closing the tab removes it. Without internet, use the offline copy (link at the top, under "How to check").</p></div>
-    <div class="card"><h2>Which format will I get?</h2><p class="note"><b>Approved product</b> (MBR F1M00011): QA's own APQR layout and approved rules. <b>Any other product</b>: the generic QA format, with QA's sheets and header levels and the same columns for every product. A cell is filled only where PAS-X has that exact value; otherwise it stays blank. No average (Ave) values are written.</p></div>
+    <div class="card"><h2>Which format will I get?</h2><p class="note">The APQR format QA shared as the reference. For product 30000838 (MBR F1M00011) it is filled by rules checked value by value against that reference. Every other product gets the same style with the same columns: a cell is filled only where PAS-X has that exact value, otherwise it stays blank. No average (Ave) values are written.</p></div>
     <div class="card"><h2>How do I check a value?</h2><p class="note">Click any cell in the preview: it shows the PAS-X step code, the parameter code, the readings and the calculation. The workbook carries the same detail in its sheet <code>APQR_Source_Trace</code>.</p></div>
-    <div class="card"><h2>Compare with QA's own workbook</h2><p class="note">Add QA's workbook under "Optional: compare with QA's workbook". Every value is checked against QA's, and each difference gets its likely cause: a typing slip, another PAS-X value, the other machine, or not in PAS-X.</p></div>
+    <div class="card"><h2>What stays blank?</h2><p class="note">Values PAS-X does not hold as numbers (printout readings such as thickness and hardness, LIMS results), and any value the rules cannot prove. Each one is listed with its reason in the sheet <code>APQR_Exceptions</code>.</p></div>
     <div class="card"><h2>Other ways to run it</h2><p class="note">Command line: <code>python final/apqr_curate.py export.xlsx</code>. Plant portal: <code>start_portal.bat</code> on one server, for a shared store of exports. Automatic sync: <a href="guide-fabric.html">data sync and Microsoft Fabric</a>.</p></div>
     <div class="card"><h2>Status</h2><p class="note">Prototype for QA review. Verify against the batch record before use in a GMP APQR. Not a validated system.</p></div>
   </div>
@@ -366,7 +356,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       "app/core.js?v=dee1afd8c2",
       "app/ocr.js?v=0a9472933d",
       "app/worker.js?v=078014e734",
-      "app/ui.js?v=f39f24ef50"
+      "app/ui.js?v=5e3947931a"
     ];
     window.ADIGI_PY_WORKER = "app/py-worker.js?v=19d9db8e61";        // final/apqr_curate.py in the browser, started on demand
     files.forEach(function (src) {
